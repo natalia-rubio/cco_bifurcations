@@ -17,15 +17,17 @@ def set_up_sim_directories(anatomy, set_type, geo_name, flow_name, num_procs):
         os.mkdir(f"/scratch/users/nrubio/synthetic_junctions_reduced_results/{anatomy}/{set_type}")
     if not os.path.exists(f"/scratch/users/nrubio/synthetic_junctions_reduced_results/{anatomy}/{set_type}/{geo_name}"):
         os.mkdir(f"/scratch/users/nrubio/synthetic_junctions_reduced_results/{anatomy}/{set_type}/{geo_name}")
-    results_dir = f"/scratch/users/nrubio/synthetic_junctions_reduced_results/{anatomy}/{set_type}/{geo_name}"
+    results_dir = f"/scratch/users/nrubio/synthetic_junctions_reduced_results/{anatomy}/{set_type}/{geo_name}/"
     if os.path.exists(results_dir) == False:
         os.mkdir(results_dir)
     if not os.path.exists(f"/scratch/users/nrubio/synthetic_junctions/{anatomy}/{set_type}/{geo_name}/{flow_name}"):
-        print("inital solutions missing")
+        os.mkdir(f"/scratch/users/nrubio/synthetic_junctions/{anatomy}/{set_type}/{geo_name}/{flow_name}")
+
     if os.path.exists(f"/scratch/users/nrubio/synthetic_junctions/{anatomy}/{set_type}/{geo_name}/{flow_name}/{num_procs}-procs_case"):
         os.system(f"rm -r /scratch/users/nrubio/synthetic_junctions/{anatomy}/{set_type}/{geo_name}/{flow_name}/{num_procs}-procs_case")
 
-    os.system(f"mkdir /scratch/users/nrubio/synthetic_junctions/{anatomy}/{set_type}/{geo_name}/{flow_name}")
+    if not os.path.exists(f"/scratch/users/nrubio/synthetic_junctions/{anatomy}/{set_type}/{geo_name}/{flow_name}"):
+        os.mkdir(f"/scratch/users/nrubio/synthetic_junctions/{anatomy}/{set_type}/{geo_name}/{flow_name}")
     return
 
 def check_geo_name(geo):

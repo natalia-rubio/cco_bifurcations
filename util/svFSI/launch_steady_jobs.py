@@ -1,4 +1,4 @@
-from util.svFSI.util.sherlock_util import *
+from util.sherlock_util import *
 from write_solver_files import *
 # from util.svFSI.util.projection import * For solution initialization
 anatomy = sys.argv[1]
@@ -42,7 +42,7 @@ while num_launched < num_geos:
             if num_flows == 2:
                 if i == 0 or i == 2:
                     continue
-            if os.path.exists(f"/scratch/users/nrubio/synthetic_junctions_reduced_results/{anatomy}/{set_type}/{geo_name}/flow_{i}_red_sol_full"):
+            if os.path.exists(f"/scratch/users/nrubio/synthetic_junctions_reduced_results/{anatomy}/{set_type}/{geo_name}/flow_{i}_red_sol"):
                 print(f"Simulation already complete for flow {flow_index}")
                 continue
 
@@ -57,15 +57,14 @@ while num_launched < num_geos:
 
             time_step_size = (np.sqrt(inlet_area/np.pi))/flow_params["vel_in"]
             print(f"Time step size: {time_step_size}")
-            write_svpre_steady(anatomy, set_type, geo_name, flow_index, flow_params, copy.deepcopy(cap_numbers), inlet_cap_number, num_time_steps, time_step_size)
-            write_inp_steady(anatomy, set_type, geo_name, flow_index, flow_params, copy.deepcopy(cap_numbers), inlet_cap_number, num_time_steps, time_step_size)
+            write_svfsi(anatomy, set_type, geo_name, flow_index, flow_params, copy.deepcopy(cap_numbers), inlet_cap_number, num_time_steps, time_step_size)
             write_flow_steady(anatomy, set_type, geo_name, flow_index, flow_params["flow_amp"], inlet_cap_number, num_time_steps, time_step_size)
             print("Done writing solver files.")
             f = open(f"/scratch/users/nrubio/synthetic_junctions/{anatomy}/{set_type}/{geo_name}/{flow_name}/numstart.dat", "w"); f.write("0"); f.close()
 
 
             write_job_steady(anatomy, set_type, geo_name, flow_name = flow_name, flow_index = flow_index, num_cores = num_cores, num_time_steps = num_time_steps)
-            os.system(f"sbatch /scratch/users/nrubio/job_scripts/{geo[0]}_f{i}.sh")
+            os.system(f"sbatch /scratch/users/nrubio/job_scripts/{geo}_f{i}.sh")
             print(f"Started job for {geo} flow {flow_index}")
             print("\n\
                   ---------------------------------\n")    

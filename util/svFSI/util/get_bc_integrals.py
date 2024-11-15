@@ -83,13 +83,9 @@ def get_res_names(inp, res_fields):
     # get integral for each result
     for i in range(inp.GetPointData().GetNumberOfArrays()):
         res_name = inp.GetPointData().GetArrayName(i)
-        field = res_name.split('_')[0]
-        num = res_name.split('_')[-1]
-
         # check if field should be added to output
-        if field in res_fields:
+        if res_name in res_fields:
             try:
-                float(num)
                 res += [res_name]
             except ValueError:
                 pass

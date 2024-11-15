@@ -1,13 +1,13 @@
 import vtk
 import os
 import numpy as np
-
 from vtk.util.numpy_support import vtk_to_numpy as v2n
 from tqdm import tqdm
-
 from util.get_bc_integrals import get_res_names
 from util.vtk_functions import read_geo, write_geo, calculator, cut_plane, connectivity, get_points_cells, clean, Integration
+import util.junction_proc
 import pickle
+
 def save_dict(di_, filename_):
     with open(filename_, 'wb') as f:
         pickle.dump(di_, f)
@@ -47,9 +47,10 @@ def get_integral(inp_3d, origin, normal):
     inp = slice_vessel(inp_3d, origin, normal)
 
     # recursively add calculators for normal velocities
-    for v in get_res_names(inp_3d, 'velocity'):
-        fun = '(iHat*'+repr(normal[0])+'+jHat*'+repr(normal[1])+'+kHat*'+repr(normal[2])+').' + v
-        #fun = 'dot(iHat*'+repr(normal[0])+'+jHat*'+repr(normal[1])+'+kHat*'+repr(normal[2])+',' + v + ")"
+
+    for v in get_res_names(inp_3d, 'Velocity'):
+        #fun = '(iHat*'+repr(normal[0])+'+jHat*'+repr(normal[1])+'+kHat*'+repr(normal[2])+').' + v
+        fun = 'dot(iHat*'+repr(normal[0])+'+jHat*'+repr(normal[1])+'+kHat*'+repr(normal[2])+',' + v + ")"
         inp = calculator(inp, fun, [v], 'normal_' + v)
 
     return Integration(inp)
@@ -167,7 +168,7 @@ def get_avg_results(fpath_1d, fpath_3d, fpath_out, pt_inds, num_time_steps, only
 
     return res_dict
 
-def get_avg_steady_results(ss_tol, fpath_1d, fpath_3d, fpath_out, pt_inds, only_caps=False, only_area = False):
+def get_avg_steady_results(ss_tol, fpath_1d, fpath_3d, fpath_3d_prev, fpath_out, pt_inds, only_caps=False, only_area = False):
     """
     Extract 3d results at 1d model nodes (integrate over cross-section)
     Args:
@@ -181,9 +182,11 @@ def get_avg_steady_results(ss_tol, fpath_1d, fpath_3d, fpath_out, pt_inds, only_
     # read 1d and 3d model
     reader_1d = read_geo(fpath_1d).GetOutput()
     reader_3d = read_geo(fpath_3d).GetOutput()
+    reader_3d_prev = read_geo(fpath_3d_prev).GetOutput()
+
 
     # get all result array names
-    res_names = get_res_names(reader_3d, ['pressure', 'velocity'])
+    res_names = get_res_names(reader_3d, ['Pressure', 'Velocity'])
 
     # get point and normals from centerline
     gid = v2n(reader_1d.GetPointData().GetArray('GlobalNodeId'))
@@ -220,11 +223,11 @@ def get_avg_steady_results(ss_tol, fpath_1d, fpath_3d, fpath_out, pt_inds, only_
     print(f"Reducing {num_time_steps} timesteps.")
     pressure_in_time =  np.zeros((2,len(pt_inds))) # initialize pressure_in_time matrix, each column is a mesh point, each row is a timestep
     flow_in_time =      np.zeros((2,len(pt_inds))) # initialize flow_in_time matrix, each column is a mesh point, each row is a timestep
-    times = list()  # list of timesteps
+    areas =            np.zeros((1,len(pt_inds))) # initialize area matrix, each column is a mesh point, each row is a timestep
+    times = [int(fpath_3d[-7:-4]), int(fpath_3d_prev[-7:-4])]  # list of timesteps
 
     # integrate results on all points of intergration cells
     for i in tqdm(range(len(pt_inds))):
-        print()
         # check if point is cap
 
         reader_1d.GetPointCells(i, ids)
@@ -242,44 +245,32 @@ def get_avg_steady_results(ss_tol, fpath_1d, fpath_3d, fpath_out, pt_inds, only_
         # create integration object (slice geometry at point/normal)
         try:
             integral = get_integral(reader_3d, points[i], normals[i])
+            integral_prev = get_integral(reader_3d_prev, points[i], normals[i])
         except Exception:
             continue
-        #import pdb; pdb.set_trace()
-        count = int(0)
-        if not only_area:
-            # integrate all output arraysƒ
-            for name in res_names:
-                print("Name: "+name)
-                reader_1d.GetPointData().GetArray(name).SetValue(i, integral.evaluate(name))
-                soln = np.array(reader_1d.GetPointData().GetArray(name)).reshape(1,-1)
-                print("Soln: ")
-                print(soln)
-                if name[0:8] == "pressure":
-                    if name[9:14] == "error":
-                        continue
-                    pressure_in_time[count, i] = soln[0][i]  # add timestep row to pressure_in_time
-                    if i == 0:
-                        times.append(float(name[-5:]))  # add timestep to times
 
-                elif name[0:8] == "velocity": # NOTE: keys are labeled "velocity" but are actually flow!!!
-                    if name[9:14] == "error":
-                        continue
-                    flow_in_time[count, i] = soln[0][i]
-                    count += 1
+        # integrate all output arrays
+        pressure_in_time[0, i] = integral.evaluate("Pressure")  # add timestep row to pressure_in_time
+        pressure_in_time[1, i] = integral_prev.evaluate("Pressure")  # add timestep row to pressure_in_time
+        flow_in_time[0, i] = integral.evaluate("Velocity")  # add timestep row to pressure_in_time
+        flow_in_time[1, i] = integral_prev.evaluate("Velocity")  # add timestep row to pressure_in_time
+        areas[0, i] = integral.area()  # add timestep row to pressure_in_time
+
+
+
     print("Pressure in time: ")
     print(pressure_in_time)
     print("Flow in time: ")
     print(flow_in_time)
+
     dPlast = np.abs(pressure_in_time[-1,0] - pressure_in_time[-1,[1, 2]])
     dP2last = np.abs(pressure_in_time[-2,0] - pressure_in_time[-2,[1, 2]])
-    #print(pressure_in_time)
+
     print(f"dPlast: {dPlast}.  dP2last: {dP2last}.")
     conv = True
     if np.any(np.abs(dPlast - dP2last)/dPlast > ss_tol):
-
         conv = False
         print("not converged")
-        #import pdb; pdb.set_trace()
         pressure_in_time = np.zeros((0,))
         flow_in_time = np.zeros((0,))
         times = [0]
@@ -288,17 +279,63 @@ def get_avg_steady_results(ss_tol, fpath_1d, fpath_3d, fpath_out, pt_inds, only_
         flow_in_time = flow_in_time[-1,:]
         if np.abs((flow_in_time[0] - np.sum(flow_in_time[1:]))/flow_in_time[0]) > 0.05:
             print("Mass not conserved!")
-            #import pdb; pdb.set_trace()
             conv = False
 
     res_dict = {"flow_in_time": flow_in_time,
                 "pressure_in_time": pressure_in_time,
-                "times" : [times[-1]]}
+                "times" : times}
 
-    #import pdb; pdb.set_trace()
     if conv == True:
-        save_dict(res_dict, fpath_out)
+        res_dict.update({"pt_inds": pt_inds})
+        save_dict(res_dict, fpath_out + "_red_sol")
     else:
         os.system(f"rm {fpath_out}")
 
+    save_centerline_sol = False
+    if save_centerline_sol:
+        cent_sol = project_to_cent(fpath_1d, fpath_3d, only_caps=only_caps)
+        write_geo(fpath_3d[:-4] + "_cent.vtp", cent_sol)
     return res_dict, conv
+
+
+def project_to_cent(fpath_1d, fpath_3d, only_caps=False):
+
+    reader_1d = read_geo(fpath_1d).GetOutput()
+    reader_3d = read_geo(fpath_3d).GetOutput()# get all result array names
+    res_names = get_res_names(reader_3d, ['Pressure', 'Velocity'])# get point and normals from centerline
+    points = v2n(reader_1d.GetPoints().GetData())
+    normals = v2n(reader_1d.GetPointData().GetArray('CenterlineSectionNormal'))
+    gid = v2n(reader_1d.GetPointData().GetArray('GlobalNodeId'))# initialize output
+
+    for name in res_names + ['area']:
+        array = vtk.vtkDoubleArray()
+        array.SetName(name)
+        array.SetNumberOfValues(reader_1d.GetNumberOfPoints())
+        array.Fill(0)
+        reader_1d.GetPointData().AddArray(array) # move points on caps slightly to ensure nice integration
+    ids = vtk.vtkIdList()
+    eps_norm = 1.0e-3 # integrate results on all points of intergration cells
+    print(f"Extracting solution at {reader_1d.GetNumberOfPoints()} points.")
+    for i in tqdm(range(reader_1d.GetNumberOfPoints())):
+        # check if point is cap
+        reader_1d.GetPointCells(i, ids)
+        if ids.GetNumberOfIds() == 1:
+            if gid[i] == 0:
+                # inlet
+                points[i] += eps_norm * normals[i]
+            else:
+                # outlets
+                points[i] -= eps_norm * normals[i]
+        else:
+            if only_caps:
+                continue # create integration object (slice geometry at point/normal)
+
+        try:
+            integral = get_integral(reader_3d, points[i], normals[i])
+        except Exception:
+            continue # integrate all output arrays
+
+        for name in res_names:
+            reader_1d.GetPointData().GetArray(name).SetValue(i, integral.evaluate(name))
+        reader_1d.GetPointData().GetArray('area').SetValue(i, integral.area())
+    return reader_1d
