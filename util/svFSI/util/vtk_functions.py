@@ -246,10 +246,18 @@ def connectivity(inp, origin):
     Returns:
         con: connectivity object
     """
+    inp = clean(inp.GetOutput())
     con = vtk.vtkConnectivityFilter()
-    con.SetInputData(inp.GetOutput())
-    #con.SetExtractionModeToClosestPointRegion()
-    con.SetExtractionModeToAllRegions()
+    con.SetInputData(inp)
+    con.SetExtractionModeToClosestPointRegion()
+    
+    #con.SetInputData(inp.GetOutput())
+    #con.ScalarConnectivityOff()
+    #con.SetExtractionModeToAllRegions()
+    
+    #con.SetExtractionModeToPointSeededRegions()
+    #con.InitializeSeedList()
+    #con.AddSeed(origin[0], origin[1], origin[2])
     con.SetClosestPoint(origin[0], origin[1], origin[2])
     con.Update()
     return con

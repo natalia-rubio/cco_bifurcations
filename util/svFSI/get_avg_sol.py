@@ -224,6 +224,7 @@ def get_avg_steady_results(ss_tol, fpath_1d, fpath_3d, fpath_3d_prev, fpath_out,
     pressure_in_time =  np.zeros((2,len(pt_inds))) # initialize pressure_in_time matrix, each column is a mesh point, each row is a timestep
     flow_in_time =      np.zeros((2,len(pt_inds))) # initialize flow_in_time matrix, each column is a mesh point, each row is a timestep
     areas =            np.zeros((1,len(pt_inds))) # initialize area matrix, each column is a mesh point, each row is a timestep
+    tangents =         np.zeros((3,len(pt_inds))) # initialize tangent matrix
     times = [int(fpath_3d[-7:-4]), int(fpath_3d_prev[-7:-4])]  # list of timesteps
 
     # integrate results on all points of intergration cells
@@ -246,7 +247,8 @@ def get_avg_steady_results(ss_tol, fpath_1d, fpath_3d, fpath_3d_prev, fpath_out,
         try:
             integral = get_integral(reader_3d, points[i], normals[i])
             integral_prev = get_integral(reader_3d_prev, points[i], normals[i])
-        except Exception:
+        except:
+            print("integration error")
             continue
 
         # integrate all output arrays
@@ -255,12 +257,13 @@ def get_avg_steady_results(ss_tol, fpath_1d, fpath_3d, fpath_3d_prev, fpath_out,
         flow_in_time[0, i] = integral.evaluate("Velocity")  # add timestep row to pressure_in_time
         flow_in_time[1, i] = integral_prev.evaluate("Velocity")  # add timestep row to pressure_in_time
         areas[0, i] = integral.area()  # add timestep row to pressure_in_time
+        tangents[:, i] = normals[i].reshape(3,)  # add timestep row to pressure_in_time
 
 
 
     print("Pressure in time: ")
     print(pressure_in_time)
-    print("Flow in time: ")
+    print("Flow in time: ") 
     print(flow_in_time)
 
     dPlast = np.abs(pressure_in_time[-1,0] - pressure_in_time[-1,[1, 2]])
@@ -283,6 +286,8 @@ def get_avg_steady_results(ss_tol, fpath_1d, fpath_3d, fpath_3d_prev, fpath_out,
 
     res_dict = {"flow_in_time": flow_in_time,
                 "pressure_in_time": pressure_in_time,
+                "areas": areas,
+                "tangents": tangents,
                 "times" : times}
 
     if conv == True:

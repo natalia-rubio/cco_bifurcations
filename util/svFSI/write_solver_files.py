@@ -119,18 +119,12 @@ def write_svfsi(anatomy, set_type, geo, flow_index, flow_params, cap_numbers, in
         <WSS> true </WSS>\n\
     </Output>\n\
     \n\
-    <LS type='NS' >\n\
+   <LS type='GMRES' >\n\
         <Linear_algebra type='fsils' >\n\
             <Preconditioner> fsils </Preconditioner>\n\
         </Linear_algebra>\n\
-        <Max_iterations> 15 </Max_iterations>\n\
-        <NS_GM_max_iterations> 10 </NS_GM_max_iterations>\n\
-        <NS_CG_max_iterations> 300 </NS_CG_max_iterations>\n\
-        <Tolerance> 1e-3 </Tolerance>\n\
-        <NS_GM_tolerance> 1e-3 </NS_GM_tolerance>\n\
-        <NS_CG_tolerance> 1e-3 </NS_CG_tolerance>\n\
-        <Absolute_tolerance> 1e-17 </Absolute_tolerance> \n\
-        <Krylov_space_dimension> 250 </Krylov_space_dimension>\n\
+        <Max_iterations> 100 </Max_iterations>\n\
+        <Tolerance> 1e-12 </Tolerance>\n\
     </LS>\n\
     \n\
     <Add_BC name='inlet' > \n\
