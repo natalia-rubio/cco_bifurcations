@@ -43,13 +43,13 @@ class NeuralNet():
 @jit
 def predict(input, weights):
     output = batched_forward_pass(input, weights)
-    return output
+    return output 
 
-#@jit
+@jit
 def loss(input, flow, dP_true, scaling_factors, scaling_dict, weights):
 
     coefs_pred = predict(input, weights)
-    print(coefs_pred)
+    #print(coefs_pred)
     R_lin_star_pred1 = inv_scale_jax(scaling_dict, coefs_pred[:,0], "R_lin_star1")
     R_lin_star_pred2 = inv_scale_jax(scaling_dict, coefs_pred[:,1], "R_lin_star2")
     R_quad_star_pred1 = inv_scale_jax(scaling_dict, coefs_pred[:,2], "R_quad_star1")

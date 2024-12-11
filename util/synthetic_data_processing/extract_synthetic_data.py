@@ -64,7 +64,7 @@ def extract_steady_flow_data(anatomy, set_type, require4):
         CCO_params_dict["daughter2_dPs"].append(daughter2_dPs)
         CCO_params_dict["daughter1_flows"].append(daughter1_flows)
         CCO_params_dict["daughter2_flows"].append(daughter2_flows)
-        CCO_params_dict["U_char"].append(re_char * 0.04 / (1.06 * soln_dict["areas"][0,0]))
+        CCO_params_dict["U_char"].append(re_char * 0.04 / (1.06 * 2*np.sqrt(soln_dict["areas"][0,0]/np.pi)))
 
         # Add non-dimensionalized parameters
         daughter1_dP_stars = [daughter1_dP/(1.06 * CCO_params_dict["U_char"][-1]**2) for daughter1_dP in daughter1_dPs]
