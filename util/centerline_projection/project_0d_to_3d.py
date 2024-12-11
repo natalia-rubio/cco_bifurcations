@@ -57,131 +57,132 @@ def convert_csv_to_branch_result(
     # save to file
     return out
 
-tree_name = "tree_80"
-junction_mode = "standard"
-centerline_handler = CenterlineHandler.from_file("trees/geo_files/" + tree_name + "/centerlines/centerlines.vtp")
-zerod_handler = SvZeroDSolverInputHandler.from_file("trees/zerod_input_standard/" + tree_name + "/solver_0d.json")
-zerod_handler.update_simparams(last_cycle_only=True)
+def project_to_centerline(tree_name, junction_mode):
 
-zerod_solver = pysvzerod.Solver("trees/zerod_input_standard/" + tree_name + "/solver_0d.json")
-zerod_solver.run()
-results_df = zerod_solver.get_full_result()
+    centerline_handler = CenterlineHandler.from_file("trees/geo_files/" + tree_name + "/centerlines/centerlines.vtp")
+    zerod_handler = SvZeroDSolverInputHandler.from_file("trees/zerod_input_standard/" + tree_name + "/solver_0d.json")
+    zerod_handler.update_simparams(last_cycle_only=True)
 
-branch_results = convert_csv_to_branch_result(results_df, zerod_handler)
-arrays = rec_dd()
+    zerod_solver = pysvzerod.Solver("trees/zerod_input_standard/" + tree_name + "/solver_0d.json")
+    zerod_solver.run()
+    results_df = zerod_solver.get_full_result()
 
-points = centerline_handler.points
-branch_ids = centerline_handler.get_point_data_array("BranchId")
-path = centerline_handler.get_point_data_array("Path")
-cl_id = centerline_handler.get_point_data_array("CenterlineId")
-bif_id = centerline_handler.get_point_data_array("BifurcationId")
+    branch_results = convert_csv_to_branch_result(results_df, zerod_handler)
+    arrays = rec_dd()
 
-# all branch ids in centerline
-ids_cent = np.unique(branch_ids).tolist()
-ids_cent.remove(-1)
+    points = centerline_handler.points
+    branch_ids = centerline_handler.get_point_data_array("BranchId")
+    path = centerline_handler.get_point_data_array("Path")
+    cl_id = centerline_handler.get_point_data_array("CenterlineId")
+    bif_id = centerline_handler.get_point_data_array("BifurcationId")
+
+    # all branch ids in centerline
+    ids_cent = np.unique(branch_ids).tolist()
+    ids_cent.remove(-1)
 
 
-# loop all result fields
-for f in ["flow", "pressure"]:
-    if f not in branch_results:
-        continue
-
-    # check if ROM branch has same ids as centerline
-    ids_rom = list(branch_results[f].keys())
-    ids_rom.sort()
-    assert (
-        ids_cent == ids_rom
-    ), "Centerline and ROM branch_results have different branch ids"
-
-    # initialize output arrays
-    array_f = np.zeros((path.shape[0], len(branch_results["time"])))
-    n_outlet = np.zeros(path.shape[0])
-
-    # loop all branches
-    for br in branch_results[f].keys():
-        # branch_results of this branch
-        res_br = branch_results[f][br]
-
-        # get centerline path
-        path_cent = path[branch_ids == br]
-
-        # get node locations from 0D branch_results
-        path_1d_res = branch_results["distance"][br]
-        f_res = res_br
-
-        # interpolate ROM onto centerline
-        # limit to interval [0,1] to avoid extrapolation error interp1d
-        # due to slightly incompatible lenghts
-        try:
-            f_cent = interp1d(path_1d_res / path_1d_res[-1], f_res.T)(
-                path_cent / np.max(path_cent)
-            ).T
-        except:
-            pdb.set_trace()
-
-        # store branch_results of this path
-        array_f[branch_ids == br] = f_cent
-
-        # add upstream part of branch within junction
-        if br == 0:
+    # loop all result fields
+    for f in ["flow", "pressure"]:
+        if f not in branch_results:
             continue
 
-        # first point of branch
-        ip = np.where(branch_ids == br)[0][0]
+        # check if ROM branch has same ids as centerline
+        ids_rom = list(branch_results[f].keys())
+        ids_rom.sort()
+        assert (
+            ids_cent == ids_rom
+        ), "Centerline and ROM branch_results have different branch ids"
 
-        # centerline that passes through branch (first occurence)
-        cid = np.where(cl_id[ip])[0][0]
+        # initialize output arrays
+        array_f = np.zeros((path.shape[0], len(branch_results["time"])))
+        n_outlet = np.zeros(path.shape[0])
 
-        # id of upstream junction
-        jc = bif_id[ip - 1]
+        # loop all branches
+        for br in branch_results[f].keys():
+            # branch_results of this branch
+            res_br = branch_results[f][br]
 
-        # centerline within junction
-        is_jc = bif_id == jc
-        jc_cent = np.where(np.logical_and(is_jc, cl_id[:, cid]))[0]
+            # get centerline path
+            path_cent = path[branch_ids == br]
 
-        # length of centerline within junction
-        jc_path = np.append(
-            0,
-            np.cumsum(
-                np.linalg.norm(
-                    np.diff(points[jc_cent], axis=0), axis=1
-                )
-            ),
-        )
-        jc_path /= jc_path[-1]
+            # get node locations from 0D branch_results
+            path_1d_res = branch_results["distance"][br]
+            f_res = res_br
 
-        # branch_results at upstream branch
-        res_br_u = branch_results[f][branch_ids[jc_cent[0] - 1]]
+            # interpolate ROM onto centerline
+            # limit to interval [0,1] to avoid extrapolation error interp1d
+            # due to slightly incompatible lenghts
+            try:
+                f_cent = interp1d(path_1d_res / path_1d_res[-1], f_res.T)(
+                    path_cent / np.max(path_cent)
+                ).T
+            except:
+                pdb.set_trace()
 
-        # branch_results at beginning and end of centerline within junction
-        f0 = res_br_u[-1]
-        f1 = res_br[0]
+            # store branch_results of this path
+            array_f[branch_ids == br] = f_cent
 
-        # map 1d branch_results to centerline using paths
-        array_f[jc_cent] += interp1d([0, 1], np.vstack((f0, f1)).T)(
-            jc_path
-        ).T
+            # add upstream part of branch within junction
+            if br == 0:
+                continue
 
-        # count number of outlets of this junction
-        n_outlet[jc_cent] += 1
+            # first point of branch
+            ip = np.where(branch_ids == br)[0][0]
 
-    # normalize branch_results within junctions by number of junction outlets
-    is_jc = n_outlet > 0
-    array_f[is_jc] = (array_f[is_jc].T / n_outlet[is_jc]).T
+            # centerline that passes through branch (first occurence)
+            cid = np.where(cl_id[ip])[0][0]
 
-    # assemble time steps
-    arrays[f] = array_f[:, 0]
+            # id of upstream junction
+            jc = bif_id[ip - 1]
 
-# add arrays to centerline and write to file
-for f, a in arrays.items():
-    out_array = numpy_to_vtk(a)
-    out_array.SetName(f)
-    centerline_handler.data.GetPointData().AddArray(out_array)
-if not os.path.exists(f"trees/zerod_output_cent_{junction_mode}/{tree_name}"):
-    os.makedirs(f"trees/zerod_output_cent_{junction_mode}/{tree_name}")
-centerline_handler.to_file(f"trees/zerod_output_cent_{junction_mode}/{tree_name}/centerline_sol.vtp")
+            # centerline within junction
+            is_jc = bif_id == jc
+            jc_cent = np.where(np.logical_and(is_jc, cl_id[:, cid]))[0]
 
+            # length of centerline within junction
+            jc_path = np.append(
+                0,
+                np.cumsum(
+                    np.linalg.norm(
+                        np.diff(points[jc_cent], axis=0), axis=1
+                    )
+                ),
+            )
+            jc_path /= jc_path[-1]
 
+            # branch_results at upstream branch
+            res_br_u = branch_results[f][branch_ids[jc_cent[0] - 1]]
 
-pdb.set_trace()
-#projector = MapZeroDResultToThreeD(Task())
+            # branch_results at beginning and end of centerline within junction
+            f0 = res_br_u[-1]
+            f1 = res_br[0]
+
+            # map 1d branch_results to centerline using paths
+            array_f[jc_cent] += interp1d([0, 1], np.vstack((f0, f1)).T)(
+                jc_path
+            ).T
+
+            # count number of outlets of this junction
+            n_outlet[jc_cent] += 1
+
+        # normalize branch_results within junctions by number of junction outlets
+        is_jc = n_outlet > 0
+        array_f[is_jc] = (array_f[is_jc].T / n_outlet[is_jc]).T
+
+        # assemble time steps
+        arrays[f] = array_f[:, 0]
+
+    # add arrays to centerline and write to file
+    for f, a in arrays.items():
+        out_array = numpy_to_vtk(a)
+        out_array.SetName(f)
+        centerline_handler.data.GetPointData().AddArray(out_array)
+    if not os.path.exists(f"trees/zerod_output_cent_{junction_mode}/{tree_name}"):
+        os.makedirs(f"trees/zerod_output_cent_{junction_mode}/{tree_name}")
+    centerline_handler.to_file(f"trees/zerod_output_cent_{junction_mode}/{tree_name}/centerline_sol.vtp")
+    print(f"Centerline projection for {tree_name} in {junction_mode} mode completed.")
+    return
+
+tree_name = sys.argv[1]
+junction_mode = sys.argv[2]
+project_to_centerline(tree_name, junction_mode)
