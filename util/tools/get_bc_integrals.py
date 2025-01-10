@@ -90,7 +90,7 @@ def get_res_names(inp, res_fields):
         # check if field should be added to output
         if field in res_fields:
             try:
-                float(num)
+                #float(num)
                 res += [res_name]
             except ValueError:
                 pass
@@ -116,7 +116,7 @@ def integrate_surfaces(surf, cell_surf, res_fields, face_array='BC_FaceID'):
 
     # recursively add calculators for normal velocities
     calc = normals
-    for v in get_res_names(surf, 'velocity'):
+    for v in get_res_names(surf, 'Velocity'):
         calc = calculator(calc, 'Normals.' + v, ['Normals', v], 'normal_' + v)
 
     # get all output array names
@@ -191,7 +191,7 @@ def main(db, geometries):
         fpath_surf = db.get_surfaces(geo, 'all_exterior')
         fpath_vol = db.get_volume(geo)
 
-        bc_flow = integrate_bcs(fpath_surf, fpath_vol, ['pressure', 'velocity'])
+        bc_flow = integrate_bcs(fpath_surf, fpath_vol, ['Pressure', 'Velocity'])
 
         if bc_flow is not None:
             np.save(db.get_bc_flow_path(geo), bc_flow)

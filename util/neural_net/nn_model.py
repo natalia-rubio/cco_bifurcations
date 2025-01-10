@@ -70,3 +70,27 @@ def loss(input, flow, dP_true, scaling_factors, scaling_dict, weights):
     # print(f"Predicted dP: {dP_pred}")
     # print(f"True dP: {dP_true}")
     return jnp.sqrt(jnp.mean(jnp.square((dP_pred - dP_true)/1333)))
+
+@jit
+def coef_loss(output, flow, dP_true, scaling_factors, scaling_dict):
+
+    R_lin_star_pred1 = inv_scale_jax(scaling_dict, output[:,0], "R_lin_star1")
+    R_lin_star_pred2 = inv_scale_jax(scaling_dict, output[:,1], "R_lin_star2")
+    R_quad_star_pred1 = inv_scale_jax(scaling_dict, output[:,2], "R_quad_star1")
+    R_quad_star_pred2 = inv_scale_jax(scaling_dict, output[:,3], "R_quad_star2")
+
+    A_char = scaling_factors[:,0].reshape(-1,1)
+    U_char = scaling_factors[:,1].reshape(-1,1)
+
+    dP_star_pred = jnp.zeros(flow.shape)
+    #pdb.set_trace()
+    dP_star_pred = dP_star_pred.at[:,:,0].set(jnp.divide(R_lin_star_pred1 * flow[:,:,0], A_char * U_char) + 
+                                              jnp.divide(R_quad_star_pred1 * jnp.square(flow[:,:,0]), jnp.square(A_char * U_char)))
+    
+    dP_star_pred = dP_star_pred.at[:,:,1].set(jnp.divide(R_lin_star_pred2 * flow[:,:,1], (A_char * U_char)) + 
+                                              jnp.divide(R_quad_star_pred2 * jnp.square(flow[:,:,1]), jnp.square(A_char * U_char)))
+    
+    dP_pred = jnp.multiply(dP_star_pred, 1.06 * jnp.square(U_char.reshape(-1,1,1)))
+    # print(f"Predicted dP: {dP_pred}")
+    # print(f"True dP: {dP_true}")
+    return jnp.sqrt(jnp.mean(jnp.square((dP_pred - dP_true)/1333)))

@@ -138,6 +138,9 @@ def write_svfsiplus_xml(file_dir, sim_dir, n_tsteps=800, dt=0.01, mesh_complete=
     time_dep.text = "Unsteady"
     fpath_temp_vals = ET.SubElement(add_bc, "Temporal_values_file_path")
     fpath_temp_vals.text = sim_dir + "inflow_svFSI.flow"
+    profile = ET.SubElement(add_bc, "Profile")
+    profile.text = "Parabolic"
+
     
 
     
@@ -181,7 +184,7 @@ def write_svfsiplus_xml(file_dir, sim_dir, n_tsteps=800, dt=0.01, mesh_complete=
     t = np.linspace(start = 0, stop = num_time_steps, num = num_time_steps)
     q = t*0
     for i in range(t.size):
-        q[i] = -1 * 85
+        q[i] = -1*0.5*200 #*3.14*1.0476766883**2#-1 * 85 * 2 / 3.4215284204218883
 
         flow = flow + "%1.5f    %1.3f\n" %(i*dt, q[i])
     f = open(file_dir + f"inflow_svFSI.flow", "w")

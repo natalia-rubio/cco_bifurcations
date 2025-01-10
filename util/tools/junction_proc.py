@@ -208,11 +208,11 @@ def load_vmr_model_data(model, fpath_1dsol):
     flow_in_time = np.zeros((0,num_pts)) # initialize flow_in_time matrix, each column is a mesh point, each row is a timestep
     times = list()  # list of timesteps
     for key in soln_array.keys():
-        if key[0:8] == "pressure":
+        if key[0:8] == "pressure" or key[0:8] == "Pressure":
             pressure_in_time = np.vstack((pressure_in_time, soln_array[key]))  # add timestep row to pressure_in_time
-            times.append(float(key[9:17]))  # add timestep to times
+            #times.append(float(key[9:17]))  # add timestep to times
 
-        elif key[0:8] == "velocity": # NOTE: keys are labeled "velocity" but are actually flow!!!
+        elif key[0:8] == "velocity" or key[0:8] == "Velocity": # NOTE: keys are labeled "velocity" but are actually flow!!!
             flow_in_time= np.vstack((
                 flow_in_time, soln_array[key]))  # add timestep column to flow_in_time
 
@@ -278,10 +278,12 @@ def process_soln(flow_in_time, pressure_in_time, times):
     times = np.asarray(times)
     time_sort = np.argsort(times); times = times[time_sort] # sort timestep array
     print(times)
-    pressure_in_time = pressure_in_time[time_sort, :] # sort pressure_in_time array
-    flow_in_time = flow_in_time[time_sort, :] # sort flow_in_time_index array
-    pressure_in_time_aug, pressure_in_time_aug_der, pressure_in_time_aug_der2 = augment_time(pressure_in_time, times, aug_factor)
-    flow_in_time_aug, flow_in_time_aug_der, flow_in_time_aug_der2 = augment_time(flow_in_time, times, aug_factor)
+    pressure_in_time = pressure_in_time#[time_sort, :] # sort pressure_in_time array
+    flow_in_time = flow_in_time#[time_sort, :] # sort flow_in_time_index array
+    #pressure_in_time_aug, pressure_in_time_aug_der, pressure_in_time_aug_der2 = augment_time(pressure_in_time, times, aug_factor)
+    pressure_in_time_aug = pressure_in_time; pressure_in_time_aug_der = pressure_in_time; pressure_in_time_aug_der2 = pressure_in_time
+    #flow_in_time_aug, flow_in_time_aug_der, flow_in_time_aug_der2 = augment_time(flow_in_time, times, aug_factor)
+    flow_in_time_aug = flow_in_time; flow_in_time_aug_der = flow_in_time; flow_in_time_aug_der2 = flow_in_time
     num_time_steps_model = flow_in_time_aug.shape[0]
     return pressure_in_time_aug, pressure_in_time_aug_der, pressure_in_time_aug_der2, flow_in_time_aug, flow_in_time_aug_der, flow_in_time_aug_der2, num_time_steps_model
 

@@ -6,9 +6,10 @@ import optax
 import os
 from util.tools.basic import save_dict
 from util.neural_net.nn_util import get_batch_indices, dill_save
-from util.neural_net.nn_model import loss
+from util.neural_net.nn_model import loss, coef_loss
 import time
 import matplotlib.pyplot as plt
+import pdb
 plt.rcParams.update(plt.rcParamsDefault)
 def train_nn(model, training_params):
 
@@ -21,6 +22,17 @@ def train_nn(model, training_params):
     train_mag = jnp.sqrt(jnp.mean(jnp.square((model.data_dict["dPs"][training_params["train_inds"],:,:])/1333)))
     val_mag = jnp.sqrt(jnp.mean(jnp.square((model.data_dict["dPs"][training_params["val_inds"],:,:])/1333)))
     
+    train_coef_loss = coef_loss(output = model.data_dict["output"][training_params["train_inds"],:],
+                flow =  model.data_dict["flows"][training_params["train_inds"],:,:],
+                dP_true = model.data_dict["dPs"][training_params["train_inds"],:,:],
+                scaling_factors = model.data_dict["scaling_factors"][training_params["train_inds"],:],
+                scaling_dict = model.scaling_dict)
+    
+    val_coef_loss = coef_loss(output = model.data_dict["output"][training_params["val_inds"],:],
+            flow =  model.data_dict["flows"][training_params["val_inds"],:,:],
+            dP_true = model.data_dict["dPs"][training_params["val_inds"],:,:],
+            scaling_factors = model.data_dict["scaling_factors"][training_params["val_inds"],:],
+            scaling_dict = model.scaling_dict)
 
     for epoch in range(training_params['num_epochs']): # Loop through the epochs
         start_time = time.time() # Time each epoch
@@ -59,16 +71,17 @@ def train_nn(model, training_params):
             plt.clf()
             plt.plot(np.linspace(0, epoch, epoch+1, True), np.asarray(train_hist), label = "Training Loss", color = 'cornflowerblue')
             plt.hlines(train_mag, 0, epoch, color = 'cornflowerblue', linestyle = '--', label = "Training Delta P RMSE")
+            plt.hlines(train_coef_loss, 0, epoch, color = 'cornflowerblue', linestyle = ':', label = "Training Best Coef RMSE")
             plt.plot(np.linspace(0, epoch, epoch+1, True), np.asarray(val_hist), label = "Validation Loss", color = 'salmon')
             plt.hlines(val_mag, 0, epoch, color = 'salmon', linestyle = '--', label = "Validation Delta P RMSE")
+            plt.hlines(val_coef_loss, 0, epoch, color = 'salmon', linestyle = ':', label = "Validation Best Coef RMSE")
             plt.xlabel("Epoch"); plt.ylabel("Loss (RMSE) (mmHg)"); plt.title("Training and Validation Loss")
             plt.yscale("log")
             plt.legend()
             if not os.path.exists(f"results/models/{model.anatomy}"):
                 os.makedirs(f"results/models/{model.anatomy}")
             plt.savefig(f"results/models/{model.anatomy}/{model_name}_training_plot.png")
-            
-            #pdb.set_trace())
-    dill_save(model, f"results/models/{model.anatomy}/{model_name}_model")
 
+    dill_save(model, f"results/models/{model.anatomy}/{model_name}_model")
+    
     return train_loss, val_loss

@@ -59,7 +59,11 @@ rom_simulation.write_input_file(model_order=0, model=model_params, mesh=mesh_par
    t = np.linspace(start = 0, stop = tree_dict["num_time_steps"], num = tree_dict["num_time_steps"])
    q = t*0
    for i in range(t.size):
-      q[i] = 1 * 85
+      # if i < t.size/2:
+      #    q[i] = i * 344.655 / (t.size/2)
+      # else:
+      #    q[i] = 1 * 344.655
+      q[i] = 1 * 344.655
 
       flow = flow + "%1.5f    %1.3f\n" %(i*tree_dict["dt"], q[i])
    f = open(f"trees/standard0d_input_file_generators/{tree_dict["tree_name"]}_inflow_0D.flow", "w")
@@ -80,8 +84,8 @@ tree_name = "tree_80"
 tree_dict = {"tree_name": tree_name, 
              "inlet_cap": inlet_cap, 
              "outlet_cap_list": outlet_caps,
-             "num_time_steps": 5,
-             "dt": 0.2}
+             "num_time_steps": 10,
+             "dt": 0.1}
 
 write_standard0d_input_generator_file(tree_dict)
 os.system(f"/Applications/SimVascular.app/Contents/Resources/simvascular --python -- trees/standard0d_input_file_generators/{tree_name}_standard0d_input_file_generator.py")

@@ -7,6 +7,7 @@ num_time_steps = int(sys.argv[3])
 num_cores = int(sys.argv[4])
 num_geos = int(sys.argv[5])
 num_flows = int(sys.argv[6])
+inc = int(sys.argv[7])
 
 time_step_size = 0.001
 num_launched = 0
@@ -31,7 +32,9 @@ while num_launched < num_geos:
         continue
         
     inlet_area = np.pi * 0.28382253272887237 **2
-    inlet_flow = inlet_area * 300
+    re = 5500
+    inlet_vel = re * 0.04 / (1.06 * 2 * 0.28382253272887237)
+    inlet_flow = inlet_area * inlet_vel
 
 
     for i, inlet_flow_fac in enumerate([0.25, 0.5, 0.75, 1]):
@@ -51,19 +54,19 @@ while num_launched < num_geos:
 
             set_up_sim_directories(anatomy, set_type, geo_name, flow_name, num_cores)
             flow_params = {"flow_amp": inlet_flow*inlet_flow_fac,
-                            "vel_in": inlet_flow*inlet_flow_fac/inlet_area,
+                            "vel_in": inlet_vel*inlet_flow_fac,
                             "res_1": 100,
                             "res_2": 100}
 
             time_step_size = (np.sqrt(inlet_area/np.pi))/flow_params["vel_in"]
             print(f"Time step size: {time_step_size}")
-            write_svfsi(anatomy, set_type, geo_name, flow_index, flow_params, copy.deepcopy(cap_numbers), inlet_cap_number, num_time_steps, time_step_size)
+            write_svfsi(anatomy, set_type, geo_name, flow_index, flow_params, copy.deepcopy(cap_numbers), inlet_cap_number, num_time_steps, time_step_size, inc = inc)
             write_flow_steady(anatomy, set_type, geo_name, flow_index, flow_params["flow_amp"], inlet_cap_number, num_time_steps, time_step_size)
             print("Done writing solver files.")
             f = open(f"/scratch/users/nrubio/synthetic_junctions/{anatomy}/{set_type}/{geo_name}/{flow_name}/numstart.dat", "w"); f.write("0"); f.close()
 
 
-            write_job_steady(anatomy, set_type, geo_name, flow_name = flow_name, flow_index = flow_index, num_cores = num_cores, num_time_steps = num_time_steps)
+            write_job_steady(anatomy, set_type, geo_name, flow_name = flow_name, flow_index = flow_index, num_cores = num_cores, num_time_steps = num_time_steps, inc = inc)
             os.system(f"sbatch /scratch/users/nrubio/job_scripts/{geo}_f{i}.sh")
             print(f"Started job for {geo} flow {flow_index}")
             print("\n\

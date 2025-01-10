@@ -63,7 +63,15 @@ def get_inds(arr, vals):
     inds = list(inds)
     return inds
 
-def get_avg_results(fpath_1d, fpath_3d, fpath_out, pt_inds, num_time_steps, only_caps=False):
+def get_avg_unsteady_results(ss_tol, 
+                             inc, 
+                             max_time_step, 
+                             fpath_1d, 
+                             fpath_3d_base,
+                             fpath_out, 
+                             pt_inds, 
+                             only_caps=False, 
+                             only_area = False):
     """
     Extract 3d results at 1d model nodes (integrate over cross-section)
     Args:
@@ -75,100 +83,110 @@ def get_avg_results(fpath_1d, fpath_3d, fpath_out, pt_inds, num_time_steps, only
         res: dictionary of results in all branches, in all segments for all result arrays
     """
     # read 1d and 3d model
-    print("Inside get_avg_results")
     reader_1d = read_geo(fpath_1d).GetOutput()
-    reader_3d = read_geo(fpath_3d).GetOutput()
-
-    # get all result array names
-    res_names = get_res_names(reader_3d, ['pressure', 'velocity'])
-
     # get point and normals from centerline
+    # res_names = get_res_names(reader_3d, ['Pressure', 'Velocity'])
     gid = v2n(reader_1d.GetPointData().GetArray('GlobalNodeId'))
+    
     junc_inds = get_inds(arr = gid, vals = pt_inds)
-    assert np.all(gid[junc_inds] == np.asarray(pt_inds)), "check that junc ids are in the right order"
     points = v2n(reader_1d.GetPoints().GetData())[junc_inds]
-
-    # locator = vtk.vtkPointLocator()
-    # locator.Initialize()
-    # locator.SetDataSet(vtk.vtkPolyData().SetPoints(reader_3d.GetPoints()))
-    # locator.BuildLocator()
-    # points = [locator.FindClosestPoint(p) for p in points_cent]
-
-    normals = v2n(reader_1d.GetPointData().GetArray('CenterlineSectionNormal'))#[junc_inds]
-    #import pdb; pdb.set_trace()
-
+    path = v2n(reader_1d.GetPointData().GetArray('Path'))[junc_inds]
+    normals = v2n(reader_1d.GetPointData().GetArray('CenterlineSectionNormal'))[junc_inds]
 
     # initialize output
-    for name in res_names + ['area']:
-        array = vtk.vtkDoubleArray()
-        array.SetName(name)
-        array.SetNumberOfValues(len(pt_inds))
-        array.Fill(0)
-        reader_1d.GetPointData().AddArray(array)
+    # for name in res_names + ['area']:
+    #     array = vtk.vtkDoubleArray()
+    #     array.SetName(name)
+    #     array.SetNumberOfValues(len(pt_inds))
+    #     array.Fill(0)
+    #     reader_1d.GetPointData().AddArray(array)
+
+    # for name in res_names:
+    #     if name[0:8] == "pressure":
+    #         if name[9:14] == "error":
+    #             continue
+    #         time = float(name[-5:])
+    #         if time > max_timestep:
+    #             max_timestep = time
+    #             #print(time)
 
     # move points on caps slightly to ensure nice integration
     ids = vtk.vtkIdList()
     eps_norm = 1.0e-3
 
-    pressure_in_time= np.zeros((num_time_steps+1,len(pt_inds))) # initialize pressure_in_time matrix, each column is a mesh point, each row is a timestep
-    flow_in_time = np.zeros((num_time_steps+1,len(pt_inds))) # initialize flow_in_time matrix, each column is a mesh point, each row is a timestep
-    times = list()  # list of timesteps
+    num_time_steps = int(max_time_step/inc)
+    times = [int(i*inc) for i in range(1,num_time_steps)]
+    pressure_in_time =  np.zeros((num_time_steps,len(pt_inds))) # initialize pressure_in_time matrix, each column is a mesh point, each row is a timestep
+    flow_in_time =      np.zeros((num_time_steps,len(pt_inds))) # initialize flow_in_time matrix, each column is a mesh point, each row is a timestep
+    areas =            np.zeros((1,len(pt_inds))) # initialize area matrix, each column is a mesh point, each row is a timestep
+    tangents =         np.zeros((3,len(pt_inds))) # initialize tangent matrix
+    #times = [int(fpath_3d.split("_")[-1][:-4]), int(fpath_3d_prev.split("_")[-1][:-4])]  # list of timesteps
+    paths = np.zeros((1, len(pt_inds), num_time_steps))
+    #print(f"Reducing timesteps {times}.")
+    for time_step_index, time_step in enumerate(times):
+        print(f"Reducing timestep {time_step}.")
 
-    # integrate results on all points of intergration cells
-    for i in tqdm(range(len(pt_inds))):
-        print("Inside tqdm")
-        # check if point is cap
+        reader_3d = read_geo(fpath_3d_base + f"{int(time_step):03d}.vtu").GetOutput()
+        #res_names = get_res_names(reader_3d, ['Pressure', 'Velocity']) # get all result array names
+        
+        # integrate results on all points of intergration cells
+        for i in tqdm(range(len(pt_inds))):
+            # check if point is cap
 
-        reader_1d.GetPointCells(i, ids)
-        if ids.GetNumberOfIds() == 1:
-            if gid[i] == 0:
-                # inlet
-                points[i] += eps_norm * normals[i]
+            reader_1d.GetPointCells(i, ids)
+            if ids.GetNumberOfIds() == 1:
+                if gid[i] == 0:
+                    # inlet
+                    points[i] += eps_norm * normals[i]
+                else:
+                    # outlets
+                    points[i] -= eps_norm * normals[i]
             else:
-                # outlets
-                points[i] -= eps_norm * normals[i]
-        else:
-            if only_caps:
+                if only_caps:
+                    continue
+
+            # create integration object (slice geometry at point/normal)
+            try:
+                integral = get_integral(reader_3d, points[i], normals[i])
+            except:
+                print("integration error")
                 continue
 
-        # create integration object (slice geometry at point/normal)
-        try:
-            integral = get_integral(reader_3d, points[i], normals[i])
-        except Exception:
-            continue
+            # integrate all output arrays
+            pressure_in_time[time_step_index, i] = integral.evaluate("Pressure")  # add timestep row to pressure_in_time
+            flow_in_time[time_step_index, i] = integral.evaluate("Velocity")  # add timestep row to pressure_in_time
+    
+            # add 1d geometric information (only once)
+            if time_step_index == 0:
+                areas[0, i] = integral.area()  # add timestep row to pressure_in_time
+                paths[0, i] =  path[i] # add timestep row to pressure_in_time
+                tangents[:, i] = normals[i].reshape(3,)  # add timestep row to pressure_in_time
 
-        count = int(0)
 
-        # integrate all output arrays
-        for name in res_names:
-            print(name)
-            reader_1d.GetPointData().GetArray(name).SetValue(i, integral.evaluate(name))
-            soln = np.array(reader_1d.GetPointData().GetArray(name)).reshape(1,-1)
-            if name[0:8] == "pressure":
-                if name[9:14] == "error":
-                    continue
-                pressure_in_time[count, i] = soln[0][i]  # add timestep row to pressure_in_time
-                if i == 0:
-                    times.append(float(name[-5:]))  # add timestep to times
 
-            elif name[0:8] == "velocity": # NOTE: keys are labeled "velocity" but are actually flow!!!
-                if name[9:14] == "error":
-                    continue
-                flow_in_time[count, i] = soln[0][i]
-                count += 1
-
-        reader_1d.GetPointData().GetArray('area').SetValue(i, integral.area())
+    print("Pressure in time: ")
+    print(pressure_in_time)
+    print("Flow in time: ") 
+    print(flow_in_time)
 
     res_dict = {"flow_in_time": flow_in_time,
                 "pressure_in_time": pressure_in_time,
-                "times" : times}
+                "areas": areas,
+                "tangents": tangents,
+                "times" : times,
+                "paths" : paths}
 
-    #import pdb; pdb.set_trace()
-    save_dict(res_dict, fpath_out)
+    res_dict.update({"pt_inds": pt_inds})
+    save_dict(res_dict, fpath_out + "_red_sol")
 
+    save_centerline_sol = False
+    # if save_centerline_sol:
+    #     cent_sol = project_to_cent(fpath_1d, fpath_3d, only_caps=only_caps)
+    #     write_geo(fpath_3d[:-4] + "_cent.vtp", cent_sol)
     return res_dict
 
-def get_avg_steady_results(ss_tol, fpath_1d, fpath_3d, fpath_3d_prev, fpath_out, pt_inds, only_caps=False, only_area = False):
+
+def get_avg_steady_results(ss_tol, inc, fpath_1d, fpath_3d, fpath_3d_prev, fpath_out, pt_inds, only_caps=False, only_area = False):
     """
     Extract 3d results at 1d model nodes (integrate over cross-section)
     Args:
@@ -190,10 +208,10 @@ def get_avg_steady_results(ss_tol, fpath_1d, fpath_3d, fpath_3d_prev, fpath_out,
 
     # get point and normals from centerline
     gid = v2n(reader_1d.GetPointData().GetArray('GlobalNodeId'))
+    
     junc_inds = get_inds(arr = gid, vals = pt_inds)
-    assert np.all(gid[junc_inds] == np.asarray(pt_inds)), "check that junc ids are in the right order"
     points = v2n(reader_1d.GetPoints().GetData())[junc_inds]
-
+    path = v2n(reader_1d.GetPointData().GetArray('Path'))[junc_inds]
     normals = v2n(reader_1d.GetPointData().GetArray('CenterlineSectionNormal'))[junc_inds]
 
     # initialize output
@@ -220,12 +238,15 @@ def get_avg_steady_results(ss_tol, fpath_1d, fpath_3d, fpath_3d_prev, fpath_out,
 
 
     num_time_steps = int(max_timestep)
-    print(f"Reducing {num_time_steps} timesteps.")
+    
     pressure_in_time =  np.zeros((2,len(pt_inds))) # initialize pressure_in_time matrix, each column is a mesh point, each row is a timestep
     flow_in_time =      np.zeros((2,len(pt_inds))) # initialize flow_in_time matrix, each column is a mesh point, each row is a timestep
     areas =            np.zeros((1,len(pt_inds))) # initialize area matrix, each column is a mesh point, each row is a timestep
     tangents =         np.zeros((3,len(pt_inds))) # initialize tangent matrix
-    times = [int(fpath_3d[-7:-4]), int(fpath_3d_prev[-7:-4])]  # list of timesteps
+    times = [int(fpath_3d.split("_")[-1][:-4]), int(fpath_3d_prev.split("_")[-1][:-4])]  # list of timesteps
+    paths = np.zeros((1, len(pt_inds),))
+    num_time_steps = len(times)
+    print(f"Reducing {num_time_steps} timesteps.")
 
     # integrate results on all points of intergration cells
     for i in tqdm(range(len(pt_inds))):
@@ -257,6 +278,7 @@ def get_avg_steady_results(ss_tol, fpath_1d, fpath_3d, fpath_3d_prev, fpath_out,
         flow_in_time[0, i] = integral.evaluate("Velocity")  # add timestep row to pressure_in_time
         flow_in_time[1, i] = integral_prev.evaluate("Velocity")  # add timestep row to pressure_in_time
         areas[0, i] = integral.area()  # add timestep row to pressure_in_time
+        paths[0, i] =  path[i] # add timestep row to pressure_in_time
         tangents[:, i] = normals[i].reshape(3,)  # add timestep row to pressure_in_time
 
 
@@ -288,7 +310,8 @@ def get_avg_steady_results(ss_tol, fpath_1d, fpath_3d, fpath_3d_prev, fpath_out,
                 "pressure_in_time": pressure_in_time,
                 "areas": areas,
                 "tangents": tangents,
-                "times" : times}
+                "times" : times,
+                "paths" : paths}
 
     if conv == True:
         res_dict.update({"pt_inds": pt_inds})

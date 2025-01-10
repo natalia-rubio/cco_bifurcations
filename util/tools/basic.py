@@ -10,7 +10,7 @@ import random
 import matplotlib.pyplot as plt
 plt.rcParams['font.family'] = 'serif'
 plt.rcParams['font.size'] = 16
-plt.rc('text', usetex=True)
+#plt.rc('text', usetex=True)
 colors = ["royalblue", "orangered", "seagreen", "peru", "blueviolet"]
 
 def save_dict(di_, filename_):
@@ -48,6 +48,15 @@ def compute_mse(model_output, obs_output):
         model_output.flatten() - obs_output.flatten())
         ) / np.size(obs_output.flatten())  # compute MSE
     return MSE
+
+def compute_rmse(model_output, obs_output):
+    """
+    get mean squared error between two arrays
+    """
+    RMSE = np.sqrt(np.sum(np.square(
+        model_output.flatten() - obs_output.flatten())
+        ) / np.size(obs_output.flatten()))  # compute MSE
+    return RMSE
 
 def get_angle_diff(angle1, angle2):
     try:

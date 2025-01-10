@@ -63,7 +63,7 @@ def project_to_centerline(tree_name, junction_mode):
     zerod_handler = SvZeroDSolverInputHandler.from_file("trees/zerod_input_standard/" + tree_name + "/solver_0d.json")
     zerod_handler.update_simparams(last_cycle_only=True)
 
-    zerod_solver = pysvzerod.Solver("trees/zerod_input_standard/" + tree_name + "/solver_0d.json")
+    zerod_solver = pysvzerod.Solver(f"trees/zerod_input_{junction_mode}/" + tree_name + "/solver_0d.json")
     zerod_solver.run()
     results_df = zerod_solver.get_full_result()
 

@@ -12,10 +12,10 @@ def extract_steady_flow_data(anatomy, set_type, require4):
                     "daughter1_area_ratio": [],
                     "daughter2_area_ratio": [],
                     "inlet_area": [],
-                    "daughter1_dPs": [],
-                    "daughter2_dPs": [],
-                    "daughter1_flows": [],
-                    "daughter2_flows": [],
+                    "daughter1_dP": [],
+                    "daughter2_dP": [],
+                    "daughter1_flow": [],
+                    "daughter2_flow": [],
                     "U_char": [],
                     "daughter1_dP_star": [],
                     "daughter2_dP_star": [],
@@ -33,6 +33,7 @@ def extract_steady_flow_data(anatomy, set_type, require4):
         # Compose lists of flow and pressure data for each outlet
         for i in [1,3]:
             try:
+                # pdb.set_trace()
                 flow_result_dir = results_dir + f"flow_{i}_red_sol"
                 if not os.path.exists(flow_result_dir):
                         print(f"Flow {i} missing for geometry {geo} at {results_dir}")
@@ -60,10 +61,10 @@ def extract_steady_flow_data(anatomy, set_type, require4):
         CCO_params_dict["daughter1_area_ratio"].append(soln_dict["areas"][0,1]/soln_dict["areas"][0,0])
         CCO_params_dict["daughter2_area_ratio"].append(soln_dict["areas"][0,2]/soln_dict["areas"][0,0])
         CCO_params_dict["inlet_area"].append(soln_dict["areas"][0,0])
-        CCO_params_dict["daughter1_dPs"].append(daughter1_dPs)
-        CCO_params_dict["daughter2_dPs"].append(daughter2_dPs)
-        CCO_params_dict["daughter1_flows"].append(daughter1_flows)
-        CCO_params_dict["daughter2_flows"].append(daughter2_flows)
+        CCO_params_dict["daughter1_dP"].append(daughter1_dPs)
+        CCO_params_dict["daughter2_dP"].append(daughter2_dPs)
+        CCO_params_dict["daughter1_flow"].append(daughter1_flows)
+        CCO_params_dict["daughter2_flow"].append(daughter2_flows)
         CCO_params_dict["U_char"].append(re_char * 0.04 / (1.06 * 2*np.sqrt(soln_dict["areas"][0,0]/np.pi)))
 
         # Add non-dimensionalized parameters
@@ -72,8 +73,8 @@ def extract_steady_flow_data(anatomy, set_type, require4):
         CCO_params_dict["daughter1_dP_star"].append(daughter1_dP_stars)
         CCO_params_dict["daughter2_dP_star"].append(daughter2_dP_stars)
 
-        daughter1_flow_stars = [daughter1_flow/CCO_params_dict["U_char"][-1] for daughter1_flow in daughter1_flows]
-        daughter2_flow_stars = [daughter2_flow/CCO_params_dict["U_char"][-1] for daughter2_flow in daughter2_flows]
+        daughter1_flow_stars = [daughter1_flow/(CCO_params_dict["U_char"][-1]*CCO_params_dict["inlet_area"][-1]) for daughter1_flow in daughter1_flows]
+        daughter2_flow_stars = [daughter2_flow/(CCO_params_dict["U_char"][-1]*CCO_params_dict["inlet_area"][-1]) for daughter2_flow in daughter2_flows]
         CCO_params_dict["daughter1_flow_star"].append(daughter1_flow_stars)
         CCO_params_dict["daughter2_flow_star"].append(daughter2_flow_stars)
 

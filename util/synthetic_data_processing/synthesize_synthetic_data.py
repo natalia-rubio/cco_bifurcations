@@ -15,7 +15,11 @@ def get_coefs(anatomy, set_type, rm_low_r2 = True, unsteady = False, use_steady_
     char_val_dict.update({"R_lin_star1": [],
                     "R_lin_star2": [],
                     "R_quad_star1": [],
-                    "R_quad_star2": [],})
+                    "R_quad_star2": [],
+                    "R_lin1": [],
+                    "R_lin2": [],
+                    "R_quad1": [],
+                    "R_quad2": [],})
     to_rm = []
     for geo_ind in range(len(char_val_dict["inlet_area"])):
 
@@ -24,11 +28,37 @@ def get_coefs(anatomy, set_type, rm_low_r2 = True, unsteady = False, use_steady_
 
         r2_unsteady = 0; r2_steady = 0; r2_L = 0
 
-        dP1 = np.asarray(char_val_dict["daughter1_dP_star"][geo_ind]).reshape(-1,1)
-        dP2 = np.asarray(char_val_dict["daughter2_dP_star"][geo_ind]).reshape(-1,1)
+        dP1_star = np.asarray(char_val_dict["daughter1_dP_star"][geo_ind]).reshape(-1,1)
+        dP2_star = np.asarray(char_val_dict["daughter2_dP_star"][geo_ind]).reshape(-1,1)
 
-        A_mat1 = np.hstack([np.square(Q_star1), Q_star1])
-        A_mat2 = np.hstack([np.square(Q_star2), Q_star2])
+        A_mat1_star = np.hstack([Q_star1, np.square(Q_star1)*0])
+        A_mat2_star = np.hstack([Q_star2, np.square(Q_star2)*0])
+
+        coefs1, residuals1, t, q = np.linalg.lstsq(A_mat1_star, dP1_star, rcond=None)
+        coefs2, residuals2, t, q = np.linalg.lstsq(A_mat2_star, dP2_star, rcond=None)
+
+        r2_steady1 = get_r2(A_mat1_star, dP1_star, coefs1.reshape(-1,1))
+        r2_steady2 = get_r2(A_mat2_star, dP2_star, coefs2.reshape(-1,1))
+
+        err1 = np.linalg.norm(residuals1)/(1333**2)
+        err2 = np.linalg.norm(residuals2)/(1333**2)
+
+        char_val_dict["R_lin_star1"].append(coefs1[0][0])
+        char_val_dict["R_lin_star2"].append(coefs2[0][0])
+        char_val_dict["R_quad_star1"].append(coefs1[1][0]*0)
+        char_val_dict["R_quad_star2"].append(coefs2[1][0]*0)
+
+
+        Q1 = np.asarray(char_val_dict["daughter1_flow"][geo_ind]).reshape(-1,1)
+        Q2 = np.asarray(char_val_dict["daughter2_flow"][geo_ind]).reshape(-1,1)
+
+        r2_unsteady = 0; r2_steady = 0; r2_L = 0
+
+        dP1 = np.asarray(char_val_dict["daughter1_dP"][geo_ind]).reshape(-1,1)
+        dP2 = np.asarray(char_val_dict["daughter2_dP"][geo_ind]).reshape(-1,1)
+
+        A_mat1 = np.hstack([Q1, 0*np.square(Q1)])
+        A_mat2 = np.hstack([Q2, 0*np.square(Q2)])
 
         coefs1, residuals1, t, q = np.linalg.lstsq(A_mat1, dP1, rcond=None)
         coefs2, residuals2, t, q = np.linalg.lstsq(A_mat2, dP2, rcond=None)
@@ -38,37 +68,26 @@ def get_coefs(anatomy, set_type, rm_low_r2 = True, unsteady = False, use_steady_
 
         err1 = np.linalg.norm(residuals1)/(1333**2)
         err2 = np.linalg.norm(residuals2)/(1333**2)
+        char_val_dict["R_lin1"].append(coefs1[0][0])
+        char_val_dict["R_lin2"].append(coefs2[0][0])
+        char_val_dict["R_quad1"].append(coefs1[1][0]*0)
+        char_val_dict["R_quad2"].append(coefs2[1][0]*0)
 
-        # print(f"Geo: {geo_ind} Outlet 1 R2: {r2_steady1} residual: {(np.linalg.norm(residuals1)/(1333**2))}")
-        # print(f"Geo: {geo_ind} Outlet 2 R2: {r2_steady2} residual: {(np.linalg.norm(residuals2)/(1333**2))}")
-
-        char_val_dict["R_lin_star1"].append(coefs1[0][0])
-        char_val_dict["R_lin_star2"].append(coefs2[0][0])
-        char_val_dict["R_quad_star1"].append(coefs1[1][0])
-        char_val_dict["R_quad_star2"].append(coefs2[1][0])
-        # if unsteady:
-        #     Q_unsteady = char_val_dict["unsteady_flow_list"][outlet_ind].reshape(-1,1)
-        #     dQdt = char_val_dict["unsteady_flow_der_list"][outlet_ind].reshape(-1,1)
-
-        #     dP_unsteady_total = char_val_dict["unsteady_dP_list"][outlet_ind].reshape(-1,1)
-        #     dP_unsteady_component = char_val_dict["unsteady_dP_list"][outlet_ind].reshape(-1,1) - (a * np.square(Q_unsteady) + b * Q_unsteady)
-
-
-        #     coefs, residuals, t, q = np.linalg.lstsq(dQdt, dP_unsteady_component, rcond=None);
-        #     r2_unsteady = get_r2(dQdt, dP_unsteady_component, coefs.reshape(-1,1))
-        #     L = coefs[0][0]
-        #     char_val_dict["coef_L"].append(L)
-
-        #     X_unsteady = np.hstack([np.square(Q_unsteady), Q_unsteady, dQdt])
-
-        #     coefs, residuals, t, q = np.linalg.lstsq(X_unsteady, dP_unsteady_total, rcond=None);
-        #     r2_UO = get_r2(X_unsteady, dP_unsteady_total, coefs.reshape(-1,1))
-        #     a_UO = coefs[0][0]; b_UO = coefs[1][0]; L_UO =  coefs[2][0]
-        #     char_val_dict["coef_a_UO"].append(a_UO); char_val_dict["coef_b_UO"].append(b_UO); char_val_dict["coef_L_UO"].append(L_UO)
-
+        # Check consistency of non-dimensionalization
+        assert abs(char_val_dict["R_lin1"][-1] - char_val_dict["R_lin_star1"][-1]*1.06*char_val_dict["U_char"][geo_ind]/char_val_dict["inlet_area"][geo_ind]) < 0.1
+        assert abs(char_val_dict["R_lin2"][-1] - char_val_dict["R_lin_star2"][-1]*1.06*char_val_dict["U_char"][geo_ind]/char_val_dict["inlet_area"][geo_ind]) < 0.1
+        assert abs(char_val_dict["R_quad1"][-1] - char_val_dict["R_quad_star1"][-1]*1.06/char_val_dict["inlet_area"][geo_ind]**2) < 0.1
+        assert abs(char_val_dict["R_quad2"][-1] - char_val_dict["R_quad_star2"][-1]*1.06/char_val_dict["inlet_area"][geo_ind]**2) < 0.1
+       
         if err1 > 0.1 or err2 > 0.1: #r2_steady < 0.90 and r2_unsteady < 0.90 and r2_UO < 0.90:
             to_rm.append(geo_ind)
             print(f"Removing {geo_ind} for high residual {(np.linalg.norm(residuals1)/(1333**2))}, {(np.linalg.norm(residuals2)/(1333**2))} mmHg.")
+        if char_val_dict["R_quad_star2"][-1] < -10:
+            to_rm.append(geo_ind)
+            print(f"Removing {geo_ind} for OOD R_quad_star2.")
+        if char_val_dict["R_lin_star2"][-1] < -4:
+            to_rm.append(geo_ind)
+            print(f"Removing {geo_ind} for OOD R_quad_star2.")
 
     if rm_low_r2:
         print(f"Removing {len(to_rm)} outlets for low r2 values.")
@@ -129,8 +148,8 @@ def get_geo_scalings(anatomy, set_type, unsteady = False):
     values_of_interest = ["R_lin_star1", "R_lin_star2", "R_quad_star1", "R_quad_star2"]
     values_to_skip = ["daughter1_dP_star", "daughter2_dP_star", 
                       "daughter1_flow_star", "daughter2_flow_star", 
-                      "daughter1_dPs", "daughter2_dPs", 
-                      "daughter1_flows", "daughter2_flows"]
+                      "daughter1_dP", "daughter2_dP", 
+                      "daughter1_flow", "daughter2_flow"]
     for value in to_normalize:
         if value in values_to_skip:
             continue

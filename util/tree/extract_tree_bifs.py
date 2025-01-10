@@ -1,5 +1,5 @@
 import sys
-sys.path.append("/Users/natalia/Desktop/CCO_junctions")
+sys.path.append("/Users/natalia/Desktop/cco_bifurcations")
 from util.tools.junction_proc import *
 from util.tools.vtk_functions import *
 import matplotlib.pyplot as plt
@@ -15,15 +15,19 @@ def print_stats(char_val_dict, anatomy, value):
     print("---------------------------------------------------------")
     return
 
-def extract_characteristic_values():
+def extract_characteristic_values(tree_name):
     """
     Compile list of junction graphs (from synthetic data)
     """
 
     # relevant file paths:
-    results_dir = "data/CCO_tree/char_val_dict"
-    soln_dir = "data/CCO_tree"
-    centerline_dir = "data/CCO_tree/geometry/centerlines.vtp"
+    # results_dir = "data/CCO_tree/char_val_dict"
+    results_dir = f"data/characteristic_value_dictionaries/{tree_name}_char_val_dict"
+    if not os.path.exists("data/characteristic_value_dictionaries"):
+        os.makedirs("data/characteristic_value_dictionaries")
+    # soln_dir = "data/CCO_tree"
+    soln_dir = f"trees/threed_output_cent/{tree_name}"
+    # centerline_dir = "data/CCO_tree/geometry/centerlines.vtp"
     char_val_dict = {}
 
     # with open(f"{soln_dir}/filelist.txt") as f:
@@ -51,12 +55,10 @@ def extract_characteristic_values():
                                             "daughter2_angle": [],
                                             "name": []}})
 
-        try:
-            pt_id, num_pts, branch_id, junction_id, area, angle1, angle2, angle3, pressure_in_time, flow_in_time, times, time_interval = \
-            load_vmr_model_data(model, soln_dir)
-            junction_dict = identify_junctions(junction_id, branch_id, pt_id)
-            # 
-        except: print("Geometry Error."); continue
+        pt_id, num_pts, branch_id, junction_id, area, angle1, angle2, angle3, pressure_in_time, flow_in_time, times, time_interval = \
+        load_vmr_model_data(model, soln_dir)
+        junction_dict = identify_junctions(junction_id, branch_id, pt_id)
+
 
 
         pressure_in_time_aug, pressure_in_time_aug_der, pressure_in_time_aug_der2,\
@@ -64,7 +66,10 @@ def extract_characteristic_values():
 
         for junction_id in junction_dict.keys():
             #import pdb; pdb.set_trace()
-            max_flow_ind = np.argmax(flow_in_time_aug[:,np.argmax(np.abs(flow_in_time_aug[:, get_inds(arr = pt_id, vals = junction_dict[junction_id])]))])
+            #max_flow_ind = np.argmax(flow_in_time_aug[:,np.argmax(np.abs(flow_in_time_aug[:, get_inds(arr = pt_id, vals = junction_dict[junction_id])]))])
+            if len(junction_dict[junction_id]) > 3:
+                continue
+            max_flow_ind = np.argmax(flow_in_time_aug[:,np.argmax(np.abs(flow_in_time_aug[:,get_inds(arr = pt_id, vals = junction_dict[junction_id])]))])
 
 
             flow, flow_hist1, flow_hist2, flow_hist3, flow_der, flow_der2, pressure, pressure_der = get_soln_at_time(\
@@ -111,6 +116,7 @@ def extract_characteristic_values():
             char_val_dict[anatomy]["daughter2_radius"] += [float(radius[min_out_ind]),]
             char_val_dict[anatomy]["daughter1_angle"] += [float(angle_diffs[max_out_ind]),]
             char_val_dict[anatomy]["daughter2_angle"] += [float(angle_diffs[min_out_ind]),]
+            print(f"Junction {junction_id} linear resistances: {float(dp[max_out_ind]/flow[max_out_ind])} and {float(dp[min_out_ind]/flow[min_out_ind])}.")
 
     save_dict(char_val_dict, results_dir)
     pdb.set_trace()
@@ -171,5 +177,5 @@ def print_pulmo_study():
 
 
 if __name__ == '__main__':
-    extract_characteristic_values()
+    extract_characteristic_values(tree_name="tree_80")
 

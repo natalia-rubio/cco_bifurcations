@@ -43,7 +43,7 @@ class Integration:
         # type of result
         field = res_name.split('_')[0]
 
-        if field == 'velocity':
+        if field == 'velocity' or field == 'Velocity':
             int_name = 'normal_' + res_name
         else:
             int_name = res_name
@@ -52,7 +52,7 @@ class Integration:
         integral = v2n(self.integrator.GetOutput().GetPointData().GetArray(int_name))[0]
 
         # choose if integral should be divided by area
-        if field == 'velocity':
+        if field == 'velocity' or field == 'Velocity':
             return integral
         else:
             return integral / self.area()
@@ -246,8 +246,9 @@ def connectivity(inp, origin):
     Returns:
         con: connectivity object
     """
+    inp = clean(inp.GetOutput())
     con = vtk.vtkConnectivityFilter()
-    con.SetInputData(inp.GetOutput())
+    con.SetInputData(inp)
     con.SetExtractionModeToClosestPointRegion()
     con.SetClosestPoint(origin[0], origin[1], origin[2])
     con.Update()
