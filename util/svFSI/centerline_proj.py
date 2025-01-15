@@ -136,6 +136,7 @@ def plot_vars(anatomy, set_type, geometry, flow, plot_pressure = True, num_time_
 
     inlet_locs = (points[inlet_pts])[np.argsort(pt_id[inlet_pts])]
     inlet_length = get_length(inlet_locs[offset:])
+    inlet_offset_length = get_length(inlet_locs[:offset])
     p_inlet = (soln_array[f"pressure_{zero_string}{num_time_steps}"][inlet_pts])[np.argsort(pt_id[inlet_pts])]
     p_end_inlet = p_inlet[offset]
     q_inlet = (soln_array[f"velocity_{zero_string}{num_time_steps}"][inlet_pts])[np.argsort(pt_id[inlet_pts])][offset]
@@ -145,6 +146,7 @@ def plot_vars(anatomy, set_type, geometry, flow, plot_pressure = True, num_time_
 
     outlet1_locs = (points[outlet1_pts])[np.argsort(pt_id[outlet1_pts])]
     outlet1_length = get_length(outlet1_locs[:-offset])
+    outlet1_offset_length = get_length(outlet1_locs[-offset:])
     p_outlet1 = (soln_array[f"pressure_{zero_string}{num_time_steps}"][outlet1_pts])[np.argsort(pt_id[outlet1_pts])]
     p_end_outlet1 = p_outlet1[-offset]
     q_outlet1 = (soln_array[f"velocity_{zero_string}{num_time_steps}"][outlet1_pts])[np.argsort(pt_id[outlet1_pts])][-offset]
@@ -153,6 +155,7 @@ def plot_vars(anatomy, set_type, geometry, flow, plot_pressure = True, num_time_
 
     outlet2_locs = (points[outlet2_pts])[np.argsort(pt_id[outlet2_pts])]
     outlet2_length = get_length(outlet2_locs[:-offset])
+    outlet2_offset_length = get_length(outlet2_locs[-offset:])
     p_outlet2 = (soln_array[f"pressure_{zero_string}{num_time_steps}"][outlet2_pts])[np.argsort(pt_id[outlet2_pts])]
     p_end_outlet2 = p_outlet2[-offset]
     q_outlet2 = (soln_array[f"velocity_{zero_string}{num_time_steps}"][outlet2_pts])[np.argsort(pt_id[outlet2_pts])][-offset]

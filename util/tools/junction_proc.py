@@ -145,6 +145,37 @@ def identify_junctions(junction_id, branch_id, pt_id):
         #assert i == 0, "There should only be one junction,"
     return junction_dict
 
+def identify_junctions_offset(junction_id, branch_id, pt_id, offset):
+    junction_ids = np.linspace(0,max(junction_id),max(junction_id)+1).astype(int)
+    branch_ids = np.linspace(0,max(branch_id),max(branch_id)+1).astype(int)
+    junction_dict = {}
+    for i in junction_ids:
+
+        junction_pts = pt_id[junction_id == i] # find all points in junction
+        branch_pts_junc = [] # inlet and outlet point ids of junction
+        branch_ids_junc = [] # branch ids of junction
+
+        base_branch = branch_id[pt_id == min(junction_pts)-1]
+        base_branch_pts = pt_id[branch_id == base_branch]
+
+        branch_pts_junc.append(max([min(junction_pts)-1, min(base_branch_pts)])) # find "inlet" of junction (point with smallest Id)
+        branch_ids_junc.append(branch_id[pt_id == min(junction_pts)-1][0]) # find the branch to which the inlet belongs
+        branch_counter = 1 # initialize counter for the number of branches
+        # loop over all branches in model
+        for j in branch_ids:
+            branch_pts = pt_id[branch_id == j] # find points belonging to branch
+            shared_pts = np.intersect1d(junction_pts+1, branch_pts) # find points adjacent to the junction
+            # if there is an adjacent point
+            if len(shared_pts) != 0 and j not in branch_ids_junc : # if there is a shared point in the branch
+                branch_counter = branch_counter + 1 # increment branch counter
+                branch_ids_junc.append(j.astype(int)) # add outlet branch Id to outlet branch array
+                branch_pts_junc.append(min([min(branch_pts).astype(int), max(branch_pts)])+offset) # add outlet point Id to outlet point array
+        junction_dict.update({i : branch_pts_junc})
+        #assert i == 0, "There should only be one junction,"
+
+        
+    return junction_dict, branch_pts_junc
+
 def identify_junctions_synthetic(junction_id, branch_id, pt_id):
     junction_ids = np.linspace(0,max(junction_id),max(junction_id)+1).astype(int)
     branch_ids = np.linspace(0,max(branch_id),max(branch_id)+1).astype(int)
@@ -199,6 +230,7 @@ def load_vmr_model_data(model, fpath_1dsol):
     direction = soln_array["CenterlineSectionNormal"]  # vector normal direction
     direction_norm = np.linalg.norm( direction, axis=1, keepdims=True)  # norm of direction vector
     direction = np.transpose(np.divide(direction,direction_norm))  # normalized direction vector
+    #pdb.set_trace()
     angle1 = direction[0,:].reshape(-1,)
     angle2 = direction[1,:].reshape(-1,)
     angle3 = direction[2,:].reshape(-1,)

@@ -186,7 +186,16 @@ def get_avg_unsteady_results(ss_tol,
     return res_dict
 
 
-def get_avg_steady_results(ss_tol, inc, fpath_1d, fpath_3d, fpath_3d_prev, fpath_out, pt_inds, only_caps=False, only_area = False):
+def get_avg_steady_results(ss_tol, 
+                           inc, 
+                           fpath_1d, 
+                           fpath_3d, 
+                           fpath_3d_prev, 
+                           fpath_out, 
+                           pt_inds,
+                           offsets,
+                           only_caps=False, 
+                           only_area = False):
     """
     Extract 3d results at 1d model nodes (integrate over cross-section)
     Args:

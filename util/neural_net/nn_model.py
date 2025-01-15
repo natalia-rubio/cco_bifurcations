@@ -68,6 +68,7 @@ def loss(input, flow, dP_true, scaling_factors, scaling_dict, weights):
     
     dP_pred = jnp.multiply(dP_star_pred, 1.06 * jnp.square(U_char.reshape(-1,1,1)))
     # print(f"Predicted dP: {dP_pred}")
+    
     # print(f"True dP: {dP_true}")
     return jnp.sqrt(jnp.mean(jnp.square((dP_pred - dP_true)/1333)))
 
@@ -91,6 +92,7 @@ def coef_loss(output, flow, dP_true, scaling_factors, scaling_dict):
                                               jnp.divide(R_quad_star_pred2 * jnp.square(flow[:,:,1]), jnp.square(A_char * U_char)))
     
     dP_pred = jnp.multiply(dP_star_pred, 1.06 * jnp.square(U_char.reshape(-1,1,1)))
-    # print(f"Predicted dP: {dP_pred}")
-    # print(f"True dP: {dP_true}")
+    print(f"Predicted dP: {dP_pred}")
+    print(f"True dP: {dP_true}")
+    #pdb.set_trace()
     return jnp.sqrt(jnp.mean(jnp.square((dP_pred - dP_true)/1333)))

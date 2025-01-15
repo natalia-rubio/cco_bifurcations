@@ -81,6 +81,7 @@ def train_nn(model, training_params):
             if not os.path.exists(f"results/models/{model.anatomy}"):
                 os.makedirs(f"results/models/{model.anatomy}")
             plt.savefig(f"results/models/{model.anatomy}/{model_name}_training_plot.png")
+            #pdb.set_trace()
 
     dill_save(model, f"results/models/{model.anatomy}/{model_name}_model")
     
