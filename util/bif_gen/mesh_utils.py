@@ -5,6 +5,7 @@ import platform
 import numpy as np
 from vtk.util import numpy_support
 import pdb
+import pickle
 def bad_edges(model):
     # Determine the number of non-manifold and degenerate
     # edges within a sv solid model
@@ -378,3 +379,8 @@ def union_all(solids,n_cells=100):
             return None,True
     print("unioning passed")
     return joined,False
+
+
+def save_dict(di_, filename_):
+    with open(filename_, 'wb') as f:
+        pickle.dump(di_, f)

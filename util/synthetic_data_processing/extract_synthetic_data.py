@@ -6,6 +6,7 @@ from util.tools.junction_proc import get_angle_diff
 
 def extract_steady_flow_data(anatomy, set_type, require4):
     re_char = 4500
+
     geos = os.listdir(f"data/synthetic_junctions_reduced_results/{anatomy}/{set_type}"); geos.sort(); print(f"Geometries: {geos}")
     CCO_params_dict = {"daughter1_angle": [],
                     "daughter2_angle": [],
@@ -57,12 +58,13 @@ def extract_steady_flow_data(anatomy, set_type, require4):
         if len(daughter1_dPs) < 3 or len(daughter2_dPs) < 3:
             print(f"Fewer than 3 flow data points for {geo}.")
             continue
-
-        CCO_params_dict["daughter1_angle"].append(get_angle_diff(soln_dict["tangents"][1], soln_dict["tangents"][0])[0])
-        CCO_params_dict["daughter2_angle"].append(get_angle_diff(soln_dict["tangents"][2], soln_dict["tangents"][0])[0])
+        pdb.set_trace()
+        CCO_params_dict["daughter1_angle"].append(ç)
+        CCO_params_dict["daughter2_angle"].append(get_angle_diff(soln_dict["tangents"][:,2], soln_dict["tangents"][:,0])[0])
         CCO_params_dict["daughter1_area_ratio"].append(soln_dict["areas"][0,1]/soln_dict["areas"][0,0])
         CCO_params_dict["daughter2_area_ratio"].append(soln_dict["areas"][0,2]/soln_dict["areas"][0,0])
         CCO_params_dict["inlet_area"].append(soln_dict["areas"][0,0])
+        #pdb.set_trace()
 
         CCO_params_dict["daughter1_flow"].append(daughter1_flows)
         CCO_params_dict["daughter2_flow"].append(daughter2_flows)
@@ -75,7 +77,7 @@ def extract_steady_flow_data(anatomy, set_type, require4):
         poiseulle_res_1 = 8*0.04*np.pi*soln_dict["paths"][0][1]/(soln_dict["areas"][0,1]**2)
         poiseulle_res_2 = 8*0.04*np.pi*soln_dict["paths"][0][2]/(soln_dict["areas"][0,2]**2)
 
-        print(f"Poiseuille drops: {poiseulle_res_1*daughter1_flows[-1]}, {poiseulle_res_2*daughter2_flows[-1]}")
+        #print(f"Poiseuille drops: {poiseulle_res_1*daughter1_flows[-1]}, {poiseulle_res_2*daughter2_flows[-1]}")
 
         daughter1_dPs = [daughter1_dP + poiseulle_res_1*daughter1_flow for daughter1_dP, daughter1_flow in zip(daughter1_dPs, daughter1_flows)]
         daughter2_dPs = [daughter2_dP + poiseulle_res_2*daughter2_flow for daughter2_dP, daughter2_flow in zip(daughter2_dPs, daughter2_flows)]
@@ -95,7 +97,7 @@ def extract_steady_flow_data(anatomy, set_type, require4):
         CCO_params_dict["daughter2_flow_star"].append(daughter2_flow_stars)
 
         r_lin_calc = (daughter1_dPs[-1]/daughter1_flows[-1])*(CCO_params_dict["inlet_area"][-1]/CCO_params_dict["U_char"][-1])
-        print(f"Calculated R_lin_star: {r_lin_calc}")
+        #print(f"Calculated R_lin_star: {r_lin_calc}")
 
     save_dict(CCO_params_dict, f"data/param_dicts/{anatomy}_{set_type}_synthetic_data_dict")
     return CCO_params_dict

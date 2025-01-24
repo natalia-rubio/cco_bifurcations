@@ -43,17 +43,20 @@ python3 /home/users/nrubio/SV_scripts/svFSI/check_convergence.py {geo_name} {flo
     f.close()
     return
 
-def write_svfsi(anatomy, set_type, geo, flow_index, flow_params, cap_numbers, inlet_cap_number, num_time_steps, time_step_size, inc):
+def write_svfsi(anatomy, set_type, geo, flow_index, flow_params, cap_dict, inlet_cap_number, num_time_steps, time_step_size, inc):
     geo_dir = f"/scratch/users/nrubio/synthetic_junctions/{anatomy}/{set_type}/{geo}"
-    res_caps = cap_numbers
+    res_caps = list(cap_dict.keys())
     res_caps.remove(inlet_cap_number)
+    print(cap_dict)
+    outlet_area_total = sum([cap_dict[res_cap] for res_cap in res_caps])
+    print(f"outlet_area_total: {outlet_area_total}")
     flow_name = f"flow_{flow_index}"
     svfsi = f"<?xml version='1.0' encoding='UTF-8' ?>\n\
     <svFSIFile version='0.1'>\n\
     \n\
     <GeneralSimulationParameters>\n\
     \n\
-    <Continue_previous_simulation> false </Continue_previous_simulation>\n\
+    <Continue_previous_simulation> true </Continue_previous_simulation>\n\
     <Number_of_spatial_dimensions> 3 </Number_of_spatial_dimensions> \n\
     <Number_of_time_steps> {num_time_steps} </Number_of_time_steps> \n\
     <Time_step_size> {time_step_size} </Time_step_size> \n\
@@ -143,13 +146,13 @@ def write_svfsi(anatomy, set_type, geo, flow_index, flow_params, cap_numbers, in
         <Add_BC name='outlet0' > \n\
             <Type> Neu </Type> \n\
             <Time_dependence> Resistance </Time_dependence> \n\
-            <Value> 10000 </Value> \n\
+            <Value> {1000*(1-cap_dict[res_caps[0]]/outlet_area_total)} </Value> \n\
         </Add_BC> \n\
         \n\
         <Add_BC name='outlet1' > \n\
             <Type> Neu </Type> \n\
             <Time_dependence> Resistance </Time_dependence> \n\
-            <Value> 10000 </Value> \n\
+            <Value> {1000*(1-cap_dict[res_caps[1]]/outlet_area_total)} </Value> \n\
         </Add_BC> \n\
         \n\
         <Add_BC name='walls' > \n\

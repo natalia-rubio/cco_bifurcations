@@ -68,40 +68,40 @@ plt.xlabel("Actual Daughter 2 Radius")
 plt.ylabel("Predicted (Murray's Law) Daughter 2 Radius")
 plt.savefig(f"results/CCO_hist_{tree_name}/CCO_daughter_radii_murray.png", bbox_inches='tight')
 
-plt.clf()
-bins = np.linspace(0, 2, 30)
-daughter1_vel = np.asarray(data_dict["CCO"]["daughter1_flow"])/daughter1_area
-daughter2_vel = np.asarray(data_dict["CCO"]["daughter2_flow"])/daughter2_area
-inlet_vel = np.pi * np.asarray(data_dict["CCO"]["inlet_flow"])**2
-Re = 1000
-Uc = 0.04*Re/(1.06*Lc)
-plt.hist(daughter1_vel/Uc, bins, alpha=0.5, label='Primary Daughter')
-plt.hist(daughter2_vel/Uc, bins, alpha=0.5, label='Auxilliary Daughter')
-plt.title("Normalized Daughter Velocity")
-plt.legend(loc='upper right')
-plt.savefig(f"results/CCO_hist_{tree_name}/CCO_daughter_velocities_x.png")
+# plt.clf()
+# bins = np.linspace(0, 2, 30)
+# daughter1_vel = np.asarray(data_dict["CCO"]["daughter1_flow"])/daughter1_area
+# daughter2_vel = np.asarray(data_dict["CCO"]["daughter2_flow"])/daughter2_area
+# inlet_vel = np.pi * np.asarray(data_dict["CCO"]["inlet_flow"])**2
+# Re = 1000
+# Uc = 0.04*Re/(1.06*Lc)
+# plt.hist(daughter1_vel/Uc, bins, alpha=0.5, label='Primary Daughter')
+# plt.hist(daughter2_vel/Uc, bins, alpha=0.5, label='Auxilliary Daughter')
+# plt.title("Normalized Daughter Velocity")
+# plt.legend(loc='upper right')
+# plt.savefig(f"results/CCO_hist_{tree_name}/CCO_daughter_velocities_x.png")
 
-plt.clf()
+# plt.clf()
 
-inlet_vel = np.pi * np.asarray(data_dict["CCO"]["inlet_flow"])/inlet_area
-Re = 1.06 * inlet_vel * 2 *  data_dict["CCO"]["inlet_radius"]/ 0.04
-bins = np.linspace(0, np.max(Re), 30)
-plt.hist(Re, bins, alpha=0.5)
-plt.title("Normalized Daughter Re")
+# inlet_vel = np.pi * np.asarray(data_dict["CCO"]["inlet_flow"])/inlet_area
+# Re = 1.06 * inlet_vel * 2 *  data_dict["CCO"]["inlet_radius"]/ 0.04
+# bins = np.linspace(0, np.max(Re), 30)
+# plt.hist(Re, bins, alpha=0.5)
+# plt.title("Normalized Daughter Re")
 
-plt.savefig(f"results/CCO_hist_{tree_name}/CCO_inlet_re.png")
-Re = 1000
-Uc = 0.04*Re/(1.06*Lc)
+# plt.savefig(f"results/CCO_hist_{tree_name}/CCO_inlet_re.png")
+# Re = 1000
+# Uc = 0.04*Re/(1.06*Lc)
 
-plt.clf()
-bins = np.linspace(-1, 1.2, 30)
-daughter1_dp = np.asarray(data_dict["CCO"]["daughter1_dP"])
-daughter2_dp = np.asarray(data_dict["CCO"]["daughter2_dP"])
-plt.hist(daughter1_dp/(1.06*Uc**2), bins, alpha=0.5, label='Primary Daughter')
-plt.hist(daughter2_dp/(1.06*Uc**2), bins, alpha=0.5, label='Auxilliary Daughter')
-plt.title("Normalized Daughter Pressure Difference")
-plt.legend(loc='upper right')
-plt.savefig(f"results/CCO_hist_{tree_name}/CCO_daughter_pressure_x.png")
+# plt.clf()
+# bins = np.linspace(-1, 1.2, 30)
+# daughter1_dp = np.asarray(data_dict["CCO"]["daughter1_dP"])
+# daughter2_dp = np.asarray(data_dict["CCO"]["daughter2_dP"])
+# plt.hist(daughter1_dp/(1.06*Uc**2), bins, alpha=0.5, label='Primary Daughter')
+# plt.hist(daughter2_dp/(1.06*Uc**2), bins, alpha=0.5, label='Auxilliary Daughter')
+# plt.title("Normalized Daughter Pressure Difference")
+# plt.legend(loc='upper right')
+# plt.savefig(f"results/CCO_hist_{tree_name}/CCO_daughter_pressure_x.png")
 
 tree_data_dict = {}
 tree_data_dict.update({"daughter1_area_ratio": daughter1_area/Lc2})

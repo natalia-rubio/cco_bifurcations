@@ -38,7 +38,7 @@ while num_launched < num_geos:
 
 
     for i, inlet_flow_fac in enumerate([0.25, 0.5, 0.75, 1]):
-        print(f"Launching flow {i}.")
+        
         
         try:
             flow_index = i; flow_name = f"flow_{flow_index}"
@@ -48,19 +48,24 @@ while num_launched < num_geos:
             if os.path.exists(f"/scratch/users/nrubio/synthetic_junctions_reduced_results/{anatomy}/{set_type}/{geo_name}/flow_{i}_red_sol"):
                 print(f"Simulation already complete for flow {flow_index}")
                 continue
-
+            print(f"Launching flow {i}.")
             #print(f"Initializing solution.")
             #project_0d_to_3D(anatomy, set_type, geo_name, flow_index)
 
             set_up_sim_directories(anatomy, set_type, geo_name, flow_name, num_cores)
             flow_params = {"flow_amp": inlet_flow*inlet_flow_fac,
-                            "vel_in": inlet_vel*inlet_flow_fac,
-                            "res_1": 100,
-                            "res_2": 100}
+                            "vel_in": inlet_vel*inlet_flow_fac}
+            #pdb.set_trace()
+            cap_dict = load_dict(f"/scratch/users/nrubio/synthetic_junctions/{anatomy}/{set_type}/{geo_name}/cap_dict")
+            res_caps = list(cap_dict.keys())
+            res_caps.remove(inlet_cap_number)
+            print(cap_dict)
+            outlet_area_total = sum([cap_dict[res_cap] for res_cap in res_caps])
+            print(f"outlet_area_total: {outlet_area_total}")
 
             time_step_size = (np.sqrt(inlet_area/np.pi))/flow_params["vel_in"]
             print(f"Time step size: {time_step_size}")
-            write_svfsi(anatomy, set_type, geo_name, flow_index, flow_params, copy.deepcopy(cap_numbers), inlet_cap_number, num_time_steps, time_step_size, inc = inc)
+            write_svfsi(anatomy, set_type, geo_name, flow_index, flow_params, cap_dict, inlet_cap_number, num_time_steps, time_step_size, inc = inc)
             write_flow_steady(anatomy, set_type, geo_name, flow_index, flow_params["flow_amp"], inlet_cap_number, num_time_steps, time_step_size)
             print("Done writing solver files.")
             f = open(f"/scratch/users/nrubio/synthetic_junctions/{anatomy}/{set_type}/{geo_name}/{flow_name}/numstart.dat", "w"); f.write("0"); f.close()

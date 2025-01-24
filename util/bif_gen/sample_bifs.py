@@ -9,7 +9,7 @@ plt.rcParams['font.family'] = 'serif'
 plt.rcParams['font.size'] = 16
 
 tree_name = "tree_80"
-anatomy = "CCO_80"
+anatomy = "angles_CCO"
 num_geos = 400
 sampler = qmc.LatinHypercube(d=4,seed = 0)
 samples = sampler.random(n=num_geos)
@@ -29,14 +29,14 @@ for i in range(num_geos):
         
     # while area_consistency:
     for param_ind, param in enumerate(CCO_sampled_params_dict.keys()):
-        if i < num_geos/2:
+        #if i < num_geos/2:
             CCO_sampled_params_dict[param].append(
-                0.5 * (0.9 * tree_data_dict[param]["lowest"] + samples_uniform[i, param_ind] * tree_data_dict[param]["range"] * 1.2) + \
-                + 0.5 * (samples_normal[i, param_ind]*tree_data_dict[param]["std"] + tree_data_dict[param]["mean"]))
-        else:
-            CCO_sampled_params_dict[param].append(
-                0.5 * (0.9 * tree_data_dict[param]["lowest"] + samples_uniform[i, param_ind] * tree_data_dict[param]["range"] * 1.2) + \
-                + 0.5 * (samples_normal[i, param_ind]*tree_data_dict[param]["std"] + tree_data_dict[param]["mean"]))
+            0.5 * (0.8 * tree_data_dict[param]["lowest"] + samples_uniform[i, param_ind] * tree_data_dict[param]["range"] * 1.4) + \
+            + 0.5 * (samples_normal[i, param_ind]*tree_data_dict[param]["std"] + tree_data_dict[param]["mean"]))
+        # else:
+        #     CCO_sampled_params_dict[param].append(
+        #         0.5 * (0.8 * tree_data_dict[param]["lowest"] + samples_uniform[i, param_ind] * tree_data_dict[param]["range"] * 1.2) + \
+        #         + 0.5 * (samples_normal[i, param_ind]*tree_data_dict[param]["std"] + tree_data_dict[param]["mean"]))
         
         # if CCO_sampled_params_dict["daughter1_area_ratio"][-1] > CCO_sampled_params_dict["daughter2_area_ratio"][-1]:
         #     area_consistency = True

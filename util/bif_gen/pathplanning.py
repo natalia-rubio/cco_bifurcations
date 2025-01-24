@@ -50,9 +50,12 @@ def get_contours(geo_params):
     seg_length1 = np.linalg.norm(seg1)
     angle1 = np.arcsin(seg_length1/np.linalg.norm(contour1[-1,:]))
     new_angle1 = geo_params["daughter1_angle"]
-    if new_angle1 < np.pi/2:
+    if new_angle1 < angle1:
         new_seg_length1 = np.linalg.norm(contour1[-1,:])*np.sin(new_angle1)
         seg_add1 = (new_seg_length1 - seg_length1) * seg1/np.linalg.norm(seg1)
+    elif new_angle1 < np.pi/2:
+        rev_length = seg_length1*np.tan(np.pi/2 - new_angle1)
+        seg_add1 = (inlet_ref_length1 - rev_length) * contour1[0,:]/np.linalg.norm(contour1[0,:])
     else:
         rev_length = seg_length1/np.tan(np.pi - new_angle1)
         seg_add1 = (inlet_ref_length1 + rev_length) * contour1[0,:]/np.linalg.norm(contour1[0,:])
@@ -67,12 +70,16 @@ def get_contours(geo_params):
     seg_length2 = np.linalg.norm(seg2)
     angle2 = np.arcsin(seg_length2/np.linalg.norm(contour2[-1,:]))
     new_angle2 = geo_params["daughter2_angle"]
-    if new_angle2 < np.pi/2:
+    if new_angle2 < angle2:
         new_seg_length2 = np.linalg.norm(contour2[-1,:])*np.sin(new_angle2)
         seg_add2 = (new_seg_length2 - seg_length2) * seg2/np.linalg.norm(seg2)
+    elif new_angle2 < np.pi/2:
+        rev_length = seg_length2*np.tan(np.pi/2 - new_angle2)
+        seg_add2 = (inlet_ref_length2 - rev_length) * contour1[0,:]/np.linalg.norm(contour1[0,:])
     else:
         rev_length = seg_length2/np.tan(np.pi - new_angle2)
         seg_add2 = (inlet_ref_length2 + rev_length) * contour1[0,:]/np.linalg.norm(contour1[0,:])
+    #import pdb; pdb.set_trace()
     incs = np.linspace(0, 1, contour2.shape[0] , endpoint = True)
     for point in range(contour2.shape[0]):
         contour2[point,:] = contour2[point,:] + incs[point] * seg_add2
@@ -94,6 +101,10 @@ def get_contours(geo_params):
     contour1 = contour1 - h_shift
     contour2 = contour2 - h_shift
 
+    y_shift = 0*radii1[-1]*np.sin(new_angle1) * inlet_ref1/np.linalg.norm(inlet_ref1)
+    contour1[intersection_pt_ind:,:] = contour1[intersection_pt_ind:,:] + y_shift
+    contour2 = contour2 + y_shift
+
     path_1 = pathplanning.Path()
     point_list1 = []
     for i in range(len(contour1)):
@@ -114,14 +125,40 @@ def get_contours(geo_params):
     contour_set_1 = []
     contour_polydata_list_1 = []
 
-    
-    for i in range(len(radii1)):
-        #contour_set_0.append(segmentation.Circle(radii1[i],center=list(contour1[i,:]), normal=list(norm1[i,:])))
-        if i - intersection_pt_ind < 2 and i - intersection_pt_ind > -5:
+    v1_start_ind = intersection_pt_ind + 0
+    for i in range(intersection_pt_ind-3):
+        if i%5 != 0:
             continue
-            
         contour_set_1.append(segmentation.Circle(radii1[i],center=list(contour1[i,:]), normal=path_1.get_curve_tangent(curve_points1.index(point_list1[i]))))
         contour_polydata_list_1.append(contour_set_1[-1].get_polydata())
+
+    norm1 = np.asarray(path_1.get_curve_tangent(curve_points1.index(point_list1[0])))
+    norm2 = np.asarray(path_1.get_curve_tangent(curve_points1.index(point_list1[-1])))
+    contour_set_1.append(segmentation.Circle(0.5*(radii1[0] + radii1[0]),
+                                             center=list((contour1[intersection_pt_ind,:] + contour1[v1_start_ind+3,:])/2), 
+                                             normal=list((norm1 + norm2)/2)
+                                                                             ))
+    contour_polydata_list_1.append(contour_set_1[-1].get_polydata())
+
+    for i in range(v1_start_ind + 5, len(radii1)):
+        if i%5 != 0:
+            continue
+        contour_set_1.append(segmentation.Circle(radii1[i],center=list(contour1[i,:]), normal=path_1.get_curve_tangent(curve_points1.index(point_list1[i]))))
+        contour_polydata_list_1.append(contour_set_1[-1].get_polydata())
+        if i%3 != 0:
+            continue
+    # for i in range(len(radii1)):
+    #     #contour_set_0.append(segmentation.Circle(radii1[i],center=list(contour1[i,:]), normal=list(norm1[i,:])))
+    #     # if i - intersection_pt_ind < 5 and i - intersection_pt_ind > 0:
+    #     #     continue
+        
+
+
+    #     if i - intersection_pt_ind < 15 and i - intersection_pt_ind > 0:
+    #         if i%10 != 0:
+    #             continue
+    #     contour_set_1.append(segmentation.Circle(radii1[i],center=list(contour1[i,:]), normal=path_1.get_curve_tangent(curve_points1.index(point_list1[i]))))
+    #     contour_polydata_list_1.append(contour_set_1[-1].get_polydata())
  
     contour_list.append(contour_set_1)
     contour_polydata.append(contour_polydata_list_1)
@@ -158,7 +195,7 @@ def get_contours(geo_params):
         path.append([x,y,z])
         norms.append([x_theta, y_theta, z_theta])
         radii.append(radius_list)
-
+    #pdb.set_trace()
     if os.path.exists("results/path_planning") == False:
         os.makedirs("results/path_planning")
     save_dict(path, "results/path_planning/sample_rand_path")

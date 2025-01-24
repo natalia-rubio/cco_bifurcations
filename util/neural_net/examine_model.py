@@ -14,7 +14,7 @@ anatomy = "CCO_80"
 set_type = "random"
 
 scaling_dict = load_dict(f"data/scaling_dictionaries/{anatomy}_{set_type}_scaling_dict")
-model_name = "CCO_80_ng_126_nl_3_lw_200_ne_2000_bs_10_dr_0.9_model"
+model_name = "CCO_80_ng_120_nl_1_lw_4_ne_2000_bs_10_dr_0.9_model"
 nn_model = dill_load(f"results/models/{anatomy}/{model_name}")
 
 re_char = 4500

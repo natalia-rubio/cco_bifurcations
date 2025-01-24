@@ -36,7 +36,7 @@ def get_coefs(anatomy, set_type, rm_low_r2 = True, unsteady = False, use_steady_
 
         coefs1, residuals1, t, q = np.linalg.lstsq(A_mat1_star, dP1_star, rcond=None)
         cond1 = np.linalg.cond(A_mat1_star)
-        print(f"Condition number 1: {cond1}")
+        #print(f"Condition number 1: {cond1}")
         coefs2, residuals2, t, q = np.linalg.lstsq(A_mat2_star, dP2_star, rcond=None)
         cond2 = np.linalg.cond(A_mat2_star)
         #print(f"Condition number 2: {cond2}")
@@ -86,12 +86,15 @@ def get_coefs(anatomy, set_type, rm_low_r2 = True, unsteady = False, use_steady_
         if err1 > 0.1 or err2 > 0.1: #r2_steady < 0.90 and r2_unsteady < 0.90 and r2_UO < 0.90:
             to_rm.append(geo_ind)
             print(f"Removing {geo_ind} for high residual {(np.linalg.norm(residuals1)/(1333**2))}, {(np.linalg.norm(residuals2)/(1333**2))} mmHg.")
-        if char_val_dict["R_quad_star2"][-1] < -10:
-            to_rm.append(geo_ind)
-            print(f"Removing {geo_ind} for OOD R_quad_star2.")
-        if char_val_dict["R_lin_star2"][-1] < -4:
-            to_rm.append(geo_ind)
-            print(f"Removing {geo_ind} for OOD R_quad_star2.")
+        # if char_val_dict["R_quad_star2"][-1] < -10:
+        #     to_rm.append(geo_ind)
+        #     print(f"Removing {geo_ind} for OOD R_quad_star2.")
+        # if char_val_dict["R_lin_star2"][-1] < -0.1:
+        #     to_rm.append(geo_ind)
+        #     print(f"Removing {geo_ind} for OOD R_quad_star2.")
+        # if char_val_dict["R_lin_star1"][-1] > 0.08:
+        #     to_rm.append(geo_ind)
+        #     print(f"Removing {geo_ind} for OOD R_quad_star2.")
 
     if rm_low_r2:
         print(f"Removing {len(to_rm)} outlets for low r2 values.")

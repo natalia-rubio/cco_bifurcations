@@ -21,9 +21,9 @@ ax = plt.axes(projection='3d')
 
 for contour in contour_list:
     ax.scatter3D(contour[0], contour[1], contour[2], label = f"Contour {contour}", marker = "o")
-ax.scatter3D(bif_pt_coords["inlet_coords"][0], bif_pt_coords["inlet_coords"][1], bif_pt_coords["inlet_coords"][2], label = "Inlet", marker = "X", s=100, color = "black")
-ax.scatter3D(bif_pt_coords["daughter1_coords"][0], bif_pt_coords["daughter1_coords"][1], bif_pt_coords["daughter1_coords"][2], label = "Daughter 1", marker = "X", s=100, color = "blue")
-ax.scatter3D(bif_pt_coords["daughter2_coords"][0], bif_pt_coords["daughter2_coords"][1], bif_pt_coords["daughter2_coords"][2], label = "Daughter 2", marker = "X", s=100, color = "red")
+# ax.scatter3D(bif_pt_coords["inlet_coords"][0], bif_pt_coords["inlet_coords"][1], bif_pt_coords["inlet_coords"][2], label = "Inlet", marker = "X", s=100, color = "black")
+# ax.scatter3D(bif_pt_coords["daughter1_coords"][0], bif_pt_coords["daughter1_coords"][1], bif_pt_coords["daughter1_coords"][2], label = "Daughter 1", marker = "X", s=100, color = "blue")
+# ax.scatter3D(bif_pt_coords["daughter2_coords"][0], bif_pt_coords["daughter2_coords"][1], bif_pt_coords["daughter2_coords"][2], label = "Daughter 2", marker = "X", s=100, color = "red")
 ax.set_title('Sample Bifurcation Path')
 ax.set_xlabel('X')
 ax.set_ylabel('Y')

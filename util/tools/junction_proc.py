@@ -172,7 +172,6 @@ def identify_junctions_offset(junction_id, branch_id, pt_id, offset):
                 branch_pts_junc.append(min([min(branch_pts).astype(int), max(branch_pts)])+offset) # add outlet point Id to outlet point array
         junction_dict.update({i : branch_pts_junc})
         #assert i == 0, "There should only be one junction,"
-
         
     return junction_dict, branch_pts_junc
 
@@ -269,6 +268,8 @@ def classify_branches(flow, junc_pts, pt_arr):
 def get_angle_diff(angle1, angle2):
     try:
         #angle_diff = np.arccos(np.dot(angle1, angle2))
+        angle1 = angle1/np.linalg.norm(angle1)
+        angle2 = angle2/np.linalg.norm(angle2)
         angle_diff = np.arccos(angle1.T @ angle2).reshape(-1,)
     except:
         pdb.set_trace()

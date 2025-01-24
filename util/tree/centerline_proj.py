@@ -73,6 +73,7 @@ def extract_results(fpath_1d, fpath_3d, fpath_out, only_caps=False, num_time_ste
 
     reader_1d = read_geo(fpath_1d).GetOutput()
     reader_3d = read_geo(fpath_3d).GetOutput()# get all result array names
+    pdb.set_trace() 
     res_names = get_res_names(reader_3d, ['Pressure', 'Velocity'])# get point and normals from centerline
     points = v2n(reader_1d.GetPoints().GetData())
     normals = v2n(reader_1d.GetPointData().GetArray('CenterlineSectionNormal'))

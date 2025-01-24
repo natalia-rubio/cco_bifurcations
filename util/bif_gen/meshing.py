@@ -82,25 +82,28 @@ def get_mesh(model, contours, walls, edge_size=0.1):
     min_edge = 0.001
     #edge_size = 0.1
     attempt = 0
+
+    v2_start = contours[1][0].get_center()
+    v2_end = contours[1][-1].get_center()
+    v2_mid = [(v2_start[i] + v2_end[i])/2 for i in range(3)]
+    v2_len = np.sqrt(np.linalg.norm(np.array(v2_end) - np.array(v2_start)))
+    v2_rad = contours[1][-1].get_radius()
+    v1_rad = contours[0][0].get_radius()
+    edge_size = v1_rad/3
     
     cap_indicators = model.identify_caps()
     ids = model.get_face_ids()
     caps= [ids[i] for i,x in enumerate(cap_indicators) if x]
-    vtk_centerlines = model.compute_centerlines([caps[0],], caps[1:], use_face_ids=True)
-
-    centerlines_file = "vtk_cent.vtp"                               
-    reader = vtk.vtkXMLPolyDataReader()                                  
-    reader.SetFileName(centerlines_file)                                 
-    reader.Update()                                                      
-    vtk_centerlines = reader.GetOutput()
 
     cap_areas = []
     cap_radii = []
     cap_edge_size = []
+    cap_dict = {}
     for id in caps:
         cap_areas.append(surf_area(model.get_face_polydata(id)))
         cap_radii.append(np.sqrt(cap_areas[-1]/np.pi))
-        cap_edge_size.append(max([cap_radii[-1]/3, 0.01*edge_size/0.0528]))
+        cap_edge_size.append(min([cap_radii[-1]/3, edge_size]))
+        cap_dict.update({id:surf_area(model.get_face_polydata(id))})
 
     # while edge_size > min_edge and not done:
     #     try:
@@ -118,11 +121,15 @@ def get_mesh(model, contours, walls, edge_size=0.1):
     tet_options.quality_ratio = 1.4
     #tet_options.no_bisect = True
 
+
+
+
     tet_options.local_edge_size_on =  True
     tet_options.local_edge_size = []
     for i in range(len(caps)):
         tet_options.local_edge_size.append({'face_id':caps[i], 'edge_size':cap_edge_size[i]})
     tet_options.local_edge_size_on = True 
+
 
     mesher.set_boundary_layer_options(number_of_layers=4, edge_size_fraction=0.8, layer_decreasing_ratio=0.8, constant_thickness=False)
     for idx, contour_set in enumerate(contours):
@@ -130,15 +137,19 @@ def get_mesh(model, contours, walls, edge_size=0.1):
             continue
         print('adding sphere refinement')
         print("edge_size: {}".format(edge_size))
-        tet_options.sphere_refinement.append({'edge_size':0.05*edge_size/0.0528, 'radius':contour_set[0].get_radius()*5, 
+
+        tet_options.sphere_refinement.append({'edge_size':edge_size * np.sqrt(v2_rad/v1_rad), 'radius':v2_len*0.5, 
+                        'center':v2_mid})
+
+        tet_options.sphere_refinement.append({'edge_size':edge_size*min([0.7, 1.5*v2_rad/v1_rad]), 'radius':v1_rad*3, 
                                 'center':contour_set[2].get_center()})
+        
         
     tet_options.sphere_refinement_on = True
 
-    tet_options.radius_meshing_centerlines = vtk_centerlines
-    tet_options.radius_meshing_scale = 0.002*edge_size/0.0528
-
-    tet_options.radius_meshing_on = True
+    # tet_options.radius_meshing_centerlines = vtk_centerlines
+    # tet_options.radius_meshing_scale = 0.002*edge_size/0.0528
+    # tet_options.radius_meshing_on = True
 
     print("Options values: ")
     [ print("  {0:s}:{1:s}".format(key,str(value))) for (key, value) in sorted(tet_options.get_values().items()) ]
@@ -152,7 +163,7 @@ def get_mesh(model, contours, walls, edge_size=0.1):
         #     done = False
         #     edge_size = edge_size - 0.1*edge_size
         #     attempt += 1
-    return mesher, msh
+    return mesher, msh, cap_dict
 
 
 def get_inlet_cap(mesher, walls):
@@ -176,7 +187,7 @@ def get_inlet_cap(mesher, walls):
     print("max_area_cap" + str(max_area_cap))
     return max_area_cap
 
-def save_mesh(mesher, model, walls, geo_dir):
+def save_mesh(mesher, model, walls, cap_dict, geo_dir):
     os.mkdir(geo_dir+'/mesh-complete')
     os.mkdir(geo_dir+'/mesh-complete/mesh-surfaces')
     os.mkdir(geo_dir+'/centerlines')
@@ -203,6 +214,8 @@ def save_mesh(mesher, model, walls, geo_dir):
     out_caps.remove(max_area_cap)
     assert len(out_caps) == 2, "Wrong number of caps."
     np.save(geo_dir+"/max_area_cap", np.asarray([max_area_cap]), allow_pickle = True)
+    #pdb.set_trace()
+    save_dict(cap_dict, geo_dir+"/cap_dict")
 
     cent_solid = modeling.PolyData()
     cent = vmtk.centerlines(model.get_polydata(), inlet_ids = [max_area_cap], outlet_ids = out_caps, use_face_ids = True)
