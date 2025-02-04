@@ -10,7 +10,7 @@ import jax.numpy as jnp
 from util.neural_net.nn_model import NeuralNet, predict
 
 def get_RRI_values(areas, tangents):
-    anatomy = "Jan_CCO_80"
+    anatomy = "angles_CCO"
     set_type = "random"
 
     scaling_dict = load_dict(f"data/scaling_dictionaries/{anatomy}_{set_type}_scaling_dict")
@@ -27,9 +27,9 @@ def get_RRI_values(areas, tangents):
     #print(f"area ratio: {(areas[1]/areas[0], areas[2]/areas[0])}")
     if areas[1] < 0.01:
         pdb.set_trace()
-    print(f"angle diff rri: {(get_angle_diff(np.asarray(tangents[0]), np.asarray(tangents[1])), get_angle_diff(np.asarray(tangents[0]), np.asarray(tangents[2])))}")
+    #print(f"angle diff rri: {(get_angle_diff(np.asarray(tangents[0]), np.asarray(tangents[1])), get_angle_diff(np.asarray(tangents[0]), np.asarray(tangents[2])))}")
     #model_name = "CCO_ng_88_nl_0_lw_25_ne_5000_bs_10_dr_0.9_model"
-    model_name = "Jan_CCO_80_ng_120_nl_1_lw_4_ne_2000_bs_10_dr_0.9_model"
+    model_name = "angles_CCO_ng_222_nl_1_lw_50_ne_2000_bs_10_dr_0.9_model"
     nn_model = dill_load(f"results/models/{anatomy}/{model_name}")
     coefs_pred = predict(input_tens, nn_model.weights)
 
@@ -42,13 +42,13 @@ def get_RRI_values(areas, tangents):
     #print(f"Predicted R_lin_star1: {R_lin_star_pred1}, R_lin_star2: {R_lin_star_pred2}, R_quad_star1: {R_quad_star_pred1}, R_quad_star2: {R_quad_star_pred2}")
     R_lin1 = -1.06 * jnp.square(U_char) * R_lin_star_pred1 /  (A_char * U_char)
     R_lin2 = -1.06 * jnp.square(U_char) * R_lin_star_pred2 /  (A_char * U_char)
-    R_quad1 = -1.06 * jnp.square(U_char) * R_quad_star_pred1 / jnp.square(A_char * U_char)
-    R_quad2 = -1.06 * jnp.square(U_char) * R_quad_star_pred2 / jnp.square(A_char * U_char)
+    R_quad1 = 0*1.06 * jnp.square(U_char) * R_quad_star_pred1 / jnp.square(A_char * U_char)
+    R_quad2 = 0*1.06 * jnp.square(U_char) * R_quad_star_pred2 / jnp.square(A_char * U_char)
     L = [0, 0]
     return [float(R_lin1[0][0]), float(R_lin2[0][0])], [float(R_quad1[0][0]), float(R_quad2[0][0])], L, [float(R_lin_star_pred1[0][0]), float(R_lin_star_pred2[0][0])]
 
 def get_RRI_values_trif(areas, tangents):
-    anatomy = "CCO_80"
+    anatomy = "angles_CCO"
     set_type = "random"
 
     scaling_dict = load_dict(f"data/scaling_dictionaries/{anatomy}_{set_type}_scaling_dict")
@@ -58,7 +58,7 @@ def get_RRI_values_trif(areas, tangents):
     A_char = areas[0]
     if areas[1] < 0.01:
         pdb.set_trace()
-    model_name = "CCO_80_ng_120_nl_3_lw_200_ne_2000_bs_10_dr_0.9_model"
+    model_name = "angles_CCO_ng_222_nl_1_lw_50_ne_2000_bs_10_dr_0.9_model"
     nn_model = dill_load(f"results/models/{anatomy}/{model_name}")
     
     input_tens1 = jnp.asarray([scale_jax(scaling_dict, jnp.asarray(areas[1]/areas[0], dtype=jnp.float32), "daughter1_area_ratio"),
@@ -95,9 +95,9 @@ def get_RRI_values_trif(areas, tangents):
     R_lin1 = -1.06 * jnp.square(U_char) * R_lin_star_pred1 /  (A_char * U_char)
     R_lin2 = -1.06 * jnp.square(U_char) * R_lin_star_pred2 /  (A_char * U_char)
     R_lin3 = -1.06 * jnp.square(U_char) * R_lin_star_pred3 /  (A_char * U_char)
-    R_quad1 = -1.06 * jnp.square(U_char) * R_quad_star_pred1 / jnp.square(A_char * U_char)
-    R_quad2 = -1.06 * jnp.square(U_char) * R_quad_star_pred2 / jnp.square(A_char * U_char)
-    R_quad3 = -1.06 * jnp.square(U_char) * R_quad_star_pred3 / jnp.square(A_char * U_char)
+    R_quad1 = 0*1.06 * jnp.square(U_char) * R_quad_star_pred1 / jnp.square(A_char * U_char)
+    R_quad2 = 0*1.06 * jnp.square(U_char) * R_quad_star_pred2 / jnp.square(A_char * U_char)
+    R_quad3 = 0*1.06 * jnp.square(U_char) * R_quad_star_pred3 / jnp.square(A_char * U_char)
     L = [0, 0, 0]
     return [float(R_lin1[0][0]), float(R_lin2[0][0]), float(R_lin3[0][0])], [float(R_quad1[0][0]), float(R_quad2[0][0]), float(R_quad3[0][0])], L, [float(R_lin_star_pred1[0][0]), float(R_lin_star_pred2[0][0])]
 
@@ -193,41 +193,43 @@ if __name__ == "__main__":
 
     inds = []
     for junction in input_file["junctions"]:
-        
+        if len(junction["outlet_vessels"]) == 1:
+            continue
         if len(junction["outlet_vessels"]) > 2:
             num_non_bifs += 1
             print(f"Junction with more than 2 outlets: {junction["junction_name"]}.  Areas {junction['areas']}")
-            #r_lin, r_quad, L, r_lin_star = get_RRI_values_trif(areas = junction["areas"], tangents = junction["tangents"])
-            r_lin, r_quad, ind1, ind2 = look_up_RRI_values_trif(areas = junction["areas"], tangents = junction["tangents"], tree_dict = char_val_dict)
+            r_lin, r_quad, L, r_lin_star = get_RRI_values_trif(areas = junction["areas"], tangents = junction["tangents"])
+            
+            #r_lin, r_quad, ind1, ind2 = look_up_RRI_values_trif(areas = junction["areas"], tangents = junction["tangents"], tree_dict = char_val_dict)
             L = [0,0,0]
-            if ind1 not in inds:
-                inds.append(ind1)
-            else:
-                print(f"Duplicate junction index: {ind1}")
-                pdb.set_trace()
-            if ind2 not in inds:
-                inds.append(ind2)
-            else:
-                print(f"Duplicate junction index: {ind2}")
-                pdb.set_trace()   
-            num_junctions += 1
+            # if ind1 not in inds:
+            #     inds.append(ind1)
+            # else:
+            #     print(f"Duplicate junction index: {ind1}")
+            #     pdb.set_trace()
+            # if ind2 not in inds:
+            #     inds.append(ind2)
+            # else:
+            #     print(f"Duplicate junction index: {ind2}")
+            #     pdb.set_trace()   
+            # num_junctions += 1
             #continue
         elif len(junction["outlet_vessels"]) == 2:
             
-            #r_lin, r_quad, L, r_lin_star = get_RRI_values(areas = junction["areas"], tangents = junction["tangents"])
-            r_lin, r_quad,ind  = look_up_RRI_values(areas = junction["areas"], tangents = list(np.asarray(junction["tangents"])), tree_dict = char_val_dict)
-            if ind not in inds:
-                inds.append(ind)
-            else:
-                print(f"Duplicate junction index: {ind}")
-                pdb.set_trace()
+            r_lin, r_quad, L, r_lin_star = get_RRI_values(areas = junction["areas"], tangents = junction["tangents"])
+            #r_lin, r_quad,ind  = look_up_RRI_values(areas = junction["areas"], tangents = list(np.asarray(junction["tangents"])), tree_dict = char_val_dict)
+            # if ind not in inds:
+            #     inds.append(ind)
+            # else:
+            #     print(f"Duplicate junction index: {ind}")
+            #     pdb.set_trace()
             areas_list += junction["areas"][1:]
             r_lin_list +=r_lin
             r_quad_list += r_quad
             L = 0
             num_junctions += 1
 
-        in_dist = True
+        #in_dist = True
             # for r_lin_val in r_lin:
             #     if abs(r_lin_val) > 50:
             #         print(f"Out of distribution R_lin value: {r_lin_val}")
@@ -242,15 +244,16 @@ if __name__ == "__main__":
                 # if r_quad_val < 0:  
                 #     print(f"Negative R_quad value: {r_quad_val}")
                 #     in_dist = False
-        if in_dist:
+        #if in_dist:
                 # print(f"R_lin values: {r_lin}")
                 # print(f"R_quad values: {r_quad}") 
-            junction["junction_type"] = "BloodVesselJunction"
-            junction["junction_values"] = {"R_poiseuille": r_lin, 
-                                "stenosis_coefficient": r_quad,
-                                "L": L,}
-        else:
-            out_of_dist_cnt += 1
+        r_lin = [max(0, r_lin_val) for r_lin_val in r_lin]
+        junction["junction_type"] = "BloodVesselJunction"
+        junction["junction_values"] = {"R_poiseuille": r_lin, 
+                            "stenosis_coefficient": r_quad,
+                            "L": L,}
+        # else:
+        #     out_of_dist_cnt += 1
         
 
     print(f"{num_junctions} junctions processed.")

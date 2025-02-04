@@ -29,17 +29,17 @@ flow_3d = arrays_3d["Velocity"]#/arrays_3d["area"]
 flow_3d_200 = arrays_3d_200["Velocity"]#/arrays_3d_200["area"]
 flow_error = (flow_3d - flow_3d_200)/flow_3d
 
-flow_error_rri = (flow_3d - arrays_0d_rri["flow"])/flow_3d
+flow_error_rri = (arrays_0d_rri["flow"]-flow_3d )/flow_3d
 flow_error_rri[arrays_3d["BifurcationId"] >= 0] = 0
 print(f"Flow error RRI: {compute_rmse(flow_error_rri,0*flow_error_rri)}")
-flow_error_standard = (flow_3d - arrays_0d_standard["flow"])/flow_3d
+flow_error_standard = (arrays_0d_standard["flow"]-flow_3d)/flow_3d
 flow_error_standard[arrays_3d["BifurcationId"] >= 0] = 0
 print(f"Flow error standard: {compute_rmse(flow_error_standard,0*flow_error_standard)}")
 
-pressure_error_rri = (arrays_3d["Pressure"] - arrays_0d_rri["pressure"])/arrays_3d["Pressure"]
+pressure_error_rri = (arrays_0d_rri["pressure"]-arrays_3d["Pressure"])/arrays_3d["Pressure"]
 pressure_error_rri[arrays_3d["BifurcationId"] >= 0] = 0
 print(f"Pressure error RRI: {compute_rmse(pressure_error_rri,0*pressure_error_rri)}")
-pressure_error_standard = (arrays_3d["Pressure"] - arrays_0d_standard["pressure"])/arrays_3d["Pressure"]
+pressure_error_standard = (arrays_0d_standard["pressure"] - arrays_3d["Pressure"])/arrays_3d["Pressure"]
 pressure_error_standard[arrays_3d["BifurcationId"] >= 0] = 0
 pressure_error = (arrays_3d["Pressure"] - arrays_3d_200["Pressure"])/arrays_3d["Pressure"]
 print(f"Pressure error standard: {compute_rmse(pressure_error_standard,0*pressure_error_standard)}")

@@ -34,8 +34,8 @@ def get_jax_arrays(anatomy, set_type, unsteady = True):
                             jnp.asarray(char_val_dict["daughter2_flow"], dtype=jnp.float32),
                             ), axis = -1)
     
-    dPs = jnp.stack((jnp.asarray(char_val_dict["daughter1_dP"], dtype=jnp.float32),
-                            jnp.asarray(char_val_dict["daughter2_dP"], dtype=jnp.float32),
+    dPs = jnp.stack((jnp.asarray(char_val_dict["daughter1_dP_total"], dtype=jnp.float32),
+                            jnp.asarray(char_val_dict["daughter2_dP_total"], dtype=jnp.float32),
                             ), axis = -1)
     
     if not os.path.exists(f"data/jax_arrays"):

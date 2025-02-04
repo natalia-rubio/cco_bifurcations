@@ -10,11 +10,11 @@ import jax.numpy as jnp
 from util.neural_net.nn_model import NeuralNet, predict
 
 
-anatomy = "CCO_80"
+anatomy = "angles_CCO"
 set_type = "random"
 
 scaling_dict = load_dict(f"data/scaling_dictionaries/{anatomy}_{set_type}_scaling_dict")
-model_name = "CCO_80_ng_120_nl_1_lw_4_ne_2000_bs_10_dr_0.9_model"
+model_name = "angles_CCO_ng_222_nl_1_lw_50_ne_2000_bs_10_dr_0.9_model"
 nn_model = dill_load(f"results/models/{anatomy}/{model_name}")
 
 re_char = 4500
@@ -235,5 +235,5 @@ axs_star[3, 1].set_xlabel("Daughter 2 Angle")
 axs_star[3, 1].set_ylabel("R_quad^*")
 axs_star[2, 1].set_ylabel("R_lin^*")
 
-fig.savefig("results/models/CCO_80_RRI_vs_input.png")
-fig_star.savefig("results/models/CCO_80_RRI_star_vs_input.png")
+fig.savefig(f"results/models/{anatomy}_RRI_vs_input.png")
+fig_star.savefig(f"results/models/{anatomy}_star_vs_input.png")

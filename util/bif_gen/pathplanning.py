@@ -4,7 +4,8 @@ import os
 import platform
 import numpy as np
 import pickle
-
+import pdb
+from check_for_intersect_gpt import check_3d_curve_intersection
 def save_dict(di_, filename_):
     with open(filename_, 'wb') as f:
         pickle.dump(di_, f)
@@ -86,10 +87,13 @@ def get_contours(geo_params):
 
     
     # Adjust radius 1
+    # for point in range(intersection_pt_ind):
+    #     radii1[point] = radii1[0]
     radius1_multiplier = np.sqrt(geo_params["daughter1_area_ratio"]) * radii1[inlet_pt_ind]/radii1[daughter1_pt_ind]
     print(radius1_multiplier)
     for point in range(radii1.shape[0]-intersection_pt_ind):
         radii1[point+intersection_pt_ind] = radii1[point+intersection_pt_ind] * radius1_multiplier
+    #radii1[intersection_pt_ind-5:intersection_pt_ind+5] = radii1[intersection_pt_ind] * (1+np.sin(new_angle1))
 
     radius2_multiplier = np.sqrt(geo_params["daughter2_area_ratio"]) * radii1[inlet_pt_ind]/radii2[daughter2_pt_ind]
     print(radius2_multiplier)
@@ -101,8 +105,10 @@ def get_contours(geo_params):
     contour1 = contour1 - h_shift
     contour2 = contour2 - h_shift
 
-    y_shift = 0*radii1[-1]*np.sin(new_angle1) * inlet_ref1/np.linalg.norm(inlet_ref1)
+    y_shift = 1*radii1[-1]*np.sin(new_angle1) * (1+np.sin(new_angle1))* inlet_ref1/np.linalg.norm(inlet_ref1)
+    x_shift = 1*(radii1[0]-radii1[-1]) * seg1/np.linalg.norm(seg1)
     contour1[intersection_pt_ind:,:] = contour1[intersection_pt_ind:,:] + y_shift
+    contour1[intersection_pt_ind:,:] = contour1[intersection_pt_ind:,:] + x_shift
     contour2 = contour2 + y_shift
 
     path_1 = pathplanning.Path()
@@ -126,27 +132,56 @@ def get_contours(geo_params):
     contour_polydata_list_1 = []
 
     v1_start_ind = intersection_pt_ind + 0
-    for i in range(intersection_pt_ind-3):
-        if i%5 != 0:
-            continue
-        contour_set_1.append(segmentation.Circle(radii1[i],center=list(contour1[i,:]), normal=path_1.get_curve_tangent(curve_points1.index(point_list1[i]))))
-        contour_polydata_list_1.append(contour_set_1[-1].get_polydata())
-
-    norm1 = np.asarray(path_1.get_curve_tangent(curve_points1.index(point_list1[0])))
-    norm2 = np.asarray(path_1.get_curve_tangent(curve_points1.index(point_list1[-1])))
-    contour_set_1.append(segmentation.Circle(0.5*(radii1[0] + radii1[0]),
-                                             center=list((contour1[intersection_pt_ind,:] + contour1[v1_start_ind+3,:])/2), 
-                                             normal=list((norm1 + norm2)/2)
-                                                                             ))
-    contour_polydata_list_1.append(contour_set_1[-1].get_polydata())
-
-    for i in range(v1_start_ind + 5, len(radii1)):
-        if i%5 != 0:
-            continue
-        contour_set_1.append(segmentation.Circle(radii1[i],center=list(contour1[i,:]), normal=path_1.get_curve_tangent(curve_points1.index(point_list1[i]))))
-        contour_polydata_list_1.append(contour_set_1[-1].get_polydata())
+    for i in range(len(radii1)):#(intersection_pt_ind):
         if i%3 != 0:
             continue
+        #import pdb; pdb.set_trace()
+        contour = segmentation.Circle(radii1[i],center=list(contour1[i,:]), normal=path_1.get_curve_tangent(curve_points1.index(point_list1[i])))
+        
+
+        if i > 0:
+            #pdb.set_trace()
+            if check_3d_curve_intersection(contour.get_points(), contour_set_1[-1].get_points()):
+                print("Intersection detected")
+                #pdb.set_trace()
+                continue
+
+            # isect = vtk.vtkIntersectionPolyDataFilter()
+            # isect.ComputeIntersectionPointArrayOn()
+            # isect.SetInputData(0,polydata)
+            # isect.SetInputData(1,polydata)
+            # #isect.SetInputData(1,contour_polydata_list_1[-1])
+            # isect.Update()
+            # isect_pts = isect.GetNumberOfIntersectionPoints()
+            # isect_lines = isect.GetNumberOfIntersectionLines()
+            # print(isect_pts, isect_lines)
+            # pdb.set_trace()
+
+            # if isect_pts > 0 or isect_lines > 0:
+            #     print("Intersection detected")
+            #     continue
+            #     #pdb.set_trace()
+        polydata = contour.get_polydata()
+        contour_set_1.append(contour)
+        contour_polydata_list_1.append(polydata)
+    # norm1 = np.asarray(path_1.get_curve_tangent(curve_points1.index(point_list1[0])))
+    # norm2 = np.asarray(path_1.get_curve_tangent(curve_points1.index(point_list1[-1])))
+    # # contour_set_1.append(segmentation.Circle(radii1[0],
+    # #                                          center=list((contour1[intersection_pt_ind,:] + contour1[v1_start_ind+3,:])/2), 
+    # #                                          normal=list((norm1 + norm2)/2)
+    # #                                                                          ))
+    # contour_set_1.append(segmentation.Circle(radii1[0],
+    #                                         center=list(contour2[0,:]), 
+    #                                         normal=list((norm1 + norm2)/2)
+    #                                                                         ))
+    # contour_polydata_list_1.append(contour_set_1[-1].get_polydata())
+
+    # for i in range(v1_start_ind + 0, len(radii1)):
+    #     # if i%3 != 0:
+    #     #     continue
+    #     contour_set_1.append(segmentation.Circle(radii1[i],center=list(contour1[i,:]), normal=path_1.get_curve_tangent(curve_points1.index(point_list1[i]))))
+    #     contour_polydata_list_1.append(contour_set_1[-1].get_polydata())
+
     # for i in range(len(radii1)):
     #     #contour_set_0.append(segmentation.Circle(radii1[i],center=list(contour1[i,:]), normal=list(norm1[i,:])))
     #     # if i - intersection_pt_ind < 5 and i - intersection_pt_ind > 0:

@@ -28,7 +28,7 @@ if not os.path.exists('/Users/natalia/Desktop/cco_bifurcations/data/synthetic_ju
 
 for geo_index in range(len(sampled_params_dict["daughter1_angle"])):
 
-    print("Generating geometry for CCO {:03d}".format(geo_index))
+    
 
     geo_dir = '/Users/natalia/Desktop/cco_bifurcations/data/synthetic_junctions/{}/{}/CCO_{:03d}'.format(tree_name, set_type, geo_index)
     if os.path.exists(geo_dir):
@@ -36,16 +36,17 @@ for geo_index in range(len(sampled_params_dict["daughter1_angle"])):
         continue
     else:
         os.mkdir(geo_dir)
+    print("Generating geometry for CCO {:03d}".format(geo_index))
 
     geo_params={"daughter1_angle": sampled_params_dict["daughter1_angle"][geo_index],
                 "daughter2_angle": sampled_params_dict["daughter2_angle"][geo_index],
                 "daughter1_area_ratio": sampled_params_dict["daughter1_area_ratio"][geo_index],
                 "daughter2_area_ratio": sampled_params_dict["daughter1_area_ratio"][geo_index]*sampled_params_dict["daughter12_area_ratio"][geo_index]}
     
-    geo_params={"daughter1_angle": 1.3,
-            "daughter2_angle": 0.7,
-            "daughter1_area_ratio": 0.8,
-            "daughter2_area_ratio": 0.5}
+    # geo_params={"daughter1_angle": 0.0,
+    #         "daughter2_angle": 0.2,
+    #         "daughter1_area_ratio": 0.8,
+    #         "daughter2_area_ratio": 0.5}
 
     print(geo_params) 
     daughter2_radius = np.sqrt(geo_params["daughter2_area_ratio"])*(0.28)
@@ -63,7 +64,7 @@ for geo_index in range(len(sampled_params_dict["daughter1_angle"])):
 
 
     print("Geometry {:02d} saved".format(geo_index))
-    
+    #pdb.set_trace()
 
 
 

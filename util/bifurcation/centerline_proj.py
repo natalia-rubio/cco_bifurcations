@@ -5,6 +5,7 @@ import numpy as np
 import pdb
 sys.path.append("/Users/natalia/Desktop/cco_bifurcations")
 from vtk.util.numpy_support import vtk_to_numpy as v2n
+from vtk.util.numpy_support import numpy_to_vtk as n2v
 from tqdm import tqdm
 
 from util.tools.get_bc_integrals import get_res_names
@@ -73,7 +74,12 @@ def extract_results(fpath_1d, fpath_3d, fpath_out, only_caps=False, num_time_ste
 
     reader_1d = read_geo(fpath_1d).GetOutput()
     reader_3d = read_geo(fpath_3d).GetOutput()# get all result array names
-    res_names = get_res_names(reader_3d, ['Pressure', 'Velocity'])# get point and normals from centerline
+    arrs_3d = collect_arrays(reader_3d.GetPointData())
+    energy = 0.5 * 1.06 * np.square(np.linalg.norm(arrs_3d["Velocity"],axis=1))
+    energy_arr = n2v(energy); energy_arr.SetName("Energy")
+    reader_3d.GetPointData().AddArray(energy_arr)
+
+    res_names = get_res_names(reader_3d, ['Pressure', 'Velocity', 'Energy'])# get point and normals from centerline
     points = v2n(reader_1d.GetPoints().GetData())
     normals = v2n(reader_1d.GetPointData().GetArray('CenterlineSectionNormal'))
     gid = v2n(reader_1d.GetPointData().GetArray('GlobalNodeId'))# initialize output
@@ -125,13 +131,13 @@ if __name__ == "__main__":
     #     os.makedirs(f"trees/threed_output_cent/{tree_name}")
     # extract_results(fpath_1d, fpath_3d, fpath_out, only_caps=False, num_time_steps = 50)
 
-    tree_name = "CCO_020_97824"
+    tree_name = "CCO_001"
     # fpath_1d = "data/CCO_tree/geometry/centerlines.vtp"
-    fpath_1d = f"data/synthetic_junctions/CCO_80/mesh_convergence_4/{tree_name}/centerlines/centerline.vtp"
+    fpath_1d = f"data/synthetic_junctions/angles_CCO/random/{tree_name}/centerlines/centerline.vtp"
     # fpath_3d = "data/CCO_tree/sim_3D/solution_CCO.vtu"
-    fpath_3d = f"data/synthetic_junctions/CCO_80/mesh_convergence_4/{tree_name}/solution_flow_3_100.vtu"
+    fpath_3d = f"data/synthetic_junctions/angles_CCO/random/{tree_name}/solution_flow_3_200.vtu"
     # fpath_out = "data/CCO_tree/centerline_sol.vtp"
-    fpath_out = f"data/synthetic_junctions/CCO_80/mesh_convergence_4/{tree_name}/centerline_sol.vtp"
+    fpath_out = f"data/synthetic_junctions/angles_CCO/random/{tree_name}/centerline_sol.vtp"
     if not os.path.exists(f"trees/threed_output_cent/{tree_name}"):
         os.makedirs(f"trees/threed_output_cent/{tree_name}")
     extract_results(fpath_1d, fpath_3d, fpath_out, only_caps=False, num_time_steps = 50)

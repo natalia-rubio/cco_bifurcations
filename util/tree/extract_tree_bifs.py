@@ -46,11 +46,21 @@ def extract_characteristic_values(tree_name):
                                             "daughter1_flow": [],
                                             "daughter2_flow": [],
                                             "inlet_flow": [],
+                                            "inlet_velocity": [],
+                                            "daughter1_velocity": [],
+                                            "daughter2_velocity": [],
                                             "daughter1_P": [],
                                             "daughter2_P": [],
                                             "inlet_P": [],
+                                            "daughter1_P_dyn": [],
+                                            "daughter2_P_dyn": [],
+                                            "inlet_P_dyn": [],
                                             "daughter1_dP": [],
                                             "daughter2_dP": [],
+                                            "daughter1_dP_dyn": [],
+                                            "daughter2_dP_dyn": [],
+                                            "daughter1_dP_stat": [],
+                                            "daughter2_dP_stat": [],
                                             "daughter1_angle": [],
                                             "daughter2_angle": [],
                                             "inlet_angles": [],
@@ -127,6 +137,7 @@ def extract_characteristic_values(tree_name):
             p_full = list(pressure_in_time_aug_full[max_flow_ind_full, outlet_pts])
             inlet_p_half = pressure_in_time_aug_half[max_flow_ind_half, inlet_pts]
             inlet_p_full = pressure_in_time_aug_full[max_flow_ind_full, inlet_pts]
+
 
             dp_half = list(pressure_in_time_aug_half[max_flow_ind_half, outlet_pts] - pressure_in_time_aug_half[max_flow_ind_half, inlet_pts])
             dp_full = list(pressure_in_time_aug_full[max_flow_ind_full, outlet_pts] - pressure_in_time_aug_full[max_flow_ind_full, inlet_pts])
@@ -263,14 +274,37 @@ def extract_characteristic_values(tree_name):
             else:
                 char_val_dict[anatomy]["inlet_angles"] += [inlet_angles,]
                 char_val_dict[anatomy]["outlet_angles"] += [outlet_angles,]
+
                 char_val_dict[anatomy]["daughter1_flow"] += [[0, float(flow_half[max_out_ind_half]), float(flow_full[max_out_ind_full]),]]
                 char_val_dict[anatomy]["daughter2_flow"] += [[0, float(flow_half[min_out_ind_half]), float(flow_full[min_out_ind_full]),]]
                 char_val_dict[anatomy]["inlet_flow"] += [[0, float(inlet_flow_half), float(inlet_flow_full),]]
+
+                char_val_dict[anatomy]["inlet_velocity"] += [[0, float(inlet_flow_half)/area[inlet_pts][0], float(inlet_flow_full)/area[inlet_pts][0],]]
+                char_val_dict[anatomy]["daughter1_velocity"] += [[0, float(flow_half[max_out_ind_half])/area[outlet_pts[max_out_ind_half]], 
+                                                                  float(flow_full[max_out_ind_full])/area[outlet_pts[max_out_ind_full]],]]
+                char_val_dict[anatomy]["daughter2_velocity"] += [[0, float(flow_half[min_out_ind_half])/area[outlet_pts[min_out_ind_half]], 
+                                                                  float(flow_full[min_out_ind_full])/area[outlet_pts[min_out_ind_full]],]]
+
+
                 char_val_dict[anatomy]["daughter1_P"] += [[0, float(p_half[max_out_ind_half]), float(p_full[max_out_ind_full]),]]
                 char_val_dict[anatomy]["daughter2_P"] += [[0, float(p_half[min_out_ind_half]), float(p_full[min_out_ind_full]),]]
                 char_val_dict[anatomy]["inlet_P"] += [[0, float(inlet_p_half), float(inlet_p_full),]]
                 char_val_dict[anatomy]["daughter1_dP"] += [[0, float(dp_half[max_out_ind_half]), float(dp_full[max_out_ind_full]),]]
                 char_val_dict[anatomy]["daughter2_dP"] += [[0, float(dp_half[min_out_ind_half]), float(dp_full[min_out_ind_full]),]]
+
+                char_val_dict[anatomy]["inlet_P_dyn"] += [[0.5*1.06*vel**2 for vel in char_val_dict[anatomy]["inlet_velocity"][-1]],]
+                char_val_dict[anatomy]["daughter1_P_dyn"] += [[0.5*1.06*vel**2 for vel in char_val_dict[anatomy]["daughter1_velocity"][-1]],]
+                char_val_dict[anatomy]["daughter2_P_dyn"] += [[0.5*1.06*vel**2 for vel in char_val_dict[anatomy]["daughter2_velocity"][-1]],]
+                char_val_dict[anatomy]["daughter1_dP_dyn"] += [[daughter1_P_dyn - inlet_P_dyn for daughter1_P_dyn, inlet_P_dyn in 
+                                                                zip(char_val_dict[anatomy]["daughter1_P_dyn"][-1], char_val_dict[anatomy]["inlet_P_dyn"][-1])],]
+                char_val_dict[anatomy]["daughter2_dP_dyn"] += [[daughter2_P_dyn - inlet_P_dyn for daughter2_P_dyn, inlet_P_dyn in 
+                                                                zip(char_val_dict[anatomy]["daughter2_P_dyn"][-1], char_val_dict[anatomy]["inlet_P_dyn"][-1])],]
+
+                char_val_dict[anatomy]["daughter1_dP_stat"] += [[daughter1_dP - daughter1_dP_dyn for daughter1_dP, daughter1_dP_dyn in 
+                                                                zip(char_val_dict[anatomy]["daughter1_dP"][-1], char_val_dict[anatomy]["daughter1_dP_dyn"][-1])]]
+                char_val_dict[anatomy]["daughter2_dP_stat"] += [[daughter2_dP - daughter2_dP_dyn for daughter2_dP, daughter2_dP_dyn in   
+                                                                zip(char_val_dict[anatomy]["daughter2_dP"][-1], char_val_dict[anatomy]["daughter2_dP_dyn"][-1])]]
+
 
                 char_val_dict[anatomy]["inlet_radius"] += [float(inlet_radius),]
                 char_val_dict[anatomy]["inlet_area"] += [area[inlet_pts],]
@@ -284,13 +318,13 @@ def extract_characteristic_values(tree_name):
 
                 Q1 = np.asarray(char_val_dict[anatomy]["daughter1_flow"][-1]).reshape(-1,1)
                 Q2 = np.asarray(char_val_dict[anatomy]["daughter2_flow"][-1]).reshape(-1,1)
-
-                dP1 = np.asarray(char_val_dict[anatomy]["daughter1_dP"][-1]).reshape(-1,1)
-                dP2 = np.asarray(char_val_dict[anatomy]["daughter2_dP"][-1]).reshape(-1,1)
+                #pdb.set_trace()
+                dP1 = np.asarray(char_val_dict[anatomy]["daughter1_dP_stat"][-1]).reshape(-1,1)
+                dP2 = np.asarray(char_val_dict[anatomy]["daughter2_dP_stat"][-1]).reshape(-1,1)
 
                 A_mat1 = np.hstack([Q1, np.square(Q1)])
                 A_mat2 = np.hstack([Q2, np.square(Q2)])
-
+                #
                 coefs1, residuals1, t, q = np.linalg.lstsq(A_mat1, dP1, rcond=None)
                 coefs2, residuals2, t, q = np.linalg.lstsq(A_mat2, dP2, rcond=None)
 

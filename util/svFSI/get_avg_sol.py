@@ -2,9 +2,10 @@ import vtk
 import os
 import numpy as np
 from vtk.util.numpy_support import vtk_to_numpy as v2n
+from vtk.util.numpy_support import numpy_to_vtk as n2v
 from tqdm import tqdm
 from util.get_bc_integrals import get_res_names
-from util.vtk_functions import read_geo, write_geo, calculator, cut_plane, connectivity, get_points_cells, clean, Integration
+from util.vtk_functions import read_geo, write_geo, calculator, cut_plane, connectivity, get_points_cells, clean, Integration, collect_arrays
 import util.junction_proc
 import pickle
 
@@ -211,9 +212,19 @@ def get_avg_steady_results(ss_tol,
     reader_3d = read_geo(fpath_3d).GetOutput()
     reader_3d_prev = read_geo(fpath_3d_prev).GetOutput()
 
+    arrs_3d = collect_arrays(reader_3d.GetPointData())
+    energy = 0.5 * 1.06 * np.square(np.linalg.norm(arrs_3d["Velocity"],axis=1))
+    energy_arr = n2v(energy); energy_arr.SetName("Energy")
+    reader_3d.GetPointData().AddArray(energy_arr)
 
+    arrs_3d_prev = collect_arrays(reader_3d_prev.GetPointData())
+    energy_prev = 0.5 * 1.06 * np.square(np.linalg.norm(arrs_3d_prev["Velocity"],axis=1))
+    energy_prev_arr = n2v(energy_prev); energy_prev_arr.SetName("Energy")
+    reader_3d_prev.GetPointData().AddArray(energy_prev_arr)
+
+    
     # get all result array names
-    res_names = get_res_names(reader_3d, ['Pressure', 'Velocity'])
+    res_names = get_res_names(reader_3d, ['Pressure', 'Velocity', 'Energy'])
 
     # get point and normals from centerline
     gid = v2n(reader_1d.GetPointData().GetArray('GlobalNodeId'))
@@ -245,11 +256,11 @@ def get_avg_steady_results(ss_tol,
     ids = vtk.vtkIdList()
     eps_norm = 1.0e-3
 
-
     num_time_steps = int(max_timestep)
     
     pressure_in_time =  np.zeros((2,len(pt_inds))) # initialize pressure_in_time matrix, each column is a mesh point, each row is a timestep
     flow_in_time =      np.zeros((2,len(pt_inds))) # initialize flow_in_time matrix, each column is a mesh point, each row is a timestep
+    energy_in_time =    np.zeros((2,len(pt_inds))) # initialize energy_in_time matrix, each column is a mesh point, each row is a timestep
     areas =            np.zeros((1,len(pt_inds))) # initialize area matrix, each column is a mesh point, each row is a timestep
     tangents =         np.zeros((3,len(pt_inds))) # initialize tangent matrix
     times = [int(fpath_3d.split("_")[-1][:-4]), int(fpath_3d_prev.split("_")[-1][:-4])]  # list of timesteps
@@ -286,6 +297,8 @@ def get_avg_steady_results(ss_tol,
         pressure_in_time[1, i] = integral_prev.evaluate("Pressure")  # add timestep row to pressure_in_time
         flow_in_time[0, i] = integral.evaluate("Velocity")  # add timestep row to pressure_in_time
         flow_in_time[1, i] = integral_prev.evaluate("Velocity")  # add timestep row to pressure_in_time
+        energy_in_time[0, i] = integral.evaluate("Energy")
+        energy_in_time[1, i] = integral_prev.evaluate("Energy")
         areas[0, i] = integral.area()  # add timestep row to pressure_in_time
         paths[0, i] =  path[i] # add timestep row to pressure_in_time
         tangents[:, i] = normals[i].reshape(3,)  # add timestep row to pressure_in_time
@@ -296,6 +309,8 @@ def get_avg_steady_results(ss_tol,
     print(pressure_in_time)
     print("Flow in time: ") 
     print(flow_in_time)
+    print("Dynamic Pressure in time: ")
+    print(energy_in_time)
 
     dPlast = np.abs(pressure_in_time[-1,0] - pressure_in_time[-1,[1, 2]])
     dP2last = np.abs(pressure_in_time[-2,0] - pressure_in_time[-2,[1, 2]])
@@ -311,12 +326,14 @@ def get_avg_steady_results(ss_tol,
     else:
         pressure_in_time = pressure_in_time[-1,:]
         flow_in_time = flow_in_time[-1,:]
+        energy_in_time = energy_in_time[-1,:]
         if np.abs((flow_in_time[0] - np.sum(flow_in_time[1:]))/flow_in_time[0]) > 0.05:
             print("Mass not conserved!")
             conv = False
 
     res_dict = {"flow_in_time": flow_in_time,
                 "pressure_in_time": pressure_in_time,
+                "energy_in_time": energy_in_time,
                 "areas": areas,
                 "tangents": tangents,
                 "times" : times,
