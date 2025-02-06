@@ -22,9 +22,9 @@ A_char = 0.25
 U_char = re_char * 0.04 / (1.06 * 2*np.sqrt(A_char/np.pi))
 
 daughter1_area_ratio_default = 0.8
-daughter2_area_ratio_default = 0.8
+daughter2_area_ratio_default = 0.6
 daughter1_angle_default = 0.85
-daughter2_angle_default = 1.5
+daughter2_angle_default = 1.1
 
 n_pts = 100
 daughter1_area_ratio_arr = np.linspace(0.4, 1.2, n_pts)
