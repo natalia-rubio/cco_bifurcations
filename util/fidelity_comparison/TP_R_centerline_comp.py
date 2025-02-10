@@ -66,6 +66,30 @@ array.SetName("TP_R_flow_error")
 array.SetNumberOfValues(reader_3d.GetNumberOfPoints())
 reader_3d.GetPointData().AddArray(array) 
 
+pressure_TP_R[arrays_3d["BifurcationId"] >= 0] = 0
+array = n2v(pressure_TP_R)
+array.SetName("TP_R_pressure")
+array.SetNumberOfValues(reader_3d.GetNumberOfPoints())
+reader_3d.GetPointData().AddArray(array) 
+
+flow_TP_R[arrays_3d["BifurcationId"] >= 0] = 0
+array = n2v(flow_TP_R)
+array.SetName("TP_R_flow")
+array.SetNumberOfValues(reader_3d.GetNumberOfPoints())
+reader_3d.GetPointData().AddArray(array) 
+
+pressure_3d[arrays_3d["BifurcationId"] >= 0] = 0
+array = n2v(pressure_3d)
+array.SetName("Pressure_3d")
+array.SetNumberOfValues(reader_3d.GetNumberOfPoints())
+reader_3d.GetPointData().AddArray(array) 
+
+flow_3d[arrays_3d["BifurcationId"] >= 0] = 0
+array = n2v(flow_3d)
+array.SetName("Flow_3d")
+array.SetNumberOfValues(reader_3d.GetNumberOfPoints())
+reader_3d.GetPointData().AddArray(array)
+
 re = 1.06*(flow_3d/arrays_3d["area"])*(2*np.sqrt(arrays_3d["area"]/np.pi))/0.04
 re[arrays_3d["BifurcationId"] >= 0] = 0
 array = n2v(re)
@@ -81,7 +105,7 @@ array.SetNumberOfValues(reader_3d.GetNumberOfPoints())
 reader_3d.GetPointData().AddArray(array) 
 
 
-write_geo(f"trees/threed_output_cent/{tree_name}/centerline_sol_aug_tp.vtp", reader_3d)
+write_geo(f"trees/threed_output_cent/{tree_name}/centerline_sol_aug_tp_r.vtp", reader_3d)
 
 minid = np.argmin(arrays_3d["GlobalNodeId"])
 inlet_area = arrays_3d["area"][minid]

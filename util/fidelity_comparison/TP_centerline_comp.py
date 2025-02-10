@@ -66,6 +66,16 @@ array.SetName("TP_flow_error")
 array.SetNumberOfValues(reader_3d.GetNumberOfPoints())
 reader_3d.GetPointData().AddArray(array) 
 
+array = n2v(flow_TP)
+array.SetName("TP_flow")
+array.SetNumberOfValues(reader_3d.GetNumberOfPoints())
+reader_3d.GetPointData().AddArray(array) 
+
+array = n2v(pressure_TP)
+array.SetName("TP_pressure")
+array.SetNumberOfValues(reader_3d.GetNumberOfPoints())
+reader_3d.GetPointData().AddArray(array) 
+
 re = 1.06*(flow_3d/arrays_3d["area"])*(2*np.sqrt(arrays_3d["area"]/np.pi))/0.04
 re[arrays_3d["BifurcationId"] >= 0] = 0
 array = n2v(re)

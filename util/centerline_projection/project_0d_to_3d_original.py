@@ -31,14 +31,12 @@ def convert_csv_to_branch_result(
         for field in ["flow", "pressure"]:
             if seg == 0:
                 out[field][br] = [
-                    list(df[df.name == name][field + "_in"])[-1:]
+                    list(df[df.name == name][field + "_in"])[0:1]
                 ]
             out[field][br] += [
-                list(df[df.name == name][field + "_out"])[-1:]
+                list(df[df.name == name][field + "_out"])[0:1]
             ]
-            #pdb.set_trace()
-        out["time"] = list(df[df.name == name]["time"])[-1:]
-        
+        out["time"] = list(df[df.name == name]["time"])[0:1]
 
         # add path distance
         for vessel in zerod_handler.data["vessels"]:
@@ -62,14 +60,13 @@ def convert_csv_to_branch_result(
 def project_to_centerline(tree_name, junction_mode):
 
     centerline_handler = CenterlineHandler.from_file("trees/geo_files/" + tree_name + "/centerlines/centerlines.vtp")
-    zerod_handler = SvZeroDSolverInputHandler.from_file(f"trees/zerod_input_{junction_mode}/" + tree_name + "/solver_0d.json")
-    
+    zerod_handler = SvZeroDSolverInputHandler.from_file("trees/zerod_input_standard/" + tree_name + "/solver_0d.json")
     zerod_handler.update_simparams(last_cycle_only=True)
 
     zerod_solver = pysvzerod.Solver(f"trees/zerod_input_{junction_mode}/" + tree_name + "/solver_0d.json")
     zerod_solver.run()
     results_df = zerod_solver.get_full_result()
-    #pdb.set_trace()
+
     branch_results = convert_csv_to_branch_result(results_df, zerod_handler)
     arrays = rec_dd()
 
@@ -93,7 +90,7 @@ def project_to_centerline(tree_name, junction_mode):
         ids_rom = list(branch_results[f].keys())
         ids_rom.sort()
         assert (
-            all(x in ids_rom for x in ids_cent)
+            ids_cent == ids_rom
         ), "Centerline and ROM branch_results have different branch ids"
 
         # initialize output arrays
@@ -102,8 +99,6 @@ def project_to_centerline(tree_name, junction_mode):
 
         # loop all branches
         for br in branch_results[f].keys():
-            if br not in ids_cent:
-                continue
             # branch_results of this branch
             res_br = branch_results[f][br]
 
@@ -113,7 +108,6 @@ def project_to_centerline(tree_name, junction_mode):
             # get node locations from 0D branch_results
             path_1d_res = branch_results["distance"][br]
             f_res = res_br
-            #pdb.set_trace()
 
             # interpolate ROM onto centerline
             # limit to interval [0,1] to avoid extrapolation error interp1d

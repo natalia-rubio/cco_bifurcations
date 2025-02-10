@@ -55,43 +55,71 @@ if __name__ == "__main__":
     r_quad_list = []
     areas_list = []
 
-    inds = []
+    # Get the maximum vessel ID
+    max_vessel_id = 0
+    for vessel in input_file["vessels"]:
+        max_vessel_id = max(max_vessel_id, vessel["vessel_id"])
+
+    max_junction_id = 0
     for junction in input_file["junctions"]:
+        junction_id = int(junction["junction_name"][1:])
+        max_junction_id = max(max_junction_id, junction_id)
+
+    inds = []
+    new_junction_list = []
+    for junction in input_file["junctions"]:
+        original_inlet_vessel_id = copy.copy(junction["inlet_vessels"][0])
+        junction_name = junction["junction_name"]
+        assert len(junction["inlet_vessels"]) == 1; "Junction with more than one inlet vessel."
+
         if len(junction["outlet_vessels"]) == 1:
             continue
-
         r_lin = [0,]
         for i in range(len(junction["outlet_vessels"])-1):
             R_vals = get_R_values_bif([junction["areas"][0], junction["areas"][1], junction["areas"][i+1]], 
                                       [junction["tangents"][0], junction["tangents"][1], junction["tangents"][i+1]])
-            r_lin[0] += R_vals[0]
+            r_lin[0] += R_vals[0]/(len(junction["outlet_vessels"])-1)
             r_lin.append(R_vals[1])
 
         L = [0 * area for area in junction["areas"][1:]]
         inlet_area = junction["areas"][0]
-        r_quad = [1.06 * 0.5 * (outlet_area**(-2) - inlet_area**(-2)) for outlet_area in junction["areas"][1:]]
+        r_quad = [1.06 * 0.5 * outlet_area**(-2) for outlet_area in junction["areas"][1:]]
             
         junction["junction_type"] = "BloodVesselJunction"
         junction["junction_values"] = {"R_poiseuille": r_lin, 
                             "stenosis_coefficient": r_quad,
                             "L": L,}
         
-    plt.clf()
-    fig, axs = plt.subplots(2, 2)
-    axs[0, 0].scatter(areas_list[0::2], r_lin_list[0::2])
-    axs[0, 0].set_title('Daughter 1')
-    axs[0, 0].set_ylabel('R_lin')
-    axs[0,1].scatter(areas_list[1::2], r_lin_list[1::2])
-    axs[0,1].set_title('Daughter 2')
-    axs[1,0].scatter(areas_list[0::2], r_quad_list[0::2])
-    axs[1,0].set_ylabel('R_quad')
-    axs[1,0].set_xlabel('Area')
-    axs[1,1].scatter(areas_list[1::2], r_quad_list[1::2])
-    axs[1,1].set_xlabel('Area')
-    fig.savefig(f"results/CCO_hist_{tree_name}/RRI_values.png", bbox_inches='tight', transparent=False, format = "png")
+        # Add inlet resistor vessel
+        new_vessel_id = max_vessel_id + 1
+        inlet_vessel_dict = {'vessel_id': new_vessel_id, 
+                       'vessel_length': 0, 
+                       'vessel_name':  f'branch{new_vessel_id}_seg0', 
+                       'zero_d_element_type': 'BloodVessel', 
+                       'zero_d_element_values': {'C': 0, 'L': 0, 'R_poiseuille': 0, 'stenosis_coefficient': -1.06 * 0.5 * inlet_area**(-2)}}
+        input_file["vessels"].append(inlet_vessel_dict)
+        max_vessel_id += 1
+        junction["inlet_vessels"] = [new_vessel_id]
 
+        # Add a junction to connect the inlet vessel to the bifurcation
+        new_junction_id = max_junction_id + 1
+        inlet_vessel_2_bif_connector = {'inlet_vessels': [original_inlet_vessel_id], 
+                               'junction_name': f"J{new_junction_id}", 
+                               'junction_type': 'NORMAL_JUNCTION', 
+                               'outlet_vessels': [new_vessel_id]}
+        max_junction_id += 1
+        new_junction_list.append(inlet_vessel_2_bif_connector)
+        #pdb.set_trace()
+
+    input_file["junctions"] += new_junction_list
+    input_file["boundary_conditions"][0]["bc_values"]["Q"] = list(np.linspace(0, 340, 40)) + 200 * [340,]
+    input_file["boundary_conditions"][0]["bc_values"]["t"] = list(np.linspace(0, 100, 240))
+    input_file["simulation_parameters"]["number_of_cardiac_cycles"] = 1
+    input_file["simulation_parameters"]["number_of_time_pts_per_cardiac_cycle"] = 240
+    input_file["simulation_parameters"]["steady_initial"] = True
+    
     if not os.path.exists(f'trees/zerod_input_TP_R/{tree_name}'):
         os.makedirs(f'trees/zerod_input_TP_R/{tree_name}')
     with open(f'trees/zerod_input_TP_R/{tree_name}/solver_0d.json', 'w') as fp:
-        json.dump(input_file, fp)
+        json.dump(input_file, indent = 4, fp = fp)
     print(f"RRI 0D input file saved to trees/zerod_input_TP_R/{tree_name}/solver_0d.json")

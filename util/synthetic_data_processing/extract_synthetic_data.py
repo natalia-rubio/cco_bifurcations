@@ -81,11 +81,15 @@ def extract_steady_flow_data(anatomy, set_type, require4):
                 # daughter1_dP_total.append(soln_dict["pressure_in_time"][1]+soln_dict["energy_in_time"][1] - (soln_dict["pressure_in_time"][0]+soln_dict["energy_in_time"][0]))
                 # daughter2_dP_total.append(soln_dict["pressure_in_time"][2]+soln_dict["energy_in_time"][2] - (soln_dict["pressure_in_time"][0]+soln_dict["energy_in_time"][0]))
                 daughter1_dP_total.append(soln_dict["pressure_in_time"][1] - soln_dict["pressure_in_time"][0] - 
-                                          0.5*1.06*(4/3)*(inlet_velocity[-1]**(2) - daughter1_velocity[-1]**(2)))
-                daughter2_dP_total.append(soln_dict["pressure_in_time"][2] - soln_dict["pressure_in_time"][0] + 
-                                          0.5*1.06*(4/3)*(inlet_velocity[-1]**(2) - daughter2_velocity[-1]**(2)))
+                                          0.5*1.06*(inlet_velocity[-1]**(2) - daughter1_velocity[-1]**(2)))
+                daughter2_dP_total.append(soln_dict["pressure_in_time"][2] - soln_dict["pressure_in_time"][0] -
+                                          0.5*1.06*(inlet_velocity[-1]**(2) - daughter2_velocity[-1]**(2)))
+                
+                if daughter1_dP_total[-1] > 0 or daughter2_dP_total[-1] > 0:
+                    print(f"Total pressure increase for {geo}, flow {i}.")
+                    #pdb.set_trace()
 
-                pdb.set_trace()
+                
                 assert len(daughter1_dPs) == len(daughter1_flows); "Lengths of daughter1_dPs and daughter1_flows do not match."
                 assert len(daughter2_dPs) == len(daughter2_flows); "Lengths of daughter2_dPs and daughter2_flows do not match."
                 # if geo == "CCO_221":
@@ -131,8 +135,8 @@ def extract_steady_flow_data(anatomy, set_type, require4):
         CCO_params_dict["daughter1_dP"].append([daughter1_dP + poiseulle_res_1*daughter1_flow for daughter1_dP, daughter1_flow in zip(daughter1_dPs, daughter1_flows)])
         CCO_params_dict["daughter2_dP"].append([daughter2_dP + poiseulle_res_2*daughter2_flow for daughter2_dP, daughter2_flow in zip(daughter2_dPs, daughter2_flows)])
 
-        CCO_params_dict["daughter1_dP_total"].append([daughter1_dP_total + 0*poiseulle_res_1*flow for daughter1_dP_total, flow in zip(daughter1_dP_total, daughter1_flows)])
-        CCO_params_dict["daughter2_dP_total"].append([daughter2_dP_total + 0*poiseulle_res_2*flow for daughter2_dP_total, flow in zip(daughter2_dP_total, daughter2_flows)])
+        CCO_params_dict["daughter1_dP_total"].append([daughter1_dP_total + poiseulle_res_1*flow for daughter1_dP_total, flow in zip(daughter1_dP_total, daughter1_flows)])
+        CCO_params_dict["daughter2_dP_total"].append([daughter2_dP_total + poiseulle_res_2*flow for daughter2_dP_total, flow in zip(daughter2_dP_total, daughter2_flows)])
 
         # # CCO_params_dict["daughter1_P_dyn"].append([0.5*1.06*daughter1_velocity**2 for daughter1_velocity in CCO_params_dict["daughter1_velocity"][-1]])
         # # CCO_params_dict["daughter2_P_dyn"].append([0.5*1.06*daughter2_velocity**2 for daughter2_velocity in CCO_params_dict["daughter2_velocity"][-1]])
