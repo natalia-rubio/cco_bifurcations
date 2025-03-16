@@ -1,4 +1,5 @@
 import os
+import sys
 import numpy as np
 
 def write_standard0d_input_generator_file(tree_dict):
@@ -34,7 +35,7 @@ material = params.WallProperties.OlufsenMaterial()\n\
 \n\
 ## Set boundary conditions.\n\
 bcs = params.BoundaryConditions()\n\
-bcs.add_velocities(face_name='{tree_dict['inlet_cap']}', file_name='trees/standard0d_input_file_generators/{tree_dict['tree_name']}_inflow_0D.flow')\n"
+bcs.add_velocities(face_name='{tree_dict['inlet_cap']}', file_name='trees/standard0d_input_file_generators/{tree_dict['tree_name']}_{tree_dict['flow_amp']}_inflow_0D.flow')\n"
 
    for outlet_cap in tree_dict['outlet_cap_list']:
       input_file += f"bcs.add_resistance(face_name='{outlet_cap}', resistance=61.56)\n"
@@ -44,14 +45,14 @@ solution_params.time_step = {tree_dict['dt']}\n\
 solution_params.num_time_steps = {tree_dict['num_time_steps']}\n\
 \n\
 ## Write a 1D solver input file.\n\
-output_dir = str('trees/zerod_input_standard/' + '{tree_dict['tree_name']}')\n\
+output_dir = str('trees/zerod_input_standard/' + '{tree_dict['tree_name']}_{tree_dict['flow_amp']}')\n\
 if not os.path.exists(output_dir):\n\
       os.makedirs(output_dir)\n\
 rom_simulation.write_input_file(model_order=0, model=model_params, mesh=mesh_params, fluid=fluid_props, material=material, boundary_conditions=bcs, solution=solution_params, directory=output_dir)"
 
    if not os.path.exists(f"trees/standard0d_input_file_generators"):
       os.makedirs(f"trees/standard0d_input_file_generators")
-   f = open(f"trees/standard0d_input_file_generators/{tree_dict["tree_name"]}_standard0d_input_file_generator.py", "w")
+   f = open(f"trees/standard0d_input_file_generators/{tree_dict["tree_name"]}_{tree_dict["flow_amp"]}_standard0d_input_file_generator.py", "w")
    f.write(input_file)
    f.close()
 
@@ -63,13 +64,23 @@ rom_simulation.write_input_file(model_order=0, model=model_params, mesh=mesh_par
       #    q[i] = i * 344.655 / (t.size/2)
       # else:
       #    q[i] = 1 * 344.655
-      q[i] = 1 * 344.655
+      q[i] = 1 * tree_dict["inflow"]
 
       flow = flow + "%1.5f    %1.3f\n" %(i*tree_dict["dt"], q[i])
-   f = open(f"trees/standard0d_input_file_generators/{tree_dict["tree_name"]}_inflow_0D.flow", "w")
+   f = open(f"trees/standard0d_input_file_generators/{tree_dict["tree_name"]}_{tree_dict['flow_amp']}_inflow_0D.flow", "w")
    f.write(flow)
    f.close()
    return
+
+flow_amp = sys.argv[1]
+
+if flow_amp == "half":
+   inflow = 169.51457903373378
+elif flow_amp == "full":
+   inflow = 339.029
+else:
+   print("Invalid flow amplitude.  should be 'half' or 'full'")
+   sys.exit()
 
 inlet_cap = "cap_" + os.listdir(f'trees/geo_files/tree_80/mesh-complete/inlet_cap')[0]+".vtp"
 caps = os.listdir(f"trees/geo_files/tree_80/mesh-complete/mesh-surfaces")
@@ -85,11 +96,13 @@ tree_dict = {"tree_name": tree_name,
              "inlet_cap": inlet_cap, 
              "outlet_cap_list": outlet_caps,
              "num_time_steps": 10,
-             "dt": 0.1}
+             "dt": 0.1,
+             "inflow": inflow,
+             "flow_amp": flow_amp}
 
 write_standard0d_input_generator_file(tree_dict)
-os.system(f"/Applications/SimVascular.app/Contents/Resources/simvascular --python -- trees/standard0d_input_file_generators/{tree_name}_standard0d_input_file_generator.py")
-os.system(f"sed -i -e 's/internal_junction/NORMAL_JUNCTION/g' trees/zerod_input_standard/{tree_name}/solver_0d.json")
+os.system(f"/Applications/SimVascular.app/Contents/Resources/simvascular --python -- trees/standard0d_input_file_generators/{tree_name}_{tree_dict['flow_amp']}_standard0d_input_file_generator.py")
+os.system(f"sed -i -e 's/internal_junction/NORMAL_JUNCTION/g' trees/zerod_input_standard/{tree_name}_{tree_dict['flow_amp']}/solver_0d.json")
 
 
 # os.system(f"/Users/natalia/Desktop/svZeroDPlus/Release/svzerodsolver trees/zerod_input_standard/{tree_name}/solver_0d.json trees/zerod_output_standard/{tree_name}_out.csv")

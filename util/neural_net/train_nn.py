@@ -22,6 +22,13 @@ def train_nn(model, training_params):
     train_mag = jnp.sqrt(jnp.mean(jnp.square((model.data_dict["dPs"][training_params["train_inds"],:,:])/1333)))
     val_mag = jnp.sqrt(jnp.mean(jnp.square((model.data_dict["dPs"][training_params["val_inds"],:,:])/1333)))
     
+    # train_coef_loss = coef_loss(output = model.data_dict["output"][0:1,:],
+    #         flow =  model.data_dict["flows"][0:1,:,:],
+    #         dP_true = model.data_dict["dPs"][0:1,:,:],
+    #         scaling_factors = model.data_dict["scaling_factors"][0:1,:],
+    #         scaling_dict = model.scaling_dict)
+    # pdb.set_trace()
+    
     train_coef_loss = coef_loss(output = model.data_dict["output"][training_params["train_inds"],:],
                 flow =  model.data_dict["flows"][training_params["train_inds"],:,:],
                 dP_true = model.data_dict["dPs"][training_params["train_inds"],:,:],

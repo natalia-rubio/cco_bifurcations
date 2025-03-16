@@ -39,16 +39,20 @@ def plot_centerline_values(tree_name):
         ax[0].plot(branch_dict[branch_id]["path"], branch_dict[branch_id]["area"], color = colors[branch_id], label=f"Branch {branch_id}")
         ax[1].plot(branch_dict[branch_id]["path"], branch_dict[branch_id]["flow"], colors[branch_id], label=f"Branch {branch_id}")
         ax[2].plot(branch_dict[branch_id]["path"], branch_dict[branch_id]["pressure"], colors[branch_id], label=f"Branch {branch_id}")
-        ax[3].plot(branch_dict[branch_id]["path"], (branch_dict[branch_id]["pressure"]+branch_dict[branch_id]["energy"]), colors[branch_id], label=f"Branch {branch_id}")
+        ax[3].plot(branch_dict[branch_id]["path"], ((branch_dict[branch_id]["pressure"]+branch_dict[branch_id]["energy"])* \
+                                                    branch_dict[branch_id]["flow"][10]), colors[branch_id], label=f"Branch {branch_id}")
         ax[4].plot(branch_dict[branch_id]["path"], branch_dict[branch_id]["energy"], colors[branch_id], label=f"Branch {branch_id}")
         if branch_id > 0:
             ax[1].vlines(branch_dict[branch_id]["path"][offset], np.min(branch_dict[2]["flow"]), np.max(branch_dict[0]["flow"]), color = colors[branch_id])
             ax[2].vlines(branch_dict[branch_id]["path"][offset], np.min(branch_dict[2]["pressure"]), np.max(branch_dict[0]["pressure"]), color = colors[branch_id])
 
     ax[1].plot(branch_dict[2]["path"][0:min_branch_length], branch_dict[2]["flow"][0:min_branch_length]+branch_dict[1]["flow"][0:min_branch_length], "--", color="black", label="Total Flow")
+    # ax[3].plot(branch_dict[0]["path"], 
+    #         branch_dict[1]["total_pressure"][0:min_branch_length]*branch_dict[1]["flow"][0:min_branch_length]/branch_dict[0]["flow"][10], 
+    #         "--", color="black")
     ax[3].plot(branch_dict[2]["path"][0:min_branch_length], 
-               branch_dict[1]["total_pressure"][0:min_branch_length]*branch_dict[1]["flow"][0:min_branch_length]/branch_dict[0]["flow"][10] +
-               branch_dict[2]["total_pressure"][0:min_branch_length]*branch_dict[2]["flow"][0:min_branch_length]/branch_dict[0]["flow"][10], 
+               branch_dict[1]["total_pressure"][0:min_branch_length]*branch_dict[1]["flow"][0:min_branch_length] +
+               branch_dict[2]["total_pressure"][0:min_branch_length]*branch_dict[2]["flow"][0:min_branch_length], 
                "--", color="black", label="Total Pressure Weighted by Flow")
 
     ax[0].set_title(f"Centerline Values for {tree_name}")
@@ -67,6 +71,6 @@ def plot_centerline_values(tree_name):
 
 
 
-plot_centerline_values("CCO_221")
+plot_centerline_values("CCO_021")
 # plot_centerline_values("CCO_020_32706")
 # plot_centerline_values("CCO_020_48766")

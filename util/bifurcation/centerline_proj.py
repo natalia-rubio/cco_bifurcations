@@ -131,7 +131,7 @@ if __name__ == "__main__":
     #     os.makedirs(f"trees/threed_output_cent/{tree_name}")
     # extract_results(fpath_1d, fpath_3d, fpath_out, only_caps=False, num_time_steps = 50)
 
-    tree_name = "CCO_001"
+    tree_name = "CCO_021"
     # fpath_1d = "data/CCO_tree/geometry/centerlines.vtp"
     fpath_1d = f"data/synthetic_junctions/angles_CCO/random/{tree_name}/centerlines/centerline.vtp"
     # fpath_3d = "data/CCO_tree/sim_3D/solution_CCO.vtu"

@@ -111,7 +111,9 @@ def load_centerline_data(fpath_1d):
     angle1 = direction[0,:].reshape(-1,)
     angle2 = direction[1,:].reshape(-1,)
     angle3 = direction[2,:].reshape(-1,)
-    return pt_id, num_pts, branch_id, junction_id, area, angle1, angle2, angle3, path
+    #reader_cent = read_centerline(fpath_1d)
+    points = v2n(cent.GetPoints().GetData())
+    return pt_id, num_pts, branch_id, junction_id, area, angle1, angle2, angle3, path, points
 
 def identify_junctions(junction_id, branch_id, pt_id):
     junction_ids = np.linspace(0,max(junction_id),max(junction_id)+1).astype(int)
@@ -176,6 +178,77 @@ def identify_junctions_offset(junction_id, branch_id, pt_id, path, offset):
         #assert i == 0, "There should only be one junction,"
     return junction_dict, offsets, branch_pts_junc
 
+def identify_junctions_percent_offset(junction_id, branch_id, pt_id, path, points, percent_offset):
+    junction_ids = np.linspace(0,max(junction_id),max(junction_id)+1).astype(int)
+    branch_ids = np.linspace(0,max(branch_id),max(branch_id)+1).astype(int)
+    junction_dict = {}
+    for i in junction_ids:
+
+        junction_pts = pt_id[junction_id == i] # find all points in junction
+        junction_points = points[junction_id == i, :] # find all points in junction
+        branch_pts_junc = [] # inlet and outlet point ids of junction
+        branch_ids_junc = [] # branch ids of junction
+        branch_pts_offset = []
+        branch_lengths = []
+        junction_lengths = []
+        total_lengths = []
+
+        base_branch = branch_id[pt_id == min(junction_pts)-1]
+        base_branch_pts = pt_id[branch_id == base_branch]
+
+        branch_pts_junc.append(max([min(junction_pts)-1, min(base_branch_pts)])) # find "inlet" of junction (point with smallest Id)
+        branch_pts_offset.append(max([min(junction_pts)-1, min(base_branch_pts)])) # find "inlet" of junction (point with smallest Id)
+        branch_ids_junc.append(branch_id[pt_id == min(junction_pts)-1][0]) # find the branch to which the inlet belongs
+
+        branch_counter = 1 # initialize counter for the number of branches
+        # loop over all branches in model
+        for j in branch_ids:
+            branch_pts = pt_id[branch_id == j] # find points belonging to branch
+            shared_pts = np.intersect1d(junction_pts+1, branch_pts) # find points adjacent to the junction
+            # if there is an adjacent point
+            if len(shared_pts) != 0 and j not in branch_ids_junc : # if there is a shared point in the branch
+                branch_counter = branch_counter + 1 # increment branch counter
+                branch_ids_junc.append(j.astype(int)) # add outlet branch Id to outlet branch array
+                branch_pt_junc = min([min(branch_pts).astype(int), max(branch_pts)])
+                branch_point_junc = points[pt_id == branch_pt_junc, :]
+                num_branch_pts = len(branch_pts)
+                branch_pt_offset = min([min(branch_pts).astype(int), max(branch_pts)])+int(percent_offset*(num_branch_pts-1))
+                branch_pts_junc.append(branch_pt_junc) # add outlet point Id to outlet point array
+                branch_pts_offset.append(branch_pt_offset)
+                #print("calculating branch length")
+                branch_length = path[pt_id == branch_pt_offset]- path[pt_id == branch_pt_junc]
+                branch_lengths.append(branch_length)
+
+                if len(junction_lengths) == 0:
+                    junction_path_start = 0
+                else:
+                    junction_path_start = junction_lengths[-1]
+                #print("calculating junction length")
+                # import pdb; pdb.set_trace()
+                junction_end_pt_id = junction_pts[np.argmin(np.linalg.norm(junction_points - branch_point_junc, axis=1))]
+                #print("junction_end_pt_id", junction_end_pt_id)
+                junction_path_end = path[pt_id == junction_end_pt_id]
+                #print("junction_path_end", junction_path_end)
+                junction_length = junction_path_end - junction_path_start
+                #print("junction_length", junction_length)
+                junction_lengths.append(junction_length)
+   
+                total_lengths.append(junction_length + branch_length)
+        #print("asserting")
+        assert len(branch_pts_junc) - 1 == len(junction_lengths), "branch_pts should have one more entry than junction_lengths"
+        assert len(branch_pts_junc)     == len(branch_pts_offset), "branch_pts and branch_pts_offset should have the same length"
+        assert len(junction_lengths)    == len(branch_lengths), "junction_lengths and branch_lengths should have the same length"
+        assert len(junction_lengths)    == len(total_lengths), "junction_lengths and total_lengths should have the same length"
+        #print("constructing junciton dict")
+        junction_dict.update({i : {"branch_pts": branch_pts_junc,
+                                   "branch_pts_offset": branch_pts_offset,
+                                    "branch_lengths": branch_lengths,
+                                    "junction_lengths": junction_lengths,
+                                    "total_lengths": total_lengths}})
+                                  
+    return junction_dict
+
+
 def identify_junctions_synthetic(junction_id, branch_id, pt_id):
     junction_ids = np.linspace(0,max(junction_id),max(junction_id)+1).astype(int)
     branch_ids = np.linspace(0,max(branch_id),max(branch_id)+1).astype(int)
@@ -222,6 +295,7 @@ def load_vmr_model_data(fpath_1dsol):
     soln_array = get_all_arrays(soln)
     #Extract Geometry ----------------------------------------------------
     pt_id = soln_array["GlobalNodeId"].astype(int)
+    path = soln_array["Path"]  # distance along centerline
     num_pts = np.size(pt_id)  # number of points in mesh
     branch_id = soln_array["BranchId"].astype(int)
     junction_id = soln_array["BifurcationId"].astype(int)
@@ -247,7 +321,7 @@ def load_vmr_model_data(fpath_1dsol):
             flow_in_time= np.vstack((
                 flow_in_time, soln_array[key]))  # add timestep column to flow_in_time
 
-    return pt_id, num_pts, branch_id, junction_id, area, angle1, angle2, angle3, pressure_in_time, flow_in_time, times, time_interval
+    return pt_id, num_pts, branch_id, junction_id, area, angle1, angle2, angle3, path, pressure_in_time, flow_in_time, times, time_interval
 
 def classify_branches(flow, junc_pts, pt_arr):
     inlets = []; outlets = [] # initialize inlet and outlet list

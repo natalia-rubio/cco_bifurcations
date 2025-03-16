@@ -60,7 +60,7 @@ def get_integral(inp_3d, origin, normal):
     """
     # slice vessel at given location
     inp = slice_vessel(inp_3d, origin, normal)
-    pdb.set_trace()
+    #pdb.set_trace()
     # recursively add calculators for normal velocities
     for v in get_res_names(inp_3d, 'Velocity'):
         #fun = '(iHat*'+repr(normal[0])+'+jHat*'+repr(normal[1])+'+kHat*'+repr(normal[2])+').' + v
@@ -116,21 +116,14 @@ def extract_results(fpath_1d, fpath_3d, fpath_out, only_caps=False, num_time_ste
 
 if __name__ == "__main__":
     tree_name = "tree_80"
+    flow_amp = "half"
     # fpath_1d = "data/CCO_tree/geometry/centerlines.vtp"
     fpath_1d = f"trees/geo_files/{tree_name}/centerlines/centerlines.vtp"
     # fpath_3d = "data/CCO_tree/sim_3D/solution_CCO.vtu"
-    fpath_3d = f"trees/threed_results/{tree_name}/result_200.vtu"
+    fpath_3d = f"trees/threed_results/{tree_name}/{tree_name}_{flow_amp}.vtu"
     # fpath_out = "data/CCO_tree/centerline_sol.vtp"
-    fpath_out = f"trees/threed_output_cent/{tree_name}/centerline_sol_200.vtp"
+    fpath_out = f"trees/threed_output_cent/{tree_name}/centerline_sol_{flow_amp}.vtp"
     if not os.path.exists(f"trees/threed_output_cent/{tree_name}"):
         os.makedirs(f"trees/threed_output_cent/{tree_name}")
     extract_results(fpath_1d, fpath_3d, fpath_out, only_caps=False, num_time_steps = 50)
 
-    fpath_1d = f"trees/geo_files/{tree_name}/centerlines/centerlines.vtp"
-    # fpath_3d = "data/CCO_tree/sim_3D/solution_CCO.vtu"
-    fpath_3d = f"trees/threed_results/{tree_name}/result_300.vtu"
-    # fpath_out = "data/CCO_tree/centerline_sol.vtp"
-    fpath_out = f"trees/threed_output_cent/{tree_name}/centerline_sol_300.vtp"
-    if not os.path.exists(f"trees/threed_output_cent/{tree_name}"):
-        os.makedirs(f"trees/threed_output_cent/{tree_name}")
-    extract_results(fpath_1d, fpath_3d, fpath_out, only_caps=False, num_time_steps = 50)

@@ -10,6 +10,7 @@ from scipy import interpolate
 import pickle
 #import dgl
 #import tensorflow as tf
+sys.path.append("/Users/natalia/Desktop/cco_bifurcations")
 from util.tools.vtk_functions import *
 from util.tools.get_bc_integrals import *
 #from util.junction_extraction_util.get_avg_sol import *
@@ -106,7 +107,7 @@ def load_centerline_data(fpath_1d):
     num_pts = np.size(pt_id)  # number of points in mesh
     branch_id = cent_array["BranchId"].astype(int)
     junction_id = cent_array["BifurcationId"].astype(int)
-    axial_distance = cent_array["Path"]  # distance along centerline
+    path = cent_array["Path"]  # distance along centerline
     area = cent_array["CenterlineSectionArea"]
     direction = cent_array["CenterlineSectionNormal"]  # vector normal direction
     direction_norm = np.linalg.norm( direction, axis=1, keepdims=True)  # norm of direction vector
@@ -114,7 +115,7 @@ def load_centerline_data(fpath_1d):
     angle1 = direction[0,:].reshape(-1,)
     angle2 = direction[1,:].reshape(-1,)
     angle3 = direction[2,:].reshape(-1,)
-    return pt_id, num_pts, branch_id, junction_id, area, angle1, angle2, angle3
+    return pt_id, num_pts, branch_id, junction_id, area, angle1, angle2, angle3, path
 
 def identify_junctions(junction_id, branch_id, pt_id):
     junction_ids = np.linspace(0,max(junction_id),max(junction_id)+1).astype(int)
@@ -145,7 +146,7 @@ def identify_junctions(junction_id, branch_id, pt_id):
         #assert i == 0, "There should only be one junction,"
     return junction_dict
 
-def identify_junctions_offset(junction_id, branch_id, pt_id, offset):
+def identify_junctions_offset(junction_id, branch_id, pt_id, path, offset):
     junction_ids = np.linspace(0,max(junction_id),max(junction_id)+1).astype(int)
     branch_ids = np.linspace(0,max(branch_id),max(branch_id)+1).astype(int)
     junction_dict = {}
@@ -154,12 +155,14 @@ def identify_junctions_offset(junction_id, branch_id, pt_id, offset):
         junction_pts = pt_id[junction_id == i] # find all points in junction
         branch_pts_junc = [] # inlet and outlet point ids of junction
         branch_ids_junc = [] # branch ids of junction
+        offsets = []
 
         base_branch = branch_id[pt_id == min(junction_pts)-1]
         base_branch_pts = pt_id[branch_id == base_branch]
 
         branch_pts_junc.append(max([min(junction_pts)-1, min(base_branch_pts)])) # find "inlet" of junction (point with smallest Id)
         branch_ids_junc.append(branch_id[pt_id == min(junction_pts)-1][0]) # find the branch to which the inlet belongs
+        offsets.append(0)
         branch_counter = 1 # initialize counter for the number of branches
         # loop over all branches in model
         for j in branch_ids:
@@ -169,11 +172,31 @@ def identify_junctions_offset(junction_id, branch_id, pt_id, offset):
             if len(shared_pts) != 0 and j not in branch_ids_junc : # if there is a shared point in the branch
                 branch_counter = branch_counter + 1 # increment branch counter
                 branch_ids_junc.append(j.astype(int)) # add outlet branch Id to outlet branch array
-                branch_pts_junc.append(min([min(branch_pts).astype(int), max(branch_pts)])+offset) # add outlet point Id to outlet point array
+                branch_pt_junc = min([min(branch_pts).astype(int), max(branch_pts)])
+                branch_pt_offset = min([min(branch_pts).astype(int), max(branch_pts)])+offset
+                branch_pts_junc.append(branch_pt_offset) # add outlet point Id to outlet point array
+                offsets.append(path[pt_id == branch_pt_offset]- path[pt_id == branch_pt_junc])
         junction_dict.update({i : branch_pts_junc})
         #assert i == 0, "There should only be one junction,"
-        
-    return junction_dict, branch_pts_junc
+    #pdb.set_trace()
+    return junction_dict, offsets, branch_pts_junc
+
+def identify_branches_offset(branch_id, pt_id, path, offset):
+    branch_ids = np.linspace(0,max(branch_id),max(branch_id)+1).astype(int)
+    branch_dict = {}
+    for i in branch_ids:
+
+        branch_pts = pt_id[branch_id == i] # find points belonging to branch
+        branch_path = path[branch_id == i]
+        min_loc = np.argmin(branch_path)
+        max_loc = np.argmax(branch_path)
+        min_pt_id = branch_pts[min_loc]
+        max_pt_id = branch_pts[max_loc]
+
+        branch_dict.update({i : {'min_pt' : min_pt_id, 
+                                 'max_pt' : max_pt_id}})
+
+    return branch_dict
 
 def identify_junctions_synthetic(junction_id, branch_id, pt_id):
     junction_ids = np.linspace(0,max(junction_id),max(junction_id)+1).astype(int)
@@ -223,10 +246,12 @@ def load_vmr_model_data(model, fpath_1dsol):
     pt_id = soln_array["GlobalNodeId"].astype(int)
     num_pts = np.size(pt_id)  # number of points in mesh
     branch_id = soln_array["BranchId"].astype(int)
+    cent_id = soln_array["CenterlineId"].astype(int)
     junction_id = soln_array["BifurcationId"].astype(int)
     axial_distance = soln_array["Path"]  # distance along centerline
-    area = soln_array["area"]
+    #area = soln_array["area"]
     direction = soln_array["CenterlineSectionNormal"]  # vector normal direction
+    area = soln_array["CenterlineSectionArea"]
     direction_norm = np.linalg.norm( direction, axis=1, keepdims=True)  # norm of direction vector
     direction = np.transpose(np.divide(direction,direction_norm))  # normalized direction vector
     #pdb.set_trace()
@@ -243,11 +268,12 @@ def load_vmr_model_data(model, fpath_1dsol):
             pressure_in_time = np.vstack((pressure_in_time, soln_array[key]))  # add timestep row to pressure_in_time
             #times.append(float(key[9:17]))  # add timestep to times
 
-        elif key[0:8] == "velocity" or key[0:8] == "Velocity": # NOTE: keys are labeled "velocity" but are actually flow!!!
+        elif key[0:8] == "velocity" or key[0:8] == "Velocity" or key[0:4] == "flow": # NOTE: keys are labeled "velocity" but are actually flow!!!
             flow_in_time= np.vstack((
                 flow_in_time, soln_array[key]))  # add timestep column to flow_in_time
-
-    return pt_id, num_pts, branch_id, junction_id, area, angle1, angle2, angle3, pressure_in_time, flow_in_time, times, time_interval
+    #q
+    # pdb.set_trace()
+    return pt_id, num_pts, branch_id, junction_id, area, angle1, angle2, angle3, axial_distance, pressure_in_time, flow_in_time, times, time_interval
 
 def classify_branches(flow, junc_pts, pt_arr):
     inlets = []; outlets = [] # initialize inlet and outlet list

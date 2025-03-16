@@ -83,6 +83,7 @@ def get_avg_unsteady_results(ss_tol,
     Returns:
         res: dictionary of results in all branches, in all segments for all result arrays
     """
+    print(f"In get_avg_unsteady_results.")
     # read 1d and 3d model
     reader_1d = read_geo(fpath_1d).GetOutput()
     # get point and normals from centerline
@@ -211,6 +212,7 @@ def get_avg_steady_results(ss_tol,
     reader_1d = read_geo(fpath_1d).GetOutput()
     reader_3d = read_geo(fpath_3d).GetOutput()
     reader_3d_prev = read_geo(fpath_3d_prev).GetOutput()
+    
 
     arrs_3d = collect_arrays(reader_3d.GetPointData())
     energy = 0.5 * 1.06 * np.square(np.linalg.norm(arrs_3d["Velocity"],axis=1))
@@ -231,7 +233,6 @@ def get_avg_steady_results(ss_tol,
     
     junc_inds = get_inds(arr = gid, vals = pt_inds)
     points = v2n(reader_1d.GetPoints().GetData())[junc_inds]
-    path = v2n(reader_1d.GetPointData().GetArray('Path'))[junc_inds]
     normals = v2n(reader_1d.GetPointData().GetArray('CenterlineSectionNormal'))[junc_inds]
 
     # initialize output
@@ -264,7 +265,8 @@ def get_avg_steady_results(ss_tol,
     areas =            np.zeros((1,len(pt_inds))) # initialize area matrix, each column is a mesh point, each row is a timestep
     tangents =         np.zeros((3,len(pt_inds))) # initialize tangent matrix
     times = [int(fpath_3d.split("_")[-1][:-4]), int(fpath_3d_prev.split("_")[-1][:-4])]  # list of timesteps
-    paths = np.zeros((1, len(pt_inds),))
+    print(f"converting offsets to array")
+    lengths = np.asarray(offsets)
     num_time_steps = len(times)
     print(f"Reducing {num_time_steps} timesteps.")
 
@@ -300,7 +302,7 @@ def get_avg_steady_results(ss_tol,
         energy_in_time[0, i] = integral.evaluate("Energy")
         energy_in_time[1, i] = integral_prev.evaluate("Energy")
         areas[0, i] = integral.area()  # add timestep row to pressure_in_time
-        paths[0, i] =  path[i] # add timestep row to pressure_in_time
+        
         tangents[:, i] = normals[i].reshape(3,)  # add timestep row to pressure_in_time
 
 
@@ -337,7 +339,7 @@ def get_avg_steady_results(ss_tol,
                 "areas": areas,
                 "tangents": tangents,
                 "times" : times,
-                "paths" : paths}
+                "lengths" : lengths}
 
     if conv == True:
         res_dict.update({"pt_inds": pt_inds})

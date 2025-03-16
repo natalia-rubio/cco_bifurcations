@@ -17,12 +17,16 @@ def get_jax_arrays(anatomy, set_type, unsteady = True):
     
     input_tens = jnp.concatenate((scale_jax(scaling_dict, jnp.asarray(char_val_dict["daughter1_area_ratio"], dtype=jnp.float32), "daughter1_area_ratio"),
                             scale_jax(scaling_dict, jnp.asarray(char_val_dict["daughter2_area_ratio"], dtype=jnp.float32), "daughter2_area_ratio"),
+                            scale_jax(scaling_dict, jnp.asarray(char_val_dict["daughter1_area_ratio_inv2"], dtype=jnp.float32), "daughter1_area_ratio_inv2"),
+                            scale_jax(scaling_dict, jnp.asarray(char_val_dict["daughter2_area_ratio_inv2"], dtype=jnp.float32), "daughter2_area_ratio_inv2"),
                             scale_jax(scaling_dict, jnp.asarray(char_val_dict["daughter1_angle"], dtype=jnp.float32), "daughter1_angle"),
                             scale_jax(scaling_dict, jnp.asarray(char_val_dict["daughter2_angle"], dtype=jnp.float32), "daughter2_angle"),
                                 ), axis = -1)
 
-    output_tens = jnp.concatenate((scale_jax(scaling_dict, jnp.asarray(char_val_dict["R_lin_star1"], dtype=jnp.float32), "R_lin_star1"),
+    output_tens = jnp.concatenate((scale_jax(scaling_dict, jnp.asarray(char_val_dict["R_lin_star_inlet"], dtype=jnp.float32), "R_lin_star_inlet"),
+                            scale_jax(scaling_dict, jnp.asarray(char_val_dict["R_lin_star1"], dtype=jnp.float32), "R_lin_star1"),
                             scale_jax(scaling_dict, jnp.asarray(char_val_dict["R_lin_star2"], dtype=jnp.float32), "R_lin_star2"),
+                            scale_jax(scaling_dict, jnp.asarray(char_val_dict["R_quad_star_inlet"], dtype=jnp.float32), "R_quad_star_inlet"),
                             scale_jax(scaling_dict, jnp.asarray(char_val_dict["R_quad_star1"], dtype=jnp.float32), "R_quad_star1"),
                             scale_jax(scaling_dict, jnp.asarray(char_val_dict["R_quad_star2"], dtype=jnp.float32), "R_quad_star2"),
                             ), axis = -1)
@@ -34,8 +38,8 @@ def get_jax_arrays(anatomy, set_type, unsteady = True):
                             jnp.asarray(char_val_dict["daughter2_flow"], dtype=jnp.float32),
                             ), axis = -1)
     
-    dPs = jnp.stack((jnp.asarray(char_val_dict["daughter1_dP_total"], dtype=jnp.float32),
-                            jnp.asarray(char_val_dict["daughter2_dP_total"], dtype=jnp.float32),
+    dPs = jnp.stack((jnp.asarray(char_val_dict["daughter1_dP"], dtype=jnp.float32),
+                            jnp.asarray(char_val_dict["daughter2_dP"], dtype=jnp.float32),
                             ), axis = -1)
     
     if not os.path.exists(f"data/jax_arrays"):
