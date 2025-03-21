@@ -62,12 +62,12 @@ def loss(input, flow, dP_true, scaling_factors, scaling_dict, weights):
     coefs_pred = predict(input, weights)
     #print(coefs_pred)
 
-    R_lin_star_pred_inlet = inv_scale_jax(scaling_dict, coefs_pred[:,0], "R_lin_star_inlet") * 0
-    R_lin_star_pred1 = inv_scale_jax(scaling_dict, coefs_pred[:,1], "R_lin_star1")
-    R_lin_star_pred2 = inv_scale_jax(scaling_dict, coefs_pred[:,2], "R_lin_star2")
-    R_quad_star_pred_inlet = inv_scale_jax(scaling_dict, coefs_pred[:,3], "R_quad_star_inlet") * 0
-    R_quad_star_pred1 = inv_scale_jax(scaling_dict, coefs_pred[:,4], "R_quad_star1") * 0
-    R_quad_star_pred2 = inv_scale_jax(scaling_dict, coefs_pred[:,5], "R_quad_star2") * 0
+    R_lin_star_pred_inlet = inv_scale_jax(scaling_dict, coefs_pred[:,0], "inlet_R_lin_star") * 0
+    R_lin_star_pred1 = inv_scale_jax(scaling_dict, coefs_pred[:,1], "daughter1_R_lin_star")
+    R_lin_star_pred2 = inv_scale_jax(scaling_dict, coefs_pred[:,2], "daughter2_R_lin_star") * 0
+    R_quad_star_pred_inlet = inv_scale_jax(scaling_dict, coefs_pred[:,3], "inlet_R_quad_star") * 0
+    R_quad_star_pred1 = inv_scale_jax(scaling_dict, coefs_pred[:,4], "daughter1_R_quad_star")
+    R_quad_star_pred2 = inv_scale_jax(scaling_dict, coefs_pred[:,5], "daughter2_R_quad_star") * 0
 
 
     R_lin_star_pred_inlet = 0 * R_lin_star_pred_inlet # No linear inlet resistor
@@ -90,18 +90,17 @@ def loss(input, flow, dP_true, scaling_factors, scaling_dict, weights):
     
     dP_pred = jnp.multiply(dP_star_pred, 1.06 * jnp.square(U_char.reshape(-1,1,1)))
 
-
     return jnp.sqrt(jnp.mean(jnp.square((dP_pred - dP_true)/1333)))
 
 #@jit
 def coef_loss(output, flow, dP_true, scaling_factors, scaling_dict):
 
-    R_lin_star_pred_inlet = inv_scale_jax(scaling_dict, output[:,0], "R_lin_star_inlet")
-    R_lin_star_pred1 = inv_scale_jax(scaling_dict, output[:,1], "R_lin_star1")
-    R_lin_star_pred2 = inv_scale_jax(scaling_dict, output[:,2], "R_lin_star2")
-    R_quad_star_pred_inlet = inv_scale_jax(scaling_dict, output[:,3], "R_quad_star_inlet")
-    R_quad_star_pred1 = inv_scale_jax(scaling_dict, output[:,4], "R_quad_star1")
-    R_quad_star_pred2 = inv_scale_jax(scaling_dict, output[:,5], "R_quad_star2")
+    R_lin_star_pred_inlet = 0 #inv_scale_jax(scaling_dict, output[:,0], "R_lin_star_inlet")
+    R_lin_star_pred1 = inv_scale_jax(scaling_dict, output[:,1], "daughter1_R_lin_star")
+    R_lin_star_pred2 = 0 #inv_scale_jax(scaling_dict, output[:,2], "daughter2_R_lin_star")
+    R_quad_star_pred_inlet = 0 #inv_scale_jax(scaling_dict, output[:,3], "R_quad_star_inlet")
+    R_quad_star_pred1 = inv_scale_jax(scaling_dict, output[:,4], "daughter1_R_quad_star")
+    R_quad_star_pred2 = 0 #inv_scale_jax(scaling_dict, output[:,5], "R_quad_star2")
 
 
     A_char = scaling_factors[:,0].reshape(-1,1)

@@ -10,9 +10,9 @@ import os
 
 # Load in svZeroDSolver input file
 inflow = 344.655
-tree_name = "tree_80"
-junction_mode = "lookup"
-with open(f'trees/zerod_input_sv_{junction_mode}/tree_80_full/solver_0d.json') as json_file:
+tree_name = "tree_20"
+junction_mode = "RR"
+with open(f'trees/zerod_input_sv_{junction_mode}/{tree_name}_full/solver_0d.json') as json_file:
     input_file = json.load(json_file)
 num_vessels = len(input_file["vessels"])
 print(f"Number of vessels: {num_vessels}")
@@ -150,7 +150,7 @@ if steady_state:
     SS_constraint_counter += 4 * num_vessels
 
 # Enforce positive flows
-positive_flows = True
+positive_flows = False
 if positive_flows:
     opti.subject_to(casadi.vec(Q_in)  >= 0)
     opti.subject_to(casadi.vec(Q_out) >= 0)

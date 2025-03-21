@@ -40,6 +40,7 @@ def train_nn(model, training_params):
             dP_true = model.data_dict["dPs"][training_params["val_inds"],:,:],
             scaling_factors = model.data_dict["scaling_factors"][training_params["val_inds"],:],
             scaling_dict = model.scaling_dict)
+    #pdb.set_trace()
 
     for epoch in range(training_params['num_epochs']): # Loop through the epochs
         start_time = time.time() # Time each epoch

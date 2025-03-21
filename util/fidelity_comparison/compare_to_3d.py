@@ -15,7 +15,7 @@ from util.tools.vtk_functions import read_geo, write_geo, calculator, cut_plane,
 import pickle
 
 def compare_to_3d(junction_mode = "standard",
-                  tree_name = "tree_80",
+                  tree_name = "tree_20",
                   flow_amp = "full",
                   gen_mode = "sv"):
 

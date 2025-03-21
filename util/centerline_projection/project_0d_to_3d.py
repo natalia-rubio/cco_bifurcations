@@ -200,8 +200,8 @@ def project_to_centerline(tree_name, junction_mode, flow_amp, gen_mode):
     print(f"Centerline projection for {tree_name} in {junction_mode} mode completed.")
     return
 
-tree_name = "tree_80"
-junction_mode = sys.argv[1]
+tree_name = sys.argv[1]
+junction_mode = sys.argv[2]
 flow_amp = "full"
 gen_mode = "sv"
 project_to_centerline(tree_name, junction_mode, flow_amp, gen_mode)

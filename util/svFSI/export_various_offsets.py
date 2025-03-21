@@ -65,4 +65,5 @@ if __name__ == "__main__":
                 check_convergence_offsets(geo_name = geo_name, flow_index = flow_index, anatomy = anatomy, set_type = set_type, num_time_steps = num_time_steps, inc = inc)
             except Exception as error:
                 # handle the exception
-                print("An exception occurred:", type(error).__name__, error) 
+                print("An exception occurred:", type(error).__name__) 
+                print(error)

@@ -45,7 +45,7 @@ solution_params.time_step = {tree_dict['dt']}\n\
 solution_params.num_time_steps = {tree_dict['num_time_steps']}\n\
 \n\
 ## Write a 1D solver input file.\n\
-output_dir = str('trees/zerod_input_standard/' + '{tree_dict['tree_name']}_{tree_dict['flow_amp']}')\n\
+output_dir = str('trees/zerod_input_sv_standard/' + '{tree_dict['tree_name']}_{tree_dict['flow_amp']}')\n\
 if not os.path.exists(output_dir):\n\
       os.makedirs(output_dir)\n\
 rom_simulation.write_input_file(model_order=0, model=model_params, mesh=mesh_params, fluid=fluid_props, material=material, boundary_conditions=bcs, solution=solution_params, directory=output_dir)"
@@ -72,18 +72,19 @@ rom_simulation.write_input_file(model_order=0, model=model_params, mesh=mesh_par
    f.close()
    return
 
-flow_amp = sys.argv[1]
+tree_name = sys.argv[1]
+flow_amp = sys.argv[2]
 
 if flow_amp == "half":
-   inflow = 169.51457903373378
+   inflow = 0.5 * np.pi*(0.28**2) * 0.04*5500/(1.06*0.28*2)#169.51457903373378
 elif flow_amp == "full":
-   inflow = 339.029
+   inflow = np.pi*(0.28**2) * 0.04*5500/(1.06*0.28*2) #339.029
 else:
    print("Invalid flow amplitude.  should be 'half' or 'full'")
    sys.exit()
 
-inlet_cap = "cap_" + os.listdir(f'trees/geo_files/tree_80/mesh-complete/inlet_cap')[0]+".vtp"
-caps = os.listdir(f"trees/geo_files/tree_80/mesh-complete/mesh-surfaces")
+inlet_cap = "cap_" + os.listdir(f'trees/geo_files/{tree_name}/mesh-complete/inlet_cap')[0]+".vtp"
+caps = os.listdir(f"trees/geo_files/{tree_name}/mesh-complete/mesh-surfaces")
 outlet_caps = []
 for cap in caps:
    if cap==inlet_cap:
@@ -91,7 +92,7 @@ for cap in caps:
    outlet_caps.append(cap)
 print(f"{len(outlet_caps)} outlet caps")
 
-tree_name = "tree_80"
+
 tree_dict = {"tree_name": tree_name, 
              "inlet_cap": inlet_cap, 
              "outlet_cap_list": outlet_caps,
@@ -102,7 +103,7 @@ tree_dict = {"tree_name": tree_name,
 
 write_standard0d_input_generator_file(tree_dict)
 os.system(f"/Applications/SimVascular.app/Contents/Resources/simvascular --python -- trees/standard0d_input_file_generators/{tree_name}_{tree_dict['flow_amp']}_standard0d_input_file_generator.py")
-os.system(f"sed -i -e 's/internal_junction/NORMAL_JUNCTION/g' trees/zerod_input_standard/{tree_name}_{tree_dict['flow_amp']}/solver_0d.json")
+os.system(f"sed -i -e 's/internal_junction/NORMAL_JUNCTION/g' trees/zerod_input_sv_standard/{tree_name}_{tree_dict['flow_amp']}/solver_0d.json")
 
 
 # os.system(f"/Users/natalia/Desktop/svZeroDPlus/Release/svzerodsolver trees/zerod_input_standard/{tree_name}/solver_0d.json trees/zerod_output_standard/{tree_name}_out.csv")

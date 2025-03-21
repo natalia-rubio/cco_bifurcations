@@ -4,207 +4,245 @@ sys.path.append("/Users/natalia/Desktop/cco_bifurcations")
 from util.tools.basic import *
 from util.tools.junction_proc import get_angle_diff
 
-def extract_steady_flow_data(anatomy, set_type, require4):
+def extract_flow_behavior(geo_results_dir, offset):
+    verbose = False
+    daughter1_dPs = []
+    daughter2_dPs = []
+    inlet_flows = []
+    daughter1_flows = []
+    daughter2_flows = []
+    inlet_velocity = []
+    daughter1_velocity = []
+    daughter2_velocity = []
+    daughter1_energy = []
+    daughter2_energy = []
+    daughter1_dP_total = []
+    daughter2_dP_total = []
+    inlet_energy = []
+    offset_dict = {}
     re_char = 4500
-
-    geos = os.listdir(f"data/synthetic_junctions_reduced_results/{anatomy}/{set_type}"); geos.sort(); print(f"Geometries: {geos}")
-    CCO_params_dict = {"daughter1_angle": [],
-                    "daughter2_angle": [],
-                    "daughter1_area_ratio": [],
-                    "daughter2_area_ratio": [],
-                    "daughter1_area_ratio_inv2": [],
-                    "daughter2_area_ratio_inv2": [],
-                    "inlet_area": [],
-                    "daughter1_dP": [],
-                    "daughter2_dP": [],
-                    "daughter1_dP_original": [],
-                    "daughter2_dP_original": [],
-                    "daughter1_dP_total": [],
-                    "daughter2_dP_total": [],
-                    "daughter1_dP_dyn": [],
-                    "daughter2_dP_dyn": [],
-                    "inlet_P_dyn": [],
-                    "daughter1_P_dyn": [],
-                    "daughter2_P_dyn": [],
-                    "daughter1_flow": [],
-                    "daughter2_flow": [],
-                    "inlet_flow": [],
-                    "daughter1_velocity": [],
-                    "daughter2_velocity": [],
-                    "inlet_velocity": [],
-                    "daughter1_energy": [],
-                    "daughter2_energy": [],
-                    "inlet_energy": [],
-                    "U_char": [],
-                    "daughter1_dP_star": [],
-                    "daughter2_dP_star": [],
-                    "daughter1_flow_star": [],
-                    "daughter2_flow_star": [],
-                    "daughter1_TP_flux": [],
-                    "daughter2_TP_flux": [],
-                    }
-    for j, geo in enumerate(geos[0:]):
-        results_dir = f"data/synthetic_junctions_reduced_results/{anatomy}/{set_type}/{geo}/"
-        
-        daughter1_dPs = []
-        daughter2_dPs = []
-        inlet_flows = []
-        daughter1_flows = []
-        daughter2_flows = []
-        inlet_velocity = []
-        daughter1_velocity = []
-        daughter2_velocity = []
-        daughter1_energy = []
-        daughter2_energy = []
-        daughter1_dP_total = []
-        daughter2_dP_total = []
-        inlet_energy_flux = []
-        daughter1_energy_flux = []
-        daughter2_energy_flux = []
-        
-        inlet_energy = []
-
-        # Compose lists of flow and pressure data for each outlet
-        for i in [0,1,2,3]:
-            try:
-                # pdb.set_trace()
-                flow_result_dir = results_dir + f"flow_{i}_red_sol"
-                if not os.path.exists(flow_result_dir):
-                        print(f"Flow {i} missing for geometry {geo} at {results_dir}")
-                        continue
-                soln_dict = load_dict(flow_result_dir)
-
-                daughter1_dPs.append(soln_dict["pressure_in_time"][1] - soln_dict["pressure_in_time"][0])
-                daughter2_dPs.append(soln_dict["pressure_in_time"][2] - soln_dict["pressure_in_time"][0])
-                inlet_flows.append(soln_dict["flow_in_time"][0])
-                daughter1_flows.append(soln_dict["flow_in_time"][1])
-                daughter2_flows.append(soln_dict["flow_in_time"][2])
-                inlet_velocity.append(soln_dict["flow_in_time"][0]/soln_dict["areas"][0,0])
-                daughter1_velocity.append(soln_dict["flow_in_time"][1]/soln_dict["areas"][0,1])
-                daughter2_velocity.append(soln_dict["flow_in_time"][2]/soln_dict["areas"][0,2])
-                inlet_energy.append(soln_dict["energy_in_time"][0])
-                daughter1_energy.append(soln_dict["energy_in_time"][1])
-                daughter2_energy.append(soln_dict["energy_in_time"][2])
-                # daughter1_dP_total.append(soln_dict["pressure_in_time"][1]+soln_dict["energy_in_time"][1] - (soln_dict["pressure_in_time"][0]+soln_dict["energy_in_time"][0]))
-                # daughter2_dP_total.append(soln_dict["pressure_in_time"][2]+soln_dict["energy_in_time"][2] - (soln_dict["pressure_in_time"][0]+soln_dict["energy_in_time"][0]))
-                daughter1_dP_total.append(soln_dict["pressure_in_time"][1] - soln_dict["pressure_in_time"][0] - 
-                                          0.5*1.06*(inlet_velocity[-1]**(2) - daughter1_velocity[-1]**(2)))
-                daughter2_dP_total.append(soln_dict["pressure_in_time"][2] - soln_dict["pressure_in_time"][0] -
-                                          0.5*1.06*(inlet_velocity[-1]**(2) - daughter2_velocity[-1]**(2)))
-                # inlet_energy_flux.append((soln_dict["pressure_in_time"][0]+0.5*1.06*(soln_dict["flow_in_time"][0]/soln_dict["areas"][0,0])**2) *soln_dict["flow_in_time"][0])
-                # daughter1_energy_flux.append((soln_dict["pressure_in_time"][1]+0.5*1.06*(soln_dict["flow_in_time"][1]/soln_dict["areas"][0,1])**2) *soln_dict["flow_in_time"][1])
-                # daughter2_energy_flux.append((soln_dict["pressure_in_time"][2]+0.5*1.06*(soln_dict["flow_in_time"][2]/soln_dict["areas"][0,2])**2) *soln_dict["flow_in_time"][2])
-                inlet_energy_flux.append((soln_dict["pressure_in_time"][0]+(soln_dict["energy_in_time"][0])) *soln_dict["flow_in_time"][0])
-                daughter1_energy_flux.append((soln_dict["pressure_in_time"][1]+(soln_dict["energy_in_time"][1])) *soln_dict["flow_in_time"][1])
-                daughter2_energy_flux.append((soln_dict["pressure_in_time"][2]+(soln_dict["energy_in_time"][2])) *soln_dict["flow_in_time"][2])
-
-                
-                assert len(daughter1_dPs) == len(daughter1_flows); "Lengths of daughter1_dPs and daughter1_flows do not match."
-                assert len(daughter2_dPs) == len(daughter2_flows); "Lengths of daughter2_dPs and daughter2_flows do not match."
-                # if geo == "CCO_221":
-                #     pdb.set_trace()
-            except:
-                if require4:
-                    raise ValueError(f"Could not extract steady data from {geo}, flow {i}.\n\
-                                    Solution dict: {soln_dict}")
-                continue
-        # if daughter2_dP_total[-1] > 0:
-        #     pdb.set_trace()
+    # Compose lists of flow and pressure data for each outlet
+    for i in [0,1,2,3]:
+        try:
+            flow_result_dir = f"{geo_results_dir}/flow_{i}_offset_{int(10*offset)}_red_sol"
+            print(f"Flow result dir: {flow_result_dir}")
+            # pdb.set_trace()
+            if not os.path.exists(flow_result_dir):
+                    raise ValueError(f"Could not find {flow_result_dir}.")
             
-        total_flux = [daughter1_energy_flux[i] + daughter2_energy_flux[i] - inlet_energy_flux[i] for i in range(len(inlet_energy_flux))]
-        norm_flux = [total_flux[i]/inlet_energy_flux[i] for i in range(len(total_flux))]
-        if not all(flux <= 0 for flux in total_flux):
-            print(f"Total flux is positive for geometry {geo}: {norm_flux}")
-            if not all(abs(norm_fluxx) < 0.1 for norm_fluxx in norm_flux):
-                #print(f"Total flux is not normalized for geometry {geo}.")
-                pdb.set_trace()
-                continue
+            soln_dict = load_dict(flow_result_dir)
+            A_char = soln_dict["areas"][0,0]
+            L_char = np.sqrt(A_char/np.pi)
+            U_char = re_char * 0.04/(1.06 * 2*np.sqrt(A_char/np.pi))
+
+            daughter1_dPs.append(-soln_dict["pressure_in_time"][1] + soln_dict["pressure_in_time"][0])
+            daughter2_dPs.append(-soln_dict["pressure_in_time"][2] + soln_dict["pressure_in_time"][0])
+            inlet_flows.append(soln_dict["flow_in_time"][0])
+            daughter1_flows.append(soln_dict["flow_in_time"][1])
+            daughter2_flows.append(soln_dict["flow_in_time"][2])
+            if verbose:
+                print(f"Extracted flow data from {flow_result_dir}.")
+            assert len(daughter1_dPs) == len(daughter1_flows); "Lengths of daughter1_dPs and daughter1_flows do not match."
+            assert len(daughter2_dPs) == len(daughter2_flows); "Lengths of daughter2_dPs and daughter2_flows do not match."
 
 
-        if len(daughter1_dPs) < 4 or len(daughter2_dPs) < 4:
-            print(f"Fewer than 4 flow data points for {geo}.")
+        except:
+            require4 = True
+            if require4:
+                raise ValueError(f"Could not extract steady data from {flow_result_dir}.\n\
+                                Solution dict: {soln_dict}")
             continue
-        #pdb.set_trace()
-        CCO_params_dict["daughter1_angle"].append(get_angle_diff(soln_dict["tangents"][:,1], soln_dict["tangents"][:,0])[0])
-        CCO_params_dict["daughter2_angle"].append(get_angle_diff(soln_dict["tangents"][:,2], soln_dict["tangents"][:,0])[0])
-        CCO_params_dict["daughter1_area_ratio"].append((soln_dict["areas"][0,1]/soln_dict["areas"][0,0]))
-        CCO_params_dict["daughter2_area_ratio"].append((soln_dict["areas"][0,2]/soln_dict["areas"][0,0]))
-        CCO_params_dict["daughter1_area_ratio_inv2"].append((soln_dict["areas"][0,1]/soln_dict["areas"][0,0])**-2)
-        CCO_params_dict["daughter2_area_ratio_inv2"].append((soln_dict["areas"][0,2]/soln_dict["areas"][0,0])**-2)
-        CCO_params_dict["inlet_area"].append(soln_dict["areas"][0,0])
-        #pdb.set_trace()
 
-        CCO_params_dict["daughter1_flow"].append(daughter1_flows)
-        CCO_params_dict["daughter2_flow"].append(daughter2_flows)
-        CCO_params_dict["inlet_flow"].append(inlet_flows)
-        CCO_params_dict["daughter1_velocity"].append([daughter1_flow/soln_dict["areas"][0,1] for daughter1_flow in daughter1_flows])
-        CCO_params_dict["daughter2_velocity"].append([daughter2_flow/soln_dict["areas"][0,2] for daughter2_flow in daughter2_flows])
-        CCO_params_dict["inlet_velocity"].append([inlet_flow/soln_dict["areas"][0,0] for inlet_flow in inlet_flows])
-        # CCO_params_dict["daughter1_energy"].append(daughter1_energy)
-        # CCO_params_dict["daughter2_energy"].append(daughter2_energy)
-        # CCO_params_dict["inlet_energy"].append(inlet_energy)
-        CCO_params_dict["U_char"].append(re_char * 0.04 / (1.06 * 2*np.sqrt(soln_dict["areas"][0,0]/np.pi)))
+    # for k in range(1, len(daughter1_flows)):
+    #     daughter1_flows[k] = 0
+    #     daughter2_flows[k] = 0
+    #     daughter1_dPs[k] = 0
+    #     daughter2_dPs[k] = 0
 
-        CCO_params_dict["daughter1_dP_original"].append(daughter1_dPs)
-        CCO_params_dict["daughter2_dP_original"].append(daughter2_dPs)
 
-        poiseulle_res_1 = 0*8*0.04*np.pi*soln_dict["paths"][0][1]/(soln_dict["areas"][0,1]**2)
-        poiseulle_res_2 = 0*8*0.04*np.pi*soln_dict["paths"][0][2]/(soln_dict["areas"][0,2]**2)
-        
-        #pdb.set_trace()
+    assert len(daughter1_dPs) > 0; "Length of daughter1_dPs should be > 0."
+    daughter1_flow_stars = [daughter1_flow/(U_char * A_char) for daughter1_flow in daughter1_flows]
+    daughter2_flow_stars = [daughter2_flow/(U_char * A_char) for daughter2_flow in daughter2_flows]
+    
+    Q_star1 = np.asarray(daughter1_flow_stars).reshape(-1,)
+    Q_star2 = np.asarray(daughter2_flow_stars).reshape(-1,)
+    Q_star_inlet = Q_star1 + Q_star2
 
-        # print(f"Poiseuille resistance 1: {poiseulle_res_1}")
-        # print(f"Poiseuille resistance 2: {poiseulle_res_2}")
-        CCO_params_dict["daughter1_dP"].append([daughter1_dP + poiseulle_res_1*daughter1_flow for daughter1_dP, daughter1_flow in zip(daughter1_dPs, daughter1_flows)])
-        CCO_params_dict["daughter2_dP"].append([daughter2_dP + poiseulle_res_2*daughter2_flow for daughter2_dP, daughter2_flow in zip(daughter2_dPs, daughter2_flows)])
+    daughter1_dP_stars = [daughter1_dP/(1.06 * U_char**2) for daughter1_dP in daughter1_dPs]
+    daughter2_dP_stars = [daughter2_dP/(1.06 * U_char**2) for daughter2_dP in daughter2_dPs]
 
-        CCO_params_dict["daughter1_dP_total"].append([daughter1_dP_total + poiseulle_res_1*flow for daughter1_dP_total, flow in zip(daughter1_dP_total, daughter1_flows)])
-        CCO_params_dict["daughter2_dP_total"].append([daughter2_dP_total + poiseulle_res_2*flow for daughter2_dP_total, flow in zip(daughter2_dP_total, daughter2_flows)])
+    dP_star1 = np.asarray(daughter1_dP_stars).reshape(-1,)
+    dP_star2 = np.asarray(daughter2_dP_stars).reshape(-1,)
+    dP_vec_star = np.hstack([dP_star1, dP_star2])
 
-        # CCO_params_dict["daughter1_TP_flux"].append(daughter1_dP_total * Q for daughter1_dP_total, Q in zip(CCO_params_dict["daughter1_dP_total"][-1], CCO_params_dict["daughter1_flow"][-1]))
-        # CCO_params_dict["daughter2_TP_flux"].append(daughter2_dP_total * Q for daughter2_dP_total, Q in zip(CCO_params_dict["daughter2_dP_total"][-1], CCO_params_dict["daughter2_flow"][-1]))
-        # total_flux = [daughter1_TP_flux + daughter2_TP_flux for daughter1_TP_flux, daughter2_TP_flux in zip(CCO_params_dict["daughter1_TP_flux"][-1], CCO_params_dict["daughter2_TP_flux"][-1])]
-        daughter1_TP_flux_int = [(daughter1_dP + energy)*Q for daughter1_dP, energy, Q in zip(CCO_params_dict["daughter1_dP"][-1], daughter1_energy, CCO_params_dict["daughter1_flow"][-1])]
-        daughter2_TP_flux_int = [(daughter2_dP + energy)*Q for daughter2_dP, energy, Q in zip(CCO_params_dict["daughter2_dP"][-1], daughter2_energy, CCO_params_dict["daughter2_flow"][-1])]
-        total_flux_int = [daughter1_TP_flux + daughter2_TP_flux for daughter1_TP_flux, daughter2_TP_flux in zip(daughter1_TP_flux_int, daughter2_TP_flux_int)]
+    Q1 = np.asarray(daughter1_flows).reshape(-1,)
+    Q2 = np.asarray(daughter2_flows).reshape(-1,)
+    Q_inlet = Q1 + Q2
 
-        # CCO_params_dict["daughter1_TP_flux"].append((daughter1_dP + 0.5*1.06*Q**2) * Q for daughter1_dP, Q in zip(
-        #     CCO_params_dict["daughter1_dP"][-1], CCO_params_dict["daughter1_flow"][-1]))
-        # CCO_params_dict["daughter2_TP_flux"].append((daughter2_dP + 1.06*0.5*Q**2) * Q for daughter2_dP, Q in zip(
-        #     CCO_params_dict["daughter2_dP"][-1], CCO_params_dict["daughter2_flow"][-1]))
-        # total_flux = [daughter1_TP_flux + daughter2_TP_flux - (1.06 *0.5*Q_in**2)*Q_in for daughter1_TP_flux, daughter2_TP_flux, Q_in in zip(
-        #     CCO_params_dict["daughter1_TP_flux"][-1], CCO_params_dict["daughter2_TP_flux"][-1], CCO_params_dict["inlet_flow"][-1])]
-        
-        # print(f"Total flux: {total_flux}")
-        # if not all(flux <= 0 for flux in total_flux):
-        #     print(f"Total flux is positive for geometry {geo}.")
-        #     pdb.set_trace()
-        # # CCO_params_dict["daughter1_P_dyn"].append([0.5*1.06*daughter1_velocity**2 for daughter1_velocity in CCO_params_dict["daughter1_velocity"][-1]])
-        # # CCO_params_dict["daughter2_P_dyn"].append([0.5*1.06*daughter2_velocity**2 for daughter2_velocity in CCO_params_dict["daughter2_velocity"][-1]])
-        # # CCO_params_dict["inlet_P_dyn"].append([0.5*1.06*inlet_velocity**2 for inlet_velocity in CCO_params_dict["inlet_velocity"][-1]])
-        # # CCO_params_dict["daughter1_dP_dyn"].append([daughter1_P_dyn - inlet_P_dyn for daughter1_P_dyn, inlet_P_dyn in zip(CCO_params_dict["daughter1_P_dyn"][-1], CCO_params_dict["inlet_P_dyn"][-1])])
-        # # CCO_params_dict["daughter2_dP_dyn"].append([daughter2_P_dyn - inlet_P_dyn for daughter2_P_dyn, inlet_P_dyn in zip(CCO_params_dict["daughter2_P_dyn"][-1], CCO_params_dict["inlet_P_dyn"][-1])])
-        # CCO_params_dict["daughter1_dP_dyn"].append([daughter1_P_dyn - inlet_P_dyn for daughter1_P_dyn, inlet_P_dyn in zip(CCO_params_dict["daughter1_energy"][-1], CCO_params_dict["inlet_energy"][-1])])
-        # CCO_params_dict["daughter2_dP_dyn"].append([daughter2_P_dyn - inlet_P_dyn for daughter2_P_dyn, inlet_P_dyn in zip(CCO_params_dict["daughter2_energy"][-1], CCO_params_dict["inlet_energy"][-1])])
-        # # CCO_params_dict["daughter1_dP_static"].append([daughter1_dP - daughter1_P_dyn for daughter1_dP, daughter1_P_dyn in zip(CCO_params_dict["daughter1_dP"][-1], CCO_params_dict["daughter1_P_dyn"][-1])])
-        # # CCO_params_dict["daughter2_dP_static"].append([daughter2_dP - daughter2_P_dyn for daughter2_dP, daughter2_P_dyn in zip(CCO_params_dict["daughter2_dP"][-1], CCO_params_dict["daughter2_P_dyn"][-1])])
-        # CCO_params_dict["daughter1_dP_total"].append([daughter1_dP + daughter1_dP_dyn for daughter1_dP, daughter1_dP_dyn in zip(CCO_params_dict["daughter1_dP"][-1], CCO_params_dict["daughter1_dP_dyn"][-1])])
-        # CCO_params_dict["daughter2_dP_total"].append([daughter2_dP + daughter2_dP_dyn for daughter2_dP, daughter2_dP_dyn in zip(CCO_params_dict["daughter2_dP"][-1], CCO_params_dict["daughter2_dP_dyn"][-1])])
-        # # Adjust for Poiseuille pressure drop in outlets
+    dP1 = np.asarray(daughter1_dPs).reshape(-1,)
+    dP2 = np.asarray(daughter2_dPs).reshape(-1,)
+    dP_vec = np.hstack([dP1, dP2])
 
-        # Add non-dimensionalized parameters
-        daughter1_dP_stars = [daughter1_dP/(1.06 * CCO_params_dict["U_char"][-1]**2) for daughter1_dP in CCO_params_dict["daughter1_dP"][-1]]
-        daughter2_dP_stars = [daughter2_dP/(1.06 * CCO_params_dict["U_char"][-1]**2) for daughter2_dP in CCO_params_dict["daughter2_dP"][-1]]
-        CCO_params_dict["daughter1_dP_star"].append(daughter1_dP_stars)
-        CCO_params_dict["daughter2_dP_star"].append(daughter2_dP_stars)
+    A_mat_star = np.zeros((8, 6))
+    A_mat = np.zeros((8, 6))
 
-        daughter1_flow_stars = [daughter1_flow/(CCO_params_dict["U_char"][-1]*CCO_params_dict["inlet_area"][-1]) for daughter1_flow in daughter1_flows]
-        daughter2_flow_stars = [daughter2_flow/(CCO_params_dict["U_char"][-1]*CCO_params_dict["inlet_area"][-1]) for daughter2_flow in daughter2_flows]
-        CCO_params_dict["daughter1_flow_star"].append(daughter1_flow_stars)
-        CCO_params_dict["daughter2_flow_star"].append(daughter2_flow_stars)
+    # Inlet flows
+    inlet_resistance = False
+    if inlet_resistance:
+        A_mat_star[0:4,0] = Q_star_inlet
+        A_mat_star[0:4,1] = np.square(Q_star_inlet)
+        A_mat_star[4:8,0] = Q_star_inlet
+        A_mat_star[4:8,1] = np.square(Q_star_inlet)
+    
+        A_mat[0:4,0] = Q_inlet
+        A_mat[0:4,1] = np.square(Q_inlet)
+        A_mat[4:8,0] = Q_inlet
+        A_mat[4:8,1] = np.square(Q_inlet)
 
-        r_lin_calc = (daughter1_dPs[-1]/daughter1_flows[-1])*(CCO_params_dict["inlet_area"][-1]/CCO_params_dict["U_char"][-1])
-        #print(f"Calculated R_lin_star: {r_lin_calc}")
+
+    # Daughter 1 flows
+    A_mat[0:4,2] = Q1
+    A_mat[4:8,4] = Q2
+    A_mat_star[0:4,2] = Q_star1
+    A_mat_star[4:8,4] = Q_star2
+
+    quadratic_resistors = True
+    if quadratic_resistors:
+        A_mat[0:4,3] = np.square(Q1)
+        A_mat[4:8,5] = np.square(Q2)
+        A_mat_star[0:4,3] = np.square(Q_star1)
+        A_mat_star[4:8,5] = np.square(Q_star2)
+
+    # Solve
+    coefs_star, residuals, t, q = np.linalg.lstsq(A_mat_star, dP_vec_star, rcond=None)
+    R_lin_star_inlet    = coefs_star[0]
+    R_quad_star_inlet   = coefs_star[1]
+    R_lin_star1         = coefs_star[2]
+    R_quad_star1        = coefs_star[3]
+    R_lin_star2         = coefs_star[4]
+    R_quad_star2        = coefs_star[5]
+
+    offset_dict["inlet_R_lin_star"] = copy.copy(R_lin_star_inlet)
+    offset_dict["inlet_R_quad_star"] = copy.copy(R_quad_star_inlet)
+    offset_dict["daughter1_R_lin_star"] = copy.copy(R_lin_star1)
+    offset_dict["daughter2_R_lin_star"] = copy.copy(R_lin_star2)
+    offset_dict["daughter1_R_quad_star"] = copy.copy(R_quad_star1)
+    offset_dict["daughter2_R_quad_star"] = copy.copy(R_quad_star2)
+
+    # Solve
+    coefs, residuals, t, q = np.linalg.lstsq(A_mat, dP_vec, rcond=None)
     #pdb.set_trace()
-    save_dict(CCO_params_dict, f"data/param_dicts/{anatomy}_{set_type}_synthetic_data_dict")
-    return CCO_params_dict
+    residuals = dP_vec - A_mat @ coefs
+    print(f"Residuals: {np.linalg.norm(residuals/dP_vec)}")
+    if np.linalg.norm(residuals/dP_vec) > 1:
+        raise ValueError(f"Residuals are too large: {np.linalg.norm(residuals/dP_vec)}")
+
+    R_lin_inlet    = coefs[0]
+    R_quad_inlet   = coefs[1]
+    R_lin1         = coefs[2]
+    R_quad1        = coefs[3]
+    R_lin2         = coefs[4]
+    R_quad2        = coefs[5]
+
+    offset_dict["inlet_R_lin"] = copy.copy(R_lin_inlet)
+    offset_dict["inlet_R_quad"] = copy.copy(R_quad_inlet)
+    offset_dict["daughter1_R_lin"] = copy.copy(R_lin1)
+    offset_dict["daughter2_R_lin"] = copy.copy(R_lin2)
+    offset_dict["daughter1_R_quad"] = copy.copy(R_quad1)
+    offset_dict["daughter2_R_quad"] = copy.copy(R_quad2)
+    if verbose:
+        print("Solved for resistances.")
+
+    # Check consistency of non-dimensionalization
+    
+    assert abs(offset_dict["inlet_R_lin"] - offset_dict["inlet_R_lin_star"]*1.06*U_char/A_char) < 0.1; "Inlet linear resistances do not match."
+    assert abs(offset_dict["daughter1_R_lin"] - offset_dict["daughter1_R_lin_star"]*1.06*U_char/A_char) < 0.1; "Daughter 1 linear resistances do not match."
+    assert abs(offset_dict["daughter2_R_lin"] - offset_dict["daughter2_R_lin_star"]*1.06*U_char/A_char) < 0.1; "Daughter 2 linear resistances do not match."
+    assert abs(offset_dict["inlet_R_quad"] - offset_dict["inlet_R_quad_star"]*1.06/A_char**2) < 0.1; "Inlet quadratic resistances do not match."
+    assert abs(offset_dict["daughter1_R_quad"] - offset_dict["daughter1_R_quad_star"]*1.06/A_char**2) < 0.1; "Daughter 1 quadratic resistances do not match."
+    assert abs(offset_dict["daughter2_R_quad"] - offset_dict["daughter2_R_quad_star"]*1.06/A_char**2) < 0.1; "Daughter 2 quadratic resistances do not match."
+    if verbose:
+        print("Passed non-dimensionalization consistency check.")
+
+    offset_dict["daughter1_flow"] = daughter1_flows
+    offset_dict["daughter1_Re"] = [1.06*(flow/soln_dict["areas"][0,1])*np.sqrt(soln_dict["areas"][0,1]/np.pi)/0.04 for flow in daughter1_flows]
+    offset_dict["daughter2_Re"] = [1.06*(flow/soln_dict["areas"][0,2])*np.sqrt(soln_dict["areas"][0,2]/np.pi)/0.04 for flow in daughter2_flows]
+    offset_dict["daughter2_flow"] = daughter2_flows
+    offset_dict["daughter1_dP"] = daughter1_dPs
+    offset_dict["daughter2_dP"] = daughter2_dPs
+
+    offset_dict["U_char"] = U_char
+    offset_dict["A_char"] = A_char
+    offset_dict["L_char"] = L_char
+
+    offset_dict["daughter1_length"] = soln_dict["lengths"][0][0]/L_char
+    offset_dict["daughter2_length"] = soln_dict["lengths"][1][0]/L_char
+
+    offset_dict["daughter1_angle"] = get_angle_diff(soln_dict["tangents"][:,1], soln_dict["tangents"][:,0])[0]
+    offset_dict["daughter2_angle"] = get_angle_diff(soln_dict["tangents"][:,2], soln_dict["tangents"][:,0])[0]
+
+    offset_dict["daughter1_area_ratio"] = soln_dict["areas"][0,1]/A_char
+    offset_dict["daughter2_area_ratio"] = soln_dict["areas"][0,2]/A_char
+
+    offset_dict["daughter1_area"] = soln_dict["areas"][0,1]
+    offset_dict["daughter2_area"] = soln_dict["areas"][0,2]
+
+    offset_dict["daughter1_area_ratio_inv2"] = (A_char/soln_dict["areas"][0,1])**2
+    offset_dict["daughter2_area_ratio_inv2"] = (A_char/soln_dict["areas"][0,2])**2
+    
+    return offset_dict
+
+def plot_geo(offset_dict, anatomy, set_type, geo):
+    num_flows = len(offset_dict[list(offset_dict.keys())[0]]["daughter1_flow"])
+    colors = ['b', 'g', 'y', 'r']
+    fig, (ax1, ax2) = plt.subplots(2,1, figsize = (10,10), sharex = True)
+    offset_list = []; hp_list = []
+    for offset_name in offset_dict.keys():
+        offset = int(offset_name.split("_")[1])
+        ax2.scatter(offset_dict[offset_name]["daughter1_length"], offset_dict[offset_name]["daughter1_R_lin"], color = "k")
+        offset_list.append(offset_dict[offset_name]["daughter1_length"])
+        hp_list.append(offset_dict[offset_name]["daughter1_length"] * 8 * np.pi *0.04 / (offset_dict[offset_name]["daughter1_area"]**2))
+        for flow_ind in range(len(offset_dict[offset_name]["daughter1_flow"])):
+            ax1.scatter(offset_dict[offset_name]["daughter1_length"], offset_dict[offset_name]["daughter1_dP"][flow_ind], color = colors[flow_ind])
+    ax1.set_ylabel("dP (in - out) (mmHg)")
+    ax1.legend([f"Re = {offset_dict[offset_name]['daughter1_Re'][i]}" for i in range(num_flows)])
+    ax1.set_title(f"Geometry: {geo} \n\
+        Inlet Area = {offset_dict[offset_name]['A_char']} cm^2, \n\
+        Daughter Area Ratio = {offset_dict[offset_name]['daughter1_area_ratio']}, Auxilliary Area Ratio = {offset_dict[offset_name]['daughter2_area_ratio']} \n\
+        Daughter Angle = {offset_dict[offset_name]['daughter1_angle']}, Auxilliary Angle = {offset_dict[offset_name]['daughter2_angle']}",
+        fontsize = 8)
+    ax2.plot(offset_list, hp_list, "--", color = "k", label = "Hagen-Poiseuille Law")
+    ax2.set_ylabel("Resistance")
+    ax2.set_xlabel("Junction + Branch Length (cm)")
+    ax2.legend()
+    fig.savefig(f"data/synthetic_junctions_reduced_results/{anatomy}/{set_type}/{geo}/resistances.png")
+    return
+
+def extract_steady_flow_data(anatomy, set_type, require4):
+    
+    CCO_data_dict = {}
+    geos = os.listdir(f"data/synthetic_junctions_reduced_results/{anatomy}/{set_type}"); geos.sort(); print(f"Geometries: {geos}")
+
+    for j, geo in enumerate(geos[0:]):
+        geo_results_dir = f"data/synthetic_junctions_reduced_results/{anatomy}/{set_type}/{geo}"
+        geo_dict = {}
+        for offset in range(1,10):
+            try:
+                offset_dict = extract_flow_behavior(geo_results_dir, offset)
+                geo_dict[f"offset_{int(10*offset)}"] = offset_dict
+                
+            except Exception as error:
+                # handle the exception
+                print("An exception occurred:", type(error).__name__)
+                print(error) 
+                print(f"Could not extract steady data from {geo}, offset {offset}.")
+                continue
+        if len(geo_dict.keys()) > 0:
+            plot_geo(geo_dict, anatomy, set_type, geo)
+        CCO_data_dict[geo] = geo_dict
+
+    if not os.path.exists(f"data/data_dicts"):
+        os.makedirs(f"data/data_dicts")
+    save_dict(CCO_data_dict, f"data/data_dicts/{anatomy}_{set_type}_synthetic_data_dict")
+    #pdb.set_trace()
+    return

@@ -18,21 +18,21 @@ if __name__ == "__main__":
 
     split_ind_dict = load_dict(f"data/split_indices/{anatomy}/{set_type}/train_val_ind_{anatomy}_num_geos_{num_geos}")
 
-    network_params = {"num_input_features": 6,
-                      "num_layers": 2,
-                      "layer_width": 50,
+    network_params = {"num_input_features": 7,
+                      "num_layers": 3,
+                      "layer_width": 500,
                       "num_output_features": 6,
                       "anatomy": anatomy,
                       "set_type": set_type,
                       "num_geos": num_geos,
                       "pred_mode": "m1"}
     
-    training_params = {"num_epochs": 2000, 
-                       "batch_size": 10,
+    training_params = {"num_epochs": 1000, 
+                       "batch_size": 70,
                        "train_inds": split_ind_dict["train_ind"],
                        "val_inds": split_ind_dict["val_ind"]}
     
-    optimizer_params = {"step_size": 0.001,
+    optimizer_params = {"step_size": 0.005,
                         "init" : 0.0001,
                         "transition_steps": 700,
                         "decay_rate" : 0.90}
