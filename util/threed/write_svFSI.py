@@ -189,7 +189,8 @@ def write_svfsiplus_xml(file_dir, sim_dir, n_tsteps=800, dt=0.001, mesh_complete
         else:
             q_fac = 1
 
-        q[i] = q_fac * -2 * 0.04*5500/(1.06*0.28*2) #-1*0.5*200 #*3.14*1.0476766883**2#-1 * 85 * 2 / 3.4215284204218883
+        #q[i] = q_fac * -2 * 0.04*5500/(1.06*0.28*2) #-1*0.5*200 #*3.14*1.0476766883**2#-1 * 85 * 2 / 3.4215284204218883
+        q[i] = q_fac * -2 * 0.04*5500/(1.06*2*2)  #q_fac * -2 * 0.04*5500/(1.06*1.5*2) tree_dec
 
         flow = flow + "%1.5f    %1.3f\n" %(i*dt, q[i])
     f = open(file_dir + f"inflow_svFSI.flow", "w")
@@ -201,12 +202,6 @@ def write_svfsiplus_xml(file_dir, sim_dir, n_tsteps=800, dt=0.001, mesh_complete
 
 # sim_dir = "/scratch/users/nrubio/synthetic_junctions/CCO/test/simulation_data35/"
 # file_dir = "/Users/natalia/Desktop/cco_bifurcations/trees/geo_files/tree_80/"
-sim_dir = "/scratch/users/nrubio/synthetic_junctions/CCO/tree_20/"
-file_dir = "/Users/natalia/Desktop/cco_bifurcations/trees/geo_files/tree_20/"
+sim_dir = "/scratch/users/nrubio/synthetic_junctions/CCO/tree_dec1/"
+file_dir = "/Users/natalia/Desktop/cco_bifurcations/trees/geo_files/tree_dec1/"
 write_svfsiplus_xml(file_dir, sim_dir)
-
-
-
-
-
-

@@ -12,7 +12,7 @@ from util.neural_net.nn_model import NeuralNet, predict
 
 if __name__ == "__main__":
     flow_amp = "full"
-    tree_name = "tree_80"
+    tree_name = "tree_dec1"
     zerod_gen = "sv"
     if zerod_gen == "CCO":
         input_file_standard = f'trees/zerod_input_CCO_standard/{tree_name}_{flow_amp}/solver_0d.json'
@@ -81,7 +81,7 @@ if __name__ == "__main__":
         # Add a junction to connect the inlet vessel to the bifurcation
         new_junction_id = max_junction_id + 1
         inlet_vessel_2_bif_connector = {'inlet_vessels': [original_inlet_vessel_id], 
-                               'junction_name': f"J{new_junction_id}", 
+                               'junction_name': f'J{new_junction_id}', 
                                'junction_type': 'NORMAL_JUNCTION', 
                                'outlet_vessels': [new_vessel_id]}
         max_junction_id += 1
@@ -92,17 +92,19 @@ if __name__ == "__main__":
     print(f"{num_junctions} junctions processed.")
 
     #num_steps = len(input_file["boundary_conditions"][0]["bc_values"]["Q"])
-    num_steps = 10
-    max_Q = input_file["boundary_conditions"][0]["bc_values"]["Q"][-1]
-    input_file["boundary_conditions"][0]["bc_values"]["Q"] = list(np.linspace(0, max_Q, num_steps))
-    input_file["boundary_conditions"][0]["bc_values"]["t"] = list(np.linspace(0, 0, num_steps))
-    input_file["simulation_parameters"]["number_of_time_steps_per_cardiac_cycle"] = num_steps
-    input_file["simulation_parameters"]["number_of_cardiac_cycles"] = 1
+    # num_steps = 10
+    # max_Q = input_file["boundary_conditions"][0]["bc_values"]["Q"][-1]
+    # input_file["boundary_conditions"][0]["bc_values"]["Q"] = list(np.linspace(0, max_Q, num_steps))
+    # input_file["boundary_conditions"][0]["bc_values"]["t"] = list(np.linspace(0, 0, num_steps))
+    # input_file["simulation_parameters"]["number_of_time_steps_per_cardiac_cycle"] = num_steps
+    # input_file["simulation_parameters"]["number_of_cardiac_cycles"] = 1
     input_file["simulation_parameters"]["steady_initial"] = False
 
     if not os.path.exists(f'trees/zerod_input_{zerod_gen}_TP/{tree_name}_{flow_amp}'):
         os.makedirs(f'trees/zerod_input_{zerod_gen}_TP/{tree_name}_{flow_amp}')
+    if not os.path.exists(f'trees/zerod_output_{zerod_gen}_TP/{tree_name}_{flow_amp}'):
+        os.makedirs(f'trees/zerod_output_{zerod_gen}_TP/{tree_name}_{flow_amp}')
     with open(f'trees/zerod_input_{zerod_gen}_TP/{tree_name}_{flow_amp}/solver_0d.json', 'w') as fp:
-
         json.dump(input_file, indent = 4, fp = fp)
-    print(f"RRI 0D input file saved to trees/zerod_input_{zerod_gen}_TP/{tree_name}_{flow_amp}/solver_0d.json")
+
+    print(f"TP 0D input file saved to trees/zerod_input_{zerod_gen}_TP/{tree_name}_{flow_amp}/solver_0d.json")

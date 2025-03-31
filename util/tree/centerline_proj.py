@@ -115,12 +115,12 @@ def extract_results(fpath_1d, fpath_3d, fpath_out, only_caps=False, num_time_ste
     return
 
 if __name__ == "__main__":
-    tree_name = "tree_20"
+    tree_name = "tree_dec1"
     flow_amp = "full"
     # fpath_1d = "data/CCO_tree/geometry/centerlines.vtp"
     fpath_1d = f"trees/geo_files/{tree_name}/centerlines/centerlines.vtp"
     # fpath_3d = "data/CCO_tree/sim_3D/solution_CCO.vtu"
-    fpath_3d = f"trees/threed_results/{tree_name}/{tree_name}_700_{flow_amp}.vtu"
+    fpath_3d = f"trees/threed_results/{tree_name}/{tree_name}_{flow_amp}.vtu"
     # fpath_out = "data/CCO_tree/centerline_sol.vtp"
     fpath_out = f"trees/threed_output_cent/{tree_name}/centerline_sol_{flow_amp}.vtp"
     if not os.path.exists(f"trees/threed_output_cent/{tree_name}"):

@@ -183,6 +183,9 @@ def extract_flow_behavior(geo_results_dir, offset):
 
     offset_dict["daughter1_area_ratio"] = soln_dict["areas"][0,1]/A_char
     offset_dict["daughter2_area_ratio"] = soln_dict["areas"][0,2]/A_char
+    total_daughter_area_ratio = soln_dict["areas"][0,1]/A_char + soln_dict["areas"][0,2]/A_char
+    print(f"Total daughter area ratio: {total_daughter_area_ratio}")
+    assert abs(total_daughter_area_ratio) < 1.5; "Total daughter area ratio too big."
 
     offset_dict["daughter1_area"] = soln_dict["areas"][0,1]
     offset_dict["daughter2_area"] = soln_dict["areas"][0,2]

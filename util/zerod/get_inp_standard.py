@@ -76,9 +76,11 @@ tree_name = sys.argv[1]
 flow_amp = sys.argv[2]
 
 if flow_amp == "half":
-   inflow = 0.5 * np.pi*(0.28**2) * 0.04*5500/(1.06*0.28*2)#169.51457903373378
+   inflow = 0
+   #inflow = 0.5 * np.pi*(0.28**2) * 0.04*5500/(1.06*0.28*2)#169.51457903373378
 elif flow_amp == "full":
-   inflow = np.pi*(0.28**2) * 0.04*5500/(1.06*0.28*2) #339.029
+   inflow = 650# 483 tree_dec
+   #inflow = np.pi*(0.28**2) * 0.04*5500/(1.06*0.28*2) #339.029
 else:
    print("Invalid flow amplitude.  should be 'half' or 'full'")
    sys.exit()

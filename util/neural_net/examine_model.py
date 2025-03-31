@@ -18,16 +18,25 @@ model_name = "angles_CCO_ng_1728_nl_3_lw_200_ne_1000_bs_40_dr_0.9_model"
 nn_model = dill_load(f"results/models/{anatomy}/{model_name}")
 
 re_char = 4500
-A_char = 0.25**2 * np.pi
+A_char = 0.25**2 * np.pi #0.0516194110 #0.25**2 * np.pi
+print(f"A_char: {A_char}")
 U_char = re_char * 0.04 / (1.06 * 2*np.sqrt(A_char/np.pi))
 
-daughter1_area_ratio_default = scaling_dict["daughter1_area_ratio"][0]
-daughter2_area_ratio_default = scaling_dict["daughter2_area_ratio"][3]
+# daughter1_area_ratio_default = scaling_dict["daughter1_area_ratio"][3]
+# daughter2_area_ratio_default = scaling_dict["daughter2_area_ratio"][3]
+# daughter1_area_ratio_inv2_default = daughter1_area_ratio_default**-2
+# daughter2_area_ratio_inv2_default = daughter2_area_ratio_default**-2
+# daughter1_angle_default = scaling_dict["daughter1_angle"][0]
+# daughter2_angle_default = scaling_dict["daughter2_angle"][0]
+# length_default = scaling_dict["daughter1_length"][3]
+
+daughter1_area_ratio_default = 0.9402850520484878 #scaling_dict["daughter1_area_ratio"][3]
+daughter2_area_ratio_default = 0.3783777656544973 #scaling_dict["daughter2_area_ratio"][3]
 daughter1_area_ratio_inv2_default = daughter1_area_ratio_default**-2
 daughter2_area_ratio_inv2_default = daughter2_area_ratio_default**-2
-daughter1_angle_default = scaling_dict["daughter1_angle"][0]
-daughter2_angle_default = scaling_dict["daughter2_angle"][0]
-length_default = scaling_dict["daughter1_length"][3]
+daughter1_angle_default = 0.38699742 #scaling_dict["daughter1_angle"][0]
+daughter2_angle_default = 0.73518744 #scaling_dict["daughter2_angle"][0]
+length_default = 11.793104770350494 #scaling_dict["daughter1_length"][3]
 
 n_pts = 100
 daughter1_area_ratio_arr = np.linspace(scaling_dict["daughter1_area_ratio"][2], scaling_dict["daughter1_area_ratio"][3], n_pts)

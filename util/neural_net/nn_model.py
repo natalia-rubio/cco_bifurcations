@@ -73,6 +73,8 @@ def loss(input, flow, dP_true, scaling_factors, scaling_dict, weights):
     R_lin_star_pred_inlet = 0 * R_lin_star_pred_inlet # No linear inlet resistor
     R_quad_star_pred_inlet = relu(R_quad_star_pred_inlet) # Negative quadratic inlet resistor
 
+    R_quad_star_pred1 = relu(R_quad_star_pred1) # Positive quadratic daughter 1 resistor
+
     A_char = scaling_factors[:,0].reshape(-1,1)
     U_char = scaling_factors[:,1].reshape(-1,1)
 

@@ -10,7 +10,7 @@ import os
 
 # Load in svZeroDSolver input file
 inflow = 344.655
-tree_name = "tree_20"
+tree_name = "tree_dec"
 junction_mode = "RR"
 with open(f'trees/zerod_input_sv_{junction_mode}/{tree_name}_full/solver_0d.json') as json_file:
     input_file = json.load(json_file)
@@ -178,7 +178,7 @@ for i, vessel in enumerate(vessel_dict.keys()):
                     sol.value(P_in)[vessel_dict[vessel]["v_ind"]],
                     sol.value(P_out)[vessel_dict[vessel]["v_ind"]]]
 if not os.path.exists(f'trees/zerod_output_sv_{junction_mode}'):
-    os.makedirs(f'trees/zerod_output_sv_{junction_mode}/tree_80_full')
-df.to_csv(f'trees/zerod_output_sv_{junction_mode}/tree_80_full/sol_casadi_{inflow}.csv', index=False)
+    os.makedirs(f'trees/zerod_output_sv_{junction_mode}/{tree_name}_full')
+df.to_csv(f'trees/zerod_output_sv_{junction_mode}/{tree_name}_full/sol_casadi_{inflow}.csv', index=False)
 
 pdb.set_trace()
