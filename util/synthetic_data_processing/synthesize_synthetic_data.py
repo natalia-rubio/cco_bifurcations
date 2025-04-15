@@ -170,7 +170,7 @@ def get_geo_scalings(anatomy, set_type, unsteady = False):
         os.mkdir(f"results/synthetic_data_trends/geo_dist")
 
 
-    values_of_interest = ["R_lin_star1", "R_lin_star2", "R_quad_star1", "R_quad_star2", "R_lin_star_inlet", "R_quad_star_inlet",]
+    values_of_interest = ["R_lin_star1", "R_lin_star2", "R_quad_star1", "R_quad_star2"] #, "R_lin_star_inlet", "R_quad_star_inlet",]
     values_to_skip = ["daughter1_dP_star", "daughter2_dP_star",
                       "daughter1_dP_original", "daughter2_dP_original",
                       "daughter1_flow_star", "daughter2_flow_star", 

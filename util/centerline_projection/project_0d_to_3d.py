@@ -59,27 +59,28 @@ def convert_csv_to_branch_result(
     # save to file
     return out
 
-def project_to_centerline(tree_name, junction_mode, flow_amp, gen_mode):
+def project_to_centerline(tree_name, junction_mode):
 
     centerline_handler = CenterlineHandler.from_file("trees/geo_files/" + tree_name + "/centerlines/centerlines.vtp")
-    input_file = f"trees/zerod_input_{gen_mode}_standard/{tree_name}_{flow_amp}/solver_0d.json"
+    input_file = f"trees/zerod_input/standard/{tree_name}/solver_0d.json"
     zerod_handler = SvZeroDSolverInputHandler.from_file(input_file)
     casadi = False
     print(f"Input file: {input_file}")
     
     zerod_handler.update_simparams(last_cycle_only=True)
 
-    
+    casadi = True
     if junction_mode == "standard":
         zerod_solver = pysvzerod.Solver(input_file)
         zerod_solver.run()
         results_df = zerod_solver.get_full_result()
     # 
+    
     else:
         if casadi:
-            results_df = pd.read_csv(f"trees/zerod_output_{gen_mode}_{junction_mode}/{tree_name}_{flow_amp}/sol_casadi.csv")
+            results_df = pd.read_csv(f"trees/zerod_output/{junction_mode}/{tree_name}/sol_casadi.csv")
         else:
-            results_df = pd.read_csv(f"trees/zerod_output_{gen_mode}_{junction_mode}/{tree_name}_{flow_amp}/results.csv")
+            results_df = pd.read_csv(f"trees/zerod_output/{junction_mode}/{tree_name}/results.csv")
     print(results_df)
     branch_results = convert_csv_to_branch_result(results_df, zerod_handler)
     arrays = rec_dd()
@@ -194,14 +195,12 @@ def project_to_centerline(tree_name, junction_mode, flow_amp, gen_mode):
         out_array = numpy_to_vtk(a)
         out_array.SetName(f)
         centerline_handler.data.GetPointData().AddArray(out_array)
-    if not os.path.exists(f"trees/zerod_output_cent_{gen_mode}_{junction_mode}/{tree_name}_{flow_amp}"):
-        os.makedirs(f"trees/zerod_output_cent_{gen_mode}_{junction_mode}/{tree_name}_{flow_amp}")
-    centerline_handler.to_file(f"trees/zerod_output_cent_{gen_mode}_{junction_mode}/{tree_name}_{flow_amp}/centerline_sol.vtp")
+    if not os.path.exists(f"trees/zerod_output_cent/{junction_mode}/{tree_name}"):
+        os.makedirs(f"trees/zerod_output_cent/{junction_mode}/{tree_name}")
+    centerline_handler.to_file(f"trees/zerod_output_cent/{junction_mode}/{tree_name}/centerline_sol.vtp")
     print(f"Centerline projection for {tree_name} in {junction_mode} mode completed.")
     return
 
 tree_name = sys.argv[1]
 junction_mode = sys.argv[2]
-flow_amp = "full"
-gen_mode = "sv"
-project_to_centerline(tree_name, junction_mode, flow_amp, gen_mode)
+project_to_centerline(tree_name, junction_mode)

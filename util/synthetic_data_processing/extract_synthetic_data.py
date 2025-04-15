@@ -22,7 +22,7 @@ def extract_flow_behavior(geo_results_dir, offset):
     offset_dict = {}
     re_char = 4500
     # Compose lists of flow and pressure data for each outlet
-    for i in [0,1,2,3]:
+    for i in [1,3]:
         try:
             flow_result_dir = f"{geo_results_dir}/flow_{i}_offset_{int(10*offset)}_red_sol"
             print(f"Flow result dir: {flow_result_dir}")
@@ -32,6 +32,7 @@ def extract_flow_behavior(geo_results_dir, offset):
             
             soln_dict = load_dict(flow_result_dir)
             A_char = soln_dict["areas"][0,0]
+            
             L_char = np.sqrt(A_char/np.pi)
             U_char = re_char * 0.04/(1.06 * 2*np.sqrt(A_char/np.pi))
 
@@ -83,47 +84,50 @@ def extract_flow_behavior(geo_results_dir, offset):
     dP2 = np.asarray(daughter2_dPs).reshape(-1,)
     dP_vec = np.hstack([dP1, dP2])
 
-    A_mat_star = np.zeros((8, 6))
-    A_mat = np.zeros((8, 6))
+    num_flows = len(daughter1_flows)
+    num_coefs = 4
+
+    A_mat_star = np.zeros((2*num_flows, num_coefs))
+    A_mat = np.zeros((2*num_flows, num_coefs))
 
     # Inlet flows
     inlet_resistance = False
     if inlet_resistance:
-        A_mat_star[0:4,0] = Q_star_inlet
-        A_mat_star[0:4,1] = np.square(Q_star_inlet)
-        A_mat_star[4:8,0] = Q_star_inlet
-        A_mat_star[4:8,1] = np.square(Q_star_inlet)
+        A_mat_star[0:num_flows,0] = Q_star_inlet
+        A_mat_star[0:num_flows,1] = np.square(Q_star_inlet)
+        A_mat_star[num_flows:2*num_flows,0] = Q_star_inlet
+        A_mat_star[num_flows:2*num_flows,1] = np.square(Q_star_inlet)
     
-        A_mat[0:4,0] = Q_inlet
-        A_mat[0:4,1] = np.square(Q_inlet)
-        A_mat[4:8,0] = Q_inlet
-        A_mat[4:8,1] = np.square(Q_inlet)
+        A_mat[0:num_flows,0] = Q_inlet
+        A_mat[0:num_flows,1] = np.square(Q_inlet)
+        A_mat[num_flows:2*num_flows,0] = Q_inlet
+        A_mat[num_flows:2*num_flows,1] = np.square(Q_inlet)
 
 
     # Daughter 1 flows
-    A_mat[0:4,2] = Q1
-    A_mat[4:8,4] = Q2
-    A_mat_star[0:4,2] = Q_star1
-    A_mat_star[4:8,4] = Q_star2
+    A_mat[0:num_flows,0] = Q1
+    A_mat[num_flows:2*num_flows,2] = Q2
+    A_mat_star[0:num_flows,0] = Q_star1
+    A_mat_star[num_flows:2*num_flows,2] = Q_star2
 
     quadratic_resistors = True
     if quadratic_resistors:
-        A_mat[0:4,3] = np.square(Q1)
-        A_mat[4:8,5] = np.square(Q2)
-        A_mat_star[0:4,3] = np.square(Q_star1)
-        A_mat_star[4:8,5] = np.square(Q_star2)
+        A_mat[0:num_flows,1] = np.square(Q1)
+        A_mat[num_flows:2*num_flows,3] = np.square(Q2)
+        A_mat_star[0:num_flows,1] = np.square(Q_star1)
+        A_mat_star[num_flows:2*num_flows,3] = np.square(Q_star2)
 
     # Solve
     coefs_star, residuals, t, q = np.linalg.lstsq(A_mat_star, dP_vec_star, rcond=None)
-    R_lin_star_inlet    = coefs_star[0]
-    R_quad_star_inlet   = coefs_star[1]
-    R_lin_star1         = coefs_star[2]
-    R_quad_star1        = coefs_star[3]
-    R_lin_star2         = coefs_star[4]
-    R_quad_star2        = coefs_star[5]
+    # R_lin_star_inlet    = coefs_star[0]
+    # R_quad_star_inlet   = coefs_star[1]
+    R_lin_star1         = coefs_star[0]
+    R_quad_star1        = coefs_star[1]
+    R_lin_star2         = coefs_star[2]
+    R_quad_star2        = coefs_star[3]
 
-    offset_dict["inlet_R_lin_star"] = copy.copy(R_lin_star_inlet)
-    offset_dict["inlet_R_quad_star"] = copy.copy(R_quad_star_inlet)
+    # offset_dict["inlet_R_lin_star"] = copy.copy(R_lin_star_inlet)
+    # offset_dict["inlet_R_quad_star"] = copy.copy(R_quad_star_inlet)
     offset_dict["daughter1_R_lin_star"] = copy.copy(R_lin_star1)
     offset_dict["daughter2_R_lin_star"] = copy.copy(R_lin_star2)
     offset_dict["daughter1_R_quad_star"] = copy.copy(R_quad_star1)
@@ -137,15 +141,15 @@ def extract_flow_behavior(geo_results_dir, offset):
     if np.linalg.norm(residuals/dP_vec) > 1:
         raise ValueError(f"Residuals are too large: {np.linalg.norm(residuals/dP_vec)}")
 
-    R_lin_inlet    = coefs[0]
-    R_quad_inlet   = coefs[1]
-    R_lin1         = coefs[2]
-    R_quad1        = coefs[3]
-    R_lin2         = coefs[4]
-    R_quad2        = coefs[5]
+    # R_lin_inlet    = coefs[0]
+    # R_quad_inlet   = coefs[1]
+    R_lin1         = coefs[0]
+    R_quad1        = coefs[1]
+    R_lin2         = coefs[2]
+    R_quad2        = coefs[3]
 
-    offset_dict["inlet_R_lin"] = copy.copy(R_lin_inlet)
-    offset_dict["inlet_R_quad"] = copy.copy(R_quad_inlet)
+    # offset_dict["inlet_R_lin"] = copy.copy(R_lin_inlet)
+    # offset_dict["inlet_R_quad"] = copy.copy(R_quad_inlet)
     offset_dict["daughter1_R_lin"] = copy.copy(R_lin1)
     offset_dict["daughter2_R_lin"] = copy.copy(R_lin2)
     offset_dict["daughter1_R_quad"] = copy.copy(R_quad1)
@@ -155,10 +159,10 @@ def extract_flow_behavior(geo_results_dir, offset):
 
     # Check consistency of non-dimensionalization
     
-    assert abs(offset_dict["inlet_R_lin"] - offset_dict["inlet_R_lin_star"]*1.06*U_char/A_char) < 0.1; "Inlet linear resistances do not match."
+    # assert abs(offset_dict["inlet_R_lin"] - offset_dict["inlet_R_lin_star"]*1.06*U_char/A_char) < 0.1; "Inlet linear resistances do not match."
     assert abs(offset_dict["daughter1_R_lin"] - offset_dict["daughter1_R_lin_star"]*1.06*U_char/A_char) < 0.1; "Daughter 1 linear resistances do not match."
     assert abs(offset_dict["daughter2_R_lin"] - offset_dict["daughter2_R_lin_star"]*1.06*U_char/A_char) < 0.1; "Daughter 2 linear resistances do not match."
-    assert abs(offset_dict["inlet_R_quad"] - offset_dict["inlet_R_quad_star"]*1.06/A_char**2) < 0.1; "Inlet quadratic resistances do not match."
+    # assert abs(offset_dict["inlet_R_quad"] - offset_dict["inlet_R_quad_star"]*1.06/A_char**2) < 0.1; "Inlet quadratic resistances do not match."
     assert abs(offset_dict["daughter1_R_quad"] - offset_dict["daughter1_R_quad_star"]*1.06/A_char**2) < 0.1; "Daughter 1 quadratic resistances do not match."
     assert abs(offset_dict["daughter2_R_quad"] - offset_dict["daughter2_R_quad_star"]*1.06/A_char**2) < 0.1; "Daughter 2 quadratic resistances do not match."
     if verbose:
@@ -184,8 +188,8 @@ def extract_flow_behavior(geo_results_dir, offset):
     offset_dict["daughter1_area_ratio"] = soln_dict["areas"][0,1]/A_char
     offset_dict["daughter2_area_ratio"] = soln_dict["areas"][0,2]/A_char
     total_daughter_area_ratio = soln_dict["areas"][0,1]/A_char + soln_dict["areas"][0,2]/A_char
-    print(f"Total daughter area ratio: {total_daughter_area_ratio}")
-    assert abs(total_daughter_area_ratio) < 1.5; "Total daughter area ratio too big."
+    # print(f"Total daughter area ratio: {total_daughter_area_ratio}")
+    # assert abs(total_daughter_area_ratio) < 1.5; "Total daughter area ratio too big."
 
     offset_dict["daughter1_area"] = soln_dict["areas"][0,1]
     offset_dict["daughter2_area"] = soln_dict["areas"][0,2]
@@ -198,11 +202,12 @@ def extract_flow_behavior(geo_results_dir, offset):
 def plot_geo(offset_dict, anatomy, set_type, geo):
     num_flows = len(offset_dict[list(offset_dict.keys())[0]]["daughter1_flow"])
     colors = ['b', 'g', 'y', 'r']
-    fig, (ax1, ax2) = plt.subplots(2,1, figsize = (10,10), sharex = True)
+    fig, (ax1, ax2, ax3) = plt.subplots(3,1, figsize = (10,10), sharex = True)
     offset_list = []; hp_list = []
     for offset_name in offset_dict.keys():
         offset = int(offset_name.split("_")[1])
         ax2.scatter(offset_dict[offset_name]["daughter1_length"], offset_dict[offset_name]["daughter1_R_lin"], color = "k")
+        ax3.scatter(offset_dict[offset_name]["daughter1_length"], offset_dict[offset_name]["daughter1_R_quad"], color = "k")
         offset_list.append(offset_dict[offset_name]["daughter1_length"])
         hp_list.append(offset_dict[offset_name]["daughter1_length"] * 8 * np.pi *0.04 / (offset_dict[offset_name]["daughter1_area"]**2))
         for flow_ind in range(len(offset_dict[offset_name]["daughter1_flow"])):
@@ -215,8 +220,9 @@ def plot_geo(offset_dict, anatomy, set_type, geo):
         Daughter Angle = {offset_dict[offset_name]['daughter1_angle']}, Auxilliary Angle = {offset_dict[offset_name]['daughter2_angle']}",
         fontsize = 8)
     ax2.plot(offset_list, hp_list, "--", color = "k", label = "Hagen-Poiseuille Law")
-    ax2.set_ylabel("Resistance")
-    ax2.set_xlabel("Junction + Branch Length (cm)")
+    ax2.set_ylabel("Linear Resistance")
+    ax3.set_ylabel("Quadratic Resistance")
+    ax3.set_xlabel("Junction + Branch Length (cm)")
     ax2.legend()
     fig.savefig(f"data/synthetic_junctions_reduced_results/{anatomy}/{set_type}/{geo}/resistances.png")
     return

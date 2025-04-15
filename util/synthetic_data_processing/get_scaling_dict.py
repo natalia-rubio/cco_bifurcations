@@ -71,7 +71,7 @@ def get_scaling_dict(anatomy, set_type, unsteady = False):
         os.mkdir(f"results/synthetic_data_trends/geo_dist")
 
 
-    values_of_interest = ["daughter1_R_lin_star", "daughter2_R_lin_star", "daughter1_R_quad_star", "daughter2_R_quad_star", "inlet_R_lin_star", "inlet_R_quad_star",]
+    values_of_interest = ["daughter1_R_lin_star", "daughter2_R_lin_star", "daughter1_R_quad_star", "daughter2_R_quad_star"]
     values_to_skip = ["daughter1_dP_star", "daughter2_dP_star",
                       "daughter1_dP_original", "daughter2_dP_original",
                       "daughter1_flow_star", "daughter2_flow_star", 

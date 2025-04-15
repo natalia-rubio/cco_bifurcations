@@ -33,12 +33,10 @@ def get_outlet_nodes(arrays_3d):
     return outlet_node_pt_arr.astype(bool)
 
 def compare_to_3d(junction_mode = "standard",
-                  tree_name = "tree_dec1",
-                  flow_amp = "full",
-                  gen_mode = "sv"):
+                  tree_name = "tree_dec1"):
 
-    reader_0d = read_geo(f"trees/zerod_output_cent_{gen_mode}_{junction_mode}/{tree_name}_{flow_amp}/centerline_sol.vtp").GetOutput()
-    reader_3d = read_geo(f"trees/threed_output_cent/{tree_name}/centerline_sol_{flow_amp}.vtp").GetOutput()
+    reader_0d = read_geo(f"trees/zerod_output_cent/{junction_mode}/{tree_name}/centerline_sol.vtp").GetOutput()
+    reader_3d = read_geo(f"trees/threed_output_cent/{tree_name}/centerline_sol.vtp").GetOutput()
     #was 300
 
     arrays_0d = get_all_arrays(reader_0d)
@@ -66,9 +64,8 @@ def compare_to_3d(junction_mode = "standard",
     #pressure_error_0d[arrays_3d["BifurcationId"] >= 0] = 0
     print(f"Pressure error: {compute_rmse(pressure_error_0d,0*pressure_error_0d)}")
 
-    write_geo(f"trees/threed_output_cent/{tree_name}/centerline_sol_{junction_mode}.vtp", reader_3d)
     return
 
 if __name__ == "__main__":
-    compare_to_3d(junction_mode = sys.argv[1])
+    compare_to_3d(junction_mode = sys.argv[1], tree_name=sys.argv[2])
                   

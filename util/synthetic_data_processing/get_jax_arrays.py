@@ -26,23 +26,20 @@ def get_jax_arrays(anatomy, set_type, unsteady = True):
 
                                 ), axis = -1)
 
-    output_tens = jnp.concatenate((scale_jax(scaling_dict, jnp.asarray(char_val_dict["inlet_R_lin_star"], dtype=jnp.float32), "inlet_R_lin_star"),
+    output_tens = jnp.concatenate((
                             scale_jax(scaling_dict, jnp.asarray(char_val_dict["daughter1_R_lin_star"], dtype=jnp.float32), "daughter1_R_lin_star"),
-                            scale_jax(scaling_dict, jnp.asarray(char_val_dict["daughter2_R_lin_star"], dtype=jnp.float32), "daughter2_R_lin_star"),
-                            scale_jax(scaling_dict, jnp.asarray(char_val_dict["inlet_R_quad_star"], dtype=jnp.float32), "inlet_R_quad_star"),
                             scale_jax(scaling_dict, jnp.asarray(char_val_dict["daughter1_R_quad_star"], dtype=jnp.float32), "daughter1_R_quad_star"),
-                            scale_jax(scaling_dict, jnp.asarray(char_val_dict["daughter2_R_quad_star"], dtype=jnp.float32), "daughter2_R_quad_star"),
                             ), axis = -1)
     
     scaling_factors = jnp.concatenate((jnp.reshape(jnp.asarray(char_val_dict["A_char"], dtype=jnp.float32), (num_geos, 1)),
                                 jnp.reshape(jnp.asarray(char_val_dict["U_char"], dtype=jnp.float32), (num_geos, 1))), axis = -1)
     
     flows = jnp.stack((jnp.asarray(char_val_dict["daughter1_flow"], dtype=jnp.float32),
-                            0*jnp.asarray(char_val_dict["daughter2_flow"], dtype=jnp.float32),
+                            # 0*jnp.asarray(char_val_dict["daughter2_flow"], dtype=jnp.float32),
                             ), axis = -1)
     
     dPs = jnp.stack((jnp.asarray(char_val_dict["daughter1_dP"], dtype=jnp.float32),
-                            0*jnp.asarray(char_val_dict["daughter2_dP"], dtype=jnp.float32),
+                            # 0*jnp.asarray(char_val_dict["daughter2_dP"], dtype=jnp.float32),
                             ), axis = -1)
     
     if not os.path.exists(f"data/jax_arrays"):

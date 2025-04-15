@@ -6,13 +6,13 @@ import matplotlib
 import casadi
 import pandas as pd
 import os
+import sys
 # Solve a zerod vascular flow with CasADi
 
 # Load in svZeroDSolver input file
-inflow = 344.655
-tree_name = "tree_dec"
-junction_mode = "RR"
-with open(f'trees/zerod_input_sv_{junction_mode}/{tree_name}_full/solver_0d.json') as json_file:
+tree_name = sys.argv[1]
+junction_mode = sys.argv[2]
+with open(f'trees/zerod_input/{junction_mode}/{tree_name}/solver_0d.json') as json_file:
     input_file = json.load(json_file)
 num_vessels = len(input_file["vessels"])
 print(f"Number of vessels: {num_vessels}")
@@ -30,6 +30,8 @@ SS_constraint_counter = 0
 
 # Create a CasADi Opti object
 opti = casadi.Opti()
+# Objective to minimize (squared residuals of the vessel and junction pressure equations)
+objective = 0
 
 # Decision variables
 Q_in = opti.variable(num_vessels)
@@ -65,16 +67,15 @@ for i, vessel in enumerate(input_file["vessels"]):
     C = vessel["zero_d_element_values"]["C"]
     L = vessel["zero_d_element_values"]["L"]
 
-    # Pressure equation
-    opti.subject_to(
+    objective += (
         P_in[i] +
         - P_out[i] +
         - (R_lin + R_sten * (10**-2 + Q_in[i]**2)**0.5 + R_quad * Q_in[i]) * Q_in[i] + # abs removed
-        - L * Q_out_dt[i] == 0    
-    )
+        - L * Q_out_dt[i]  
+        )**2
     vessel_constraint_counter += 1
     
-    # Flow equation
+    # Conservation of mass (to satisfy exactly)
     opti.subject_to(
         Q_in[i] + 
         - Q_out[i] + 
@@ -83,15 +84,17 @@ for i, vessel in enumerate(input_file["vessels"]):
     )
     vessel_constraint_counter += 1
     
-    # Outlet boundary conditions
+    # Outlet boundary conditions (to satisfy exactly)
     if "boundary_conditions" in vessel.keys():
         if "outlet" in vessel["boundary_conditions"].keys():
             opti.subject_to(P_out[i] - Q_out[i] * 61.56 == 0)
             BC_constraint_counter += 1
     
-    # Inlet boundary conditions
+    # Inlet boundary conditions (to satisfy exactly)
         if "inlet" in vessel["boundary_conditions"].keys():
-            opti.subject_to(Q_in[i] == inflow)#344.655)
+            
+            inflow = input_file["boundary_conditions"][0]["bc_values"]["Q"][-1]
+            opti.subject_to(Q_in[i] == inflow)
             BC_constraint_counter += 1
             
 for i, junction in enumerate(input_file["junctions"]):
@@ -115,27 +118,23 @@ for i, junction in enumerate(input_file["junctions"]):
             L = junction["junction_values"]["L"][j]
             C = 0
 
-            # Pressure equations
-            opti.subject_to(
+            # Junction pressure equation residual (to minimize)
+            objective += (
                 P_out[inlet_vessel_ind] +
                 - P_in[outlet_vessel_ind] +
                 - (R_lin + R_sten * (10**-2 + Q_in[outlet_vessel_ind]**2)**0.5 + R_quad * Q_in[outlet_vessel_ind]) * Q_in[outlet_vessel_ind] + # abs removed
                 - L * Q_in_dt[outlet_vessel_ind]
-                == 0
-            )
+            )**2
             junction_constraint_counter += 1
 
         elif junction["junction_type"] == "NORMAL_JUNCTION":
-
+            # Continuity of pressure (to satisfy exactly)
             opti.subject_to(P_out[inlet_vessel_ind] - P_in[outlet_vessel_ind] == 0)
             junction_constraint_counter += 1
 
         
         opti.set_value(outflow_extractors[outlet_vessel_ind, i], -1)
-        #Q_sum[i] += -Q_in[outlet_vessel_ind]
-        # Flow equation
-    #opti.subject_to(Q_sum[i] == 0)
-    #pdb.set_trace()
+    # Conservation of mass
     opti.set_value(inflow_extractors[inlet_vessel_ind, i], 1)
     opti.subject_to(Q_out.T@inflow_extractors[:,i] + Q_in.T@outflow_extractors[:,i] == 0)
     junction_constraint_counter += 1
@@ -150,7 +149,7 @@ if steady_state:
     SS_constraint_counter += 4 * num_vessels
 
 # Enforce positive flows
-positive_flows = False
+positive_flows = True
 if positive_flows:
     opti.subject_to(casadi.vec(Q_in)  >= 0)
     opti.subject_to(casadi.vec(Q_out) >= 0)
@@ -161,10 +160,16 @@ print(f"Number of boundary condition constraints: {BC_constraint_counter}")
 print(f"Number of steady state constraints: {SS_constraint_counter}")
 print(f"Total number of constraints: {vessel_constraint_counter + junction_constraint_counter + BC_constraint_counter + SS_constraint_counter}")
 # Solve NLP with IPOPT
-opti.minimize(0) # Dummy objective
+opti.minimize(objective) # Dummy objective
 opti.solver('ipopt')
 #pdb.set_trace()
-sol = opti.solve()
+try:
+    sol = opti.solve()
+except:
+    opti.debug.value(objective)
+    print("Objective value: ", opti.debug.value(objective))
+    opti.debug.value(Q_in)
+    sol = opti.debug
 
 
 # Casadi solution to Pandas df
@@ -177,8 +182,6 @@ for i, vessel in enumerate(vessel_dict.keys()):
                     sol.value(Q_out)[vessel_dict[vessel]["v_ind"]],
                     sol.value(P_in)[vessel_dict[vessel]["v_ind"]],
                     sol.value(P_out)[vessel_dict[vessel]["v_ind"]]]
-if not os.path.exists(f'trees/zerod_output_sv_{junction_mode}'):
-    os.makedirs(f'trees/zerod_output_sv_{junction_mode}/{tree_name}_full')
-df.to_csv(f'trees/zerod_output_sv_{junction_mode}/{tree_name}_full/sol_casadi_{inflow}.csv', index=False)
-
-pdb.set_trace()
+if not os.path.exists(f'trees/zerod_output/{junction_mode}/{tree_name}'):
+    os.makedirs(f'trees/zerod_output/{junction_mode}/{tree_name}')
+df.to_csv(f'trees/zerod_output/{junction_mode}/{tree_name}/sol_casadi.csv', index=False)

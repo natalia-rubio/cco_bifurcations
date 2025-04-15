@@ -1,0 +1,574 @@
+from sv import *
+import vtk
+import os
+import platform
+import numpy as np
+import pickle
+import pdb
+from check_for_intersect_gpt import check_3d_curve_intersection
+def save_dict(di_, filename_):
+    with open(filename_, 'wb') as f:
+        pickle.dump(di_, f)
+
+def load_dict(filename_):
+    with open(filename_, 'rb') as f:
+        dict = pickle.load(f)
+    return dict
+
+def get_contours(geo_params):
+
+    # Write sample CCO bifurcation
+    contour_list = load_dict("results/path_planning/sample_path")
+    norm_list = load_dict("results/path_planning/sample_norms")
+    radius_list = load_dict("results/path_planning/sample_radii")
+    bif_pt_coords = load_dict("data/sample_bif/bif_pt_coords")
+
+    contour1 = np.asarray(contour_list[0]).T
+    contour2 = np.asarray(contour_list[1]).T
+
+    norm1 = np.asarray(norm_list[0]).T
+    norm2 = np.asarray(norm_list[1]).T
+
+    radii1 = np.asarray(radius_list[0])
+    radii2 = np.asarray(radius_list[1])
+
+    # Find the relevant points in the geometry
+    intersection_pt_ind = np.argmin(np.linalg.norm(contour1 - contour2[0,:], axis = 1))
+    intersection_pt = contour1[intersection_pt_ind]
+
+    inlet_pt_ind = np.argmin(np.linalg.norm(contour1 - bif_pt_coords["inlet_coords"], axis = 1))
+    daughter1_pt_ind = np.argmin(np.linalg.norm(contour1 - bif_pt_coords["daughter1_coords"], axis = 1))
+    daughter2_pt_ind = np.argmin(np.linalg.norm(contour2 - bif_pt_coords["daughter2_coords"], axis = 1))
+
+    # Centering the intersection point
+    contour1 = contour1 - intersection_pt
+    contour2 = contour2 - intersection_pt
+
+    # Adjust angle 1
+    inlet_ref1 = np.inner(-1*contour1[0,:],contour1[-1,:])/np.linalg.norm(contour1[0,:])* (-1*contour1[0,:] / np.linalg.norm(contour1[0,:]))
+    inlet_ref_length1 = np.linalg.norm(inlet_ref1)
+    seg1 = contour1[-1,:] - inlet_ref1
+    seg_length1 = np.linalg.norm(seg1)
+    angle1 = np.arcsin(seg_length1/np.linalg.norm(contour1[-1,:]))
+    new_angle1 = geo_params["daughter1_angle"]
+    if new_angle1 < angle1:
+        new_seg_length1 = np.linalg.norm(contour1[-1,:])*np.sin(new_angle1)
+        seg_add1 = (new_seg_length1 - seg_length1) * seg1/np.linalg.norm(seg1)
+    elif new_angle1 < np.pi/2:
+        rev_length = seg_length1*np.tan(np.pi/2 - new_angle1)
+        seg_add1 = (inlet_ref_length1 - rev_length) * contour1[0,:]/np.linalg.norm(contour1[0,:])
+    else:
+        rev_length = seg_length1/np.tan(np.pi - new_angle1)
+        seg_add1 = (inlet_ref_length1 + rev_length) * contour1[0,:]/np.linalg.norm(contour1[0,:])
+    incs = np.linspace(0, 1, contour1.shape[0]-intersection_pt_ind , endpoint = True)
+    for point in range(contour1.shape[0]-intersection_pt_ind):
+        contour1[point+intersection_pt_ind,:] = contour1[point+intersection_pt_ind,:] + incs[point] * seg_add1
+
+    # Adjust angle 2
+    inlet_ref2 = (np.inner(-1*contour1[0,:],contour2[-1,:])/np.linalg.norm(contour1[0,:])) * (-1*contour1[0,:] / np.linalg.norm(contour1[0,:]))
+    inlet_ref_length2 = np.linalg.norm(inlet_ref2)
+    seg2 = contour2[-1,:] - inlet_ref2
+    seg_length2 = np.linalg.norm(seg2)
+    angle2 = np.arcsin(seg_length2/np.linalg.norm(contour2[-1,:]))
+    new_angle2 = geo_params["daughter2_angle"]
+    if new_angle2 < angle2:
+        new_seg_length2 = np.linalg.norm(contour2[-1,:])*np.sin(new_angle2)
+        seg_add2 = (new_seg_length2 - seg_length2) * seg2/np.linalg.norm(seg2)
+    elif new_angle2 < np.pi/2:
+        rev_length = seg_length2*np.tan(np.pi/2 - new_angle2)
+        seg_add2 = (inlet_ref_length2 - rev_length) * contour1[0,:]/np.linalg.norm(contour1[0,:])
+    else:
+        rev_length = seg_length2/np.tan(np.pi - new_angle2)
+        seg_add2 = (inlet_ref_length2 + rev_length) * contour1[0,:]/np.linalg.norm(contour1[0,:])
+    #import pdb; pdb.set_trace()
+    incs = np.linspace(0, 1, contour2.shape[0] , endpoint = True)
+    for point in range(contour2.shape[0]):
+        contour2[point,:] = contour2[point,:] + incs[point] * seg_add2
+
+    
+    # Adjust radius 1
+    # for point in range(intersection_pt_ind):
+    #     radii1[point] = radii1[0]
+    radius1_multiplier = np.sqrt(geo_params["daughter1_area_ratio"]) * radii1[inlet_pt_ind]/radii1[daughter1_pt_ind]
+    print(radius1_multiplier)
+    for point in range(radii1.shape[0]-intersection_pt_ind):
+        radii1[point+intersection_pt_ind] = radii1[point+intersection_pt_ind] * radius1_multiplier
+    #radii1[intersection_pt_ind-5:intersection_pt_ind+5] = radii1[intersection_pt_ind] * (1+np.sin(new_angle1))
+
+    radius2_multiplier = np.sqrt(geo_params["daughter2_area_ratio"]) * radii1[inlet_pt_ind]/radii2[daughter2_pt_ind]
+    print(radius2_multiplier)
+    for point in range(radii2.shape[0]):
+        radii2[point]= radii2[point] * radius2_multiplier
+
+    h = min([radii1[daughter1_pt_ind]/np.sin(new_angle1), radii2[daughter2_pt_ind]/np.sin(new_angle2)])
+    h_shift = h * (-1*contour1[0,:] / np.linalg.norm(contour1[0,:]))
+    contour1 = contour1 - h_shift
+    contour2 = contour2 - h_shift
+
+    y_shift = 1*radii1[-1]*np.sin(new_angle1) * (1+np.sin(new_angle1))* inlet_ref1/np.linalg.norm(inlet_ref1)
+    x_shift = 1*(radii1[0]-radii1[-1]) * seg1/np.linalg.norm(seg1)
+    contour1[intersection_pt_ind:,:] = contour1[intersection_pt_ind:,:] + y_shift
+    contour1[intersection_pt_ind:,:] = contour1[intersection_pt_ind:,:] + x_shift
+    contour2 = contour2 + y_shift
+
+    path_1 = pathplanning.Path()
+    point_list1 = []
+    for i in range(len(contour1)):
+        point_list1.append(list(contour1[i,:]))
+    path_1.set_control_points(point_list1)
+    curve_points1 = path_1.get_curve_points()
+
+    path_2 = pathplanning.Path()
+    point_list2 = []
+    for i in range(len(contour2)):
+        point_list2.append(list(contour2[i,:]))
+    path_2.set_control_points(point_list2)
+    curve_points2 = path_2.get_curve_points()
+
+    contour_polydata = []
+    contour_list = []
+
+    contour_set_1 = []
+    contour_polydata_list_1 = []
+
+    v1_start_ind = intersection_pt_ind + 0
+    for i in range(len(radii1)):#(intersection_pt_ind):
+        if i%3 != 0:
+            continue
+        #import pdb; pdb.set_trace()
+        contour = segmentation.Circle(radii1[i],center=list(contour1[i,:]), normal=path_1.get_curve_tangent(curve_points1.index(point_list1[i])))
+        
+
+        if i > 0:
+            #pdb.set_trace()
+            if check_3d_curve_intersection(contour.get_points(), contour_set_1[-1].get_points()):
+                print("Intersection detected")
+                #pdb.set_trace()
+                continue
+
+            # isect = vtk.vtkIntersectionPolyDataFilter()
+            # isect.ComputeIntersectionPointArrayOn()
+            # isect.SetInputData(0,polydata)
+            # isect.SetInputData(1,polydata)
+            # #isect.SetInputData(1,contour_polydata_list_1[-1])
+            # isect.Update()
+            # isect_pts = isect.GetNumberOfIntersectionPoints()
+            # isect_lines = isect.GetNumberOfIntersectionLines()
+            # print(isect_pts, isect_lines)
+            # pdb.set_trace()
+
+            # if isect_pts > 0 or isect_lines > 0:
+            #     print("Intersection detected")
+            #     continue
+            #     #pdb.set_trace()
+        polydata = contour.get_polydata()
+        contour_set_1.append(contour)
+        contour_polydata_list_1.append(polydata)
+    # norm1 = np.asarray(path_1.get_curve_tangent(curve_points1.index(point_list1[0])))
+    # norm2 = np.asarray(path_1.get_curve_tangent(curve_points1.index(point_list1[-1])))
+    # # contour_set_1.append(segmentation.Circle(radii1[0],
+    # #                                          center=list((contour1[intersection_pt_ind,:] + contour1[v1_start_ind+3,:])/2), 
+    # #                                          normal=list((norm1 + norm2)/2)
+    # #                                                                          ))
+    # contour_set_1.append(segmentation.Circle(radii1[0],
+    #                                         center=list(contour2[0,:]), 
+    #                                         normal=list((norm1 + norm2)/2)
+    #                                                                         ))
+    # contour_polydata_list_1.append(contour_set_1[-1].get_polydata())
+
+    # for i in range(v1_start_ind + 0, len(radii1)):
+    #     # if i%3 != 0:
+    #     #     continue
+    #     contour_set_1.append(segmentation.Circle(radii1[i],center=list(contour1[i,:]), normal=path_1.get_curve_tangent(curve_points1.index(point_list1[i]))))
+    #     contour_polydata_list_1.append(contour_set_1[-1].get_polydata())
+
+    # for i in range(len(radii1)):
+    #     #contour_set_0.append(segmentation.Circle(radii1[i],center=list(contour1[i,:]), normal=list(norm1[i,:])))
+    #     # if i - intersection_pt_ind < 5 and i - intersection_pt_ind > 0:
+    #     #     continue
+        
+
+
+    #     if i - intersection_pt_ind < 15 and i - intersection_pt_ind > 0:
+    #         if i%10 != 0:
+    #             continue
+    #     contour_set_1.append(segmentation.Circle(radii1[i],center=list(contour1[i,:]), normal=path_1.get_curve_tangent(curve_points1.index(point_list1[i]))))
+    #     contour_polydata_list_1.append(contour_set_1[-1].get_polydata())
+ 
+    contour_list.append(contour_set_1)
+    contour_polydata.append(contour_polydata_list_1)
+
+    contour_set_2 = []
+    contour_polydata_list_2 = []
+
+    for i in range(len(radii2)):
+        #contour_set_1.append(segmentation.Circle(radii2[i],center=list(contour2[i,:]), normal=list(norm2[i,:])))
+        contour_set_2.append(segmentation.Circle(radii2[i],center=list(contour2[i,:]), normal=path_2.get_curve_tangent(curve_points2.index(point_list2[i]))))
+        contour_polydata_list_2.append(contour_set_2[-1].get_polydata())
+
+    contour_list.append(contour_set_2)
+    contour_polydata.append(contour_polydata_list_2)
+
+    # Save path
+    path = []
+    norms = []
+    radii = []
+    for contour in contour_list:
+        x = []; y = []; z = []
+        x_theta = []; y_theta = []; z_theta = []
+        radius_list = []
+        for seg in contour:
+            x.append(seg.get_center()[0])
+            y.append(seg.get_center()[1])
+            z.append(seg.get_center()[2])
+
+            x_theta.append(seg.get_normal()[0])
+            y_theta.append(seg.get_normal()[1])
+            z_theta.append(seg.get_normal()[2])
+
+            radius_list.append(seg.get_radius())
+        path.append([x,y,z])
+        norms.append([x_theta, y_theta, z_theta])
+        radii.append(radius_list)
+    #pdb.set_trace()
+    if os.path.exists("results/path_planning") == False:
+        os.makedirs("results/path_planning")
+    save_dict(path, "results/path_planning/sample_rand_path")
+    save_dict(norms, "results/path_planning/sample_rand_norms")
+    save_dict(radii, "results/path_planning/sample_rand_radii")
+    
+    return contour_list, contour_polydata
+    #return contour_polydata
+
+def write_base_contours():
+    path_0 = pathplanning.Path()
+    path_0.set_control_points([[-1.8163284260700607, -1.9846334600524311, -1.7525113388631905], [-1.789650960250232, -1.940355628804352, -1.7182022349368948], [-1.7631827555739814, -1.8960146499454587, -1.6836364446848873], [-1.7368927156520062, -1.8516199072660509, -1.6488521119200907], [-1.710749744095004, -1.8071807845564305, -1.6138873804554312], [-1.684722744513671, -1.762706665606897, -1.5787803941038323], [-1.6587806205187063, -1.7182069342077522, -1.5435692966782195], [-1.632892275720806, -1.6736909741492962, -1.508292231991517], [-1.6070266137306677, -1.6291681692218298, -1.472987343856649], [-1.5811525381589897, -1.5846479032156544, -1.4376927760865412], [-1.5552389526164674, -1.5401395599210688, -1.4024466724941163], [-1.5292547607138003, -1.495652523128376, -1.3672871768923007], [-1.5031688660616846, -1.4511961766278754, -1.3322524330940184], [-1.4769501722708174, -1.4067799042098672, -1.2973805849121933], [-1.4505675829518974, -1.3624130896646538, -1.2627097761597512], [-1.4239900017156204, -1.3181051167825344, -1.2282781506496159], [-1.3971912595155327, -1.2738638824560367, -1.1941178081604042], [-1.3702393001611455, -1.2296688836468663, -1.16014540667018], [-1.3432866010357951, -1.1854741080744038, -1.126173912606375], [-1.3164886440859958, -1.1412326367871466, -1.0920126069043672], [-1.2900009112582593, -1.0968975508335899, -1.0574707704995328], [-1.2639788844991, -1.0524219312622316, -1.0223576843272497], [-1.2385780457550308, -1.0077588591215674, -0.9864826293228948], [-1.2139538769725646, -0.9628614154600945, -0.949654886421845], [-1.190195340969772, -0.9177027544462523, -0.9117653310226322], [-1.166917830403703, -0.8723989369712022, -0.8732857346353232], [-1.1435313444246002, -0.8271280044209548, -0.8349398109303218], [-1.1194450516357133, -0.7820682488112227, -0.7974522923531944], [-1.0940681206402925, -0.7373979621577195, -0.761547911349508], [-1.0668097200415867, -0.6932954364761579, -0.7279514003648303], [-1.037079018442847, -0.6499389637822517, -0.6973874918447285], [-1.004285268431496, -0.6075068107481361, -0.6705808152169707], [-0.9680286583460554, -0.5661196261065816, -0.6480217917251101], [-0.9285070590173082, -0.5257176982681014, -0.6294677052591978], [-0.8860349736857724, -0.4862061199343194, -0.6145327744910218], [-0.840926905591967, -0.4474899838068594, -0.602831218092371], [-0.7934973579764097, -0.40947438258734487, -0.593977254735033], [-0.7440608340796194, -0.3720644089774, -0.5875851030907969], [-0.6929318371421147, -0.33516515567864885, -0.583268981831451], [-0.6404248704044141, -0.29868171539271504, -0.5806431096287835], [-0.5868544371070352, -0.26251918082122216, -0.5793217051545831], [-0.5325350404904975, -0.22658264466579447, -0.5789189870806384], [-0.4777811837953191, -0.19077719962805584, -0.5790491740787373], [-0.4229073702620185, -0.15500793840963012, -0.5793264848206686], [-0.368228103131114, -0.11917995371214077, -0.5793651379782209], [-0.3140578856431241, -0.08319833823721197, -0.5787793522231822], [-0.2606994898037963, -0.04697172484754407, -0.5771977362448214], [-0.2082504460581643, -0.010470682612773332, -0.5745006565144115], [-0.15663356791236718, 0.02628149467423736, -0.5707827945223807], [-0.10576609222415329, 0.06325983034291062, -0.5661456723065817], [-0.055565255851271256, 0.10043934772266927, -0.5606908119048677], [-0.005948295651470075, 0.1377950701429354, -0.5545197353550916], [0.043167551517502706, 0.17530202093313257, -0.5477339646951057], [0.09186504879789809, 0.21293522342268295, -0.5404350219627637], [0.14022695933196713, 0.250669700941009, -0.5327244291959181], [0.18833604626196207, 0.28848047681753386, -0.5247037084324219], [0.23627507273013404, 0.32634257438168, -0.5164743817101279], [0.2841268018787345, 0.36423101696287025, -0.5081379710668893], [0.3319739968500148, 0.4021208278905268, -0.49979599854055856], [0.3798994207862262, 0.4399870304940723, -0.49154998616898904], [0.4279858356800466, 0.47780464844985426, -0.4835014545798995], [0.4762973292776251, 0.5155543410407358, -0.47572901749448865], [0.5248319431650182, 0.5532366992865664, -0.46823027260939964], [0.5735731247137762, 0.5908567185214624, -0.46098491551706167], [0.6225043212954484, 0.6284193940795385, -0.45397264180990393], [0.6716089802815847, 0.6659297212949107, -0.4471731470803562], [0.7208705490437345, 0.7033926955016943, -0.44056612692084773], [0.7702724749534477, 0.7408133120340044, -0.4341312769238082], [0.8197982053822741, 0.7781965662259569, -0.42784829268166674], [0.8694311877017633, 0.8155474534116673, -0.4216968697868527], [0.9191548692834647, 0.8528709689252505, -0.41565670383179587], [0.9689526974989287, 0.8901721081008227, -0.4097074904089252], [1.0188081197197048, 0.9274558662724992, -0.40382892511067053], [1.0687045833173423, 0.9647272387743954, -0.39800070352946104], [1.1186255356633912, 1.0019912209406263, -0.39220252125772614], [1.1685544241294008, 1.0392528081053078, -0.3864140738878954], [1.218474696086922, 1.0765169956025558, -0.38061505701239823], [1.2683697989075027, 1.1137887787664846, -0.3747851662236637], [1.3182231799626936, 1.1510731529312104, -0.3689040971141217], [1.368018286624045, 1.188375113430849, -0.3629515452762013], [1.4177385662631061, 1.2256996555995157, -0.3569072063023323], [1.4673674662514262, 1.2630517747713252, -0.3507507757849436], [1.5168884339605553, 1.3004364662803942, -0.34446194931646507], [1.5662849167620423, 1.3378587254608365, -0.33802042248932596], [1.6155403620274387, 1.3753235476467691, -0.3314058908959555], [1.6646382171282932, 1.4128359281723073, -0.32459805012878346], [1.7135619294361546, 1.4504008623715654, -0.31757659578023906], [1.7622949463225748, 1.4880233455786605, -0.3103212234427517], [1.8108207151591016, 1.525708373127707, -0.30281162870875084], [1.8591226833172854, 1.5634609403528206, -0.2950275071706659]])
+    path_1 = pathplanning.Path()
+    path_1.set_control_points([[-1.0071126272571993, -0.6109580395063361, -0.6726266708225128], [-1.0161416659624392, -0.585817104203029, -0.632836025606542], [-1.0251707046676795, -0.560676168899722, -0.5930453803905714], [-1.034199743372919, -0.5355352335964151, -0.5532547351746007], [-1.0432287820781594, -0.5103942982931083, -0.5134640899586301], [-1.0522578207833995, -0.4852533629898013, -0.4736734447426594], [-1.0612868594886393, -0.4601124276864943, -0.4338827995266887], [-1.0703158981938798, -0.43497149238318766, -0.39409215431071815], [-1.0793449368991201, -0.40983055707988075, -0.35430150909474756], [-1.0883739756043598, -0.38468962177657373, -0.31451086387877675], [-1.0974030143095999, -0.35954868647326677, -0.27472021866280605], [-1.1064320530148402, -0.3344077511699599, -0.23492957344683543], [-1.11546109172008, -0.30926681586665294, -0.1951389282308647], [-1.1244901304253205, -0.2841258805633461, -0.15534828301489412], [-1.1335191691305604, -0.2589849452600392, -0.11555763779892339], [-1.1425482078358007, -0.23384400995673238, -0.07576699258295283], [-1.151577246541041, -0.2087030746534254, -0.03597634736698213], [-1.160606285246281, -0.1835621393501185, 0.003814297848988582], [-1.1696353239515211, -0.15842120404681165, 0.0436049430649592], [-1.1786643626567612, -0.13328026874350463, 0.0833955882809299], [-1.1876934013620015, -0.10813933344019783, 0.12318623349690047], [-1.1967224400672414, -0.08299839813689089, 0.1629768787128712], [-1.2057514787724817, -0.057857462833584075, 0.2027675239288418], [-1.2147805174777218, -0.03271652753027715, 0.24255816914481246], [-1.2238095561829623, -0.0075755922269702125, 0.28234881436078324], [-1.2328385948882024, 0.01756534307633671, 0.32213945957675394], [-1.2418676335934424, 0.0427062783796435, 0.3619301047927244], [-1.2508966722986825, 0.06784721368295045, 0.40172075000869506], [-1.259925711003923, 0.09298814898625737, 0.4415113952246658], [-1.268954749709163, 0.11812908428956434, 0.48130204044063657], [-1.2779837884144032, 0.14327001959287108, 0.5210926856566072], [-1.2870128271196433, 0.16841095489617802, 0.5608833308725777], [-1.2960418658248831, 0.1935518901994849, 0.6006739760885483], [-1.3050709045301234, 0.21869282550279187, 0.6404646213045191], [-1.314099943235364, 0.24383376080609884, 0.6802552665204898], [-1.3231289819406038, 0.26897469610940566, 0.7200459117364604], [-1.332158020645844, 0.2941156314127126, 0.7598365569524311], [-1.3411870593510842, 0.31925656671601954, 0.7996272021684019], [-1.3502160980563245, 0.34439750201932645, 0.8394178473843726], [-1.3592451367615643, 0.36953843732263325, 0.8792084926003432], [-1.3682741754668044, 0.39467937262594016, 0.9189991378163137], [-1.3773032141720445, 0.41982030792924707, 0.9587897830322842], [-1.3863322528772848, 0.44496124323255404, 0.9985804282482551], [-1.395361291582525, 0.4701021785358611, 1.038371073464226], [-1.4043903302877652, 0.4952431138391678, 1.0781617186801964], [-1.4134193689930052, 0.5203840491424748, 1.1179523638961673], [-1.4224484076982455, 0.5455249844457819, 1.1577430091121381], [-1.4314774464034856, 0.5706659197490888, 1.197533654328109], [-1.4405064851087257, 0.5958068550523957, 1.2373242995440796], [-1.4495355238139658, 0.6209477903557026, 1.2771149447600503]])
+    contour_polydata = []
+    contour_list = []
+    contour_set_0 = []
+    contour_polydata_list_0 = []
+    contour_set_0.append(segmentation.Circle(0.28382253272887237,center=[-1.8163284260700607, -1.9846334600524311, -1.7525113388631905],normal=[0.4322069907838622, 0.7137152969808799, 0.5511874381488143]))
+    contour_polydata_list_0.append(contour_set_0[-1].get_polydata())
+    contour_set_0.append(segmentation.Circle(0.2837331558497802,center=[-1.789650960250232, -1.940355628804352, -1.7182022349368948],normal=[0.42786111160430174, 0.7136099227723635, 0.5547032966348341]))
+    contour_polydata_list_0.append(contour_set_0[-1].get_polydata())
+    contour_set_0.append(segmentation.Circle(0.2836808677088446,center=[-1.7631827555739814, -1.8960146499454587, -1.6836364446848873],normal=[0.4241174682619076, 0.7135016002558331, 0.5577094580043225]))
+    contour_polydata_list_0.append(contour_set_0[-1].get_polydata())
+    contour_set_0.append(segmentation.Circle(0.2836601568870759,center=[-1.7368927156520062, -1.8516199072660509, -1.6488521119200907],normal=[0.4209758003741376, 0.7133982583409741, 0.5602162979559047]))
+    contour_polydata_list_0.append(contour_set_0[-1].get_polydata())
+    contour_set_0.append(segmentation.Circle(0.28366551196548495,center=[-1.710749744095004, -1.8071807845564305, -1.6138873804554312],normal=[0.41843570386173257, 0.7133064602820629, 0.5622325634945118]))
+    contour_polydata_list_0.append(contour_set_0[-1].get_polydata())
+    contour_set_0.append(segmentation.Circle(0.2836914215250823,center=[-1.684722744513671, -1.762706665606897, -1.5787803941038323],normal=[0.41649672954194455, 0.7132314513156831, 0.5637653511302274]))
+    contour_polydata_list_0.append(contour_set_0[-1].get_polydata())
+    contour_set_0.append(segmentation.Circle(0.2837323741468785,center=[-1.6587806205187063, -1.7182069342077522, -1.5435692966782195],normal=[0.4151584614843111, 0.7131771981419505, 0.564820091629518]))
+    contour_polydata_list_0.append(contour_set_0[-1].get_polydata())
+    contour_set_0.append(segmentation.Circle(0.28378285841188433,center=[-1.632892275720806, -1.6736909741492962, -1.508292231991517],normal=[0.41442057598094983, 0.7131464196144239, 0.5654005397899312]))
+    contour_polydata_list_0.append(contour_set_0[-1].get_polydata())
+    contour_set_0.append(segmentation.Circle(0.28383736290111017,center=[-1.6070266137306677, -1.6291681692218298, -1.472987343856649],normal=[0.41428288181289724, 0.7131406081898183, 0.5655087680906964]))
+    contour_polydata_list_0.append(contour_set_0[-1].get_polydata())
+    contour_set_0.append(segmentation.Circle(0.2838903761955669,center=[-1.5811525381589897, -1.5846479032156544, -1.4376927760865412],normal=[0.41474534229793214, 0.7131600418456587, 0.5651451634375626]))
+    contour_polydata_list_0.append(contour_set_0[-1].get_polydata())
+    contour_set_0.append(segmentation.Circle(0.2839363868762648,center=[-1.5552389526164674, -1.5401395599210688, -1.4024466724941163],normal=[0.4158080793926321, 0.7132037863112276, 0.5643084265746342]))
+    contour_polydata_list_0.append(contour_set_0[-1].get_polydata())
+    contour_set_0.append(segmentation.Circle(0.2839698835242148,center=[-1.5292547607138003, -1.495652523128376, -1.3672871768923007],normal=[0.417471359899951, 0.7132696875834326, 0.5629955740837739]))
+    contour_polydata_list_0.append(contour_set_0[-1].get_polydata())
+    contour_set_0.append(segmentation.Circle(0.28398535472042735,center=[-1.5031688660616846, -1.4511961766278754, -1.3322524330940184],normal=[0.41973556361054615, 0.7133543548234847, 0.5612019432387126]))
+    contour_polydata_list_0.append(contour_set_0[-1].get_polydata())
+    contour_set_0.append(segmentation.Circle(0.283977289045913,center=[-1.4769501722708174, -1.4067799042098672, -1.2973805849121933],normal=[0.42260113298844465, 0.7134531338613633, 0.5589212003317486]))
+    contour_polydata_list_0.append(contour_set_0[-1].get_polydata())
+    contour_set_0.append(segmentation.Circle(0.2839401750816826,center=[-1.4505675829518974, -1.3624130896646538, -1.2627097761597512],normal=[0.42606850380690037, 0.7135600716818566, 0.5561453534509957]))
+    contour_polydata_list_0.append(contour_set_0[-1].get_polydata())
+    contour_set_0.append(segmentation.Circle(0.28386850140874653,center=[-1.4239900017156204, -1.3181051167825344, -1.2282781506496159],normal=[0.4301380159568558, 0.7136678724375188, 0.5528647710599809]))
+    contour_polydata_list_0.append(contour_set_0[-1].get_polydata())
+    contour_set_0.append(segmentation.Circle(0.28375762991371617,center=[-1.3971912595155327, -1.2738638824560367, -1.1941178081604042],normal=[0.4342816099618216, 0.7137578247723277, 0.5494990908320444]))
+    contour_polydata_list_0.append(contour_set_0[-1].get_polydata())
+    contour_set_0.append(segmentation.Circle(0.28361960272785985,center=[-1.3702393001611455, -1.2296688836468663, -1.16014540667018],normal=[0.43579911511009134, 0.7137857320916114, 0.548260029485739]))
+    contour_polydata_list_0.append(contour_set_0[-1].get_polydata())
+    contour_set_0.append(segmentation.Circle(0.28348144442749723,center=[-1.3432866010357951, -1.1854741080744038, -1.126173912606375],normal=[0.43431021769038647, 0.7137583759195519, 0.54947576435582]))
+    contour_polydata_list_0.append(contour_set_0[-1].get_polydata())
+    contour_set_0.append(segmentation.Circle(0.2833707121075752,center=[-1.3164886440859958, -1.1412326367871466, -1.0920126069043672],normal=[0.42981548841742473, 0.7136600300005812, 0.553125670617501]))
+    contour_polydata_list_0.append(contour_set_0[-1].get_polydata())
+    contour_set_0.append(segmentation.Circle(0.2833149628630407,center=[-1.2900009112582593, -1.0968975508335899, -1.0574707704995328],normal=[0.4223178074963234, 0.7134437855958603, 0.5591472384498976]))
+    contour_polydata_list_0.append(contour_set_0[-1].get_polydata())
+    contour_set_0.append(segmentation.Circle(0.28334175378884074,center=[-1.2639788844991, -1.0524219312622316, -1.0223576843272497],normal=[0.4118257878154942, 0.7130333202182795, 0.5674354630692764]))
+    contour_polydata_list_0.append(contour_set_0[-1].get_polydata())
+    contour_set_0.append(segmentation.Circle(0.2834786419799222,center=[-1.2385780457550308, -1.0077588591215674, -0.9864826293228948],normal=[0.39835925968971825, 0.7123259823687377, 0.5778421887175359]))
+    contour_polydata_list_0.append(contour_set_0[-1].get_polydata())
+    contour_set_0.append(segmentation.Circle(0.283753184531232,center=[-1.2139538769725646, -0.9628614154600945, -0.949654886421845],normal=[0.38195643834458015, 0.7111973445105823, 0.5901759198478189]))
+    contour_polydata_list_0.append(contour_set_0[-1].get_polydata())
+    contour_set_0.append(segmentation.Circle(0.28418114891210855,center=[-1.190195340969772, -0.9177027544462523, -0.9117653310226322],normal=[0.3673613173760636, 0.709953097158322, 0.6008429597915159]))
+    contour_polydata_list_0.append(contour_set_0[-1].get_polydata())
+    contour_set_0.append(segmentation.Circle(0.28469436861637765,center=[-1.166917830403703, -0.8723989369712022, -0.8732857346353232],normal=[0.3638121130568058, 0.7096170479045276, 0.603394060060592]))
+    contour_polydata_list_0.append(contour_set_0[-1].get_polydata())
+    contour_set_0.append(segmentation.Circle(0.28518827388658413,center=[-1.1435313444246002, -0.8271280044209548, -0.8349398109303218],normal=[0.37151675881144075, 0.7103300026106544, 0.5978349147660995]))
+    contour_polydata_list_0.append(contour_set_0[-1].get_polydata())
+    contour_set_0.append(segmentation.Circle(0.28555814776192967,center=[-1.1194450516357133, -0.7820682488112227, -0.7974522923531944],normal=[0.39056942165183783, 0.7118260709982502, 0.5837458107068031]))
+    contour_polydata_list_0.append(contour_set_0[-1].get_polydata())
+    contour_set_0.append(segmentation.Circle(0.28569927328161576,center=[-1.0940681206402925, -0.7373979621577195, -0.761547911349508],normal=[0.4211278376842458, 0.7134035195792886, 0.5600953156198284]))
+    contour_polydata_list_0.append(contour_set_0[-1].get_polydata())
+    contour_set_0.append(segmentation.Circle(0.28550693348484407,center=[-1.0668097200415867, -0.6932954364761579, -0.7279514003648303],normal=[0.4632053934257996, 0.7138134823899596, 0.5252723825403056]))
+    contour_polydata_list_0.append(contour_set_0[-1].get_polydata())
+    contour_set_0.append(segmentation.Circle(0.2848764114108163,center=[-1.037079018442847, -0.6499389637822517, -0.6973874918447285],normal=[0.5162909380760978, 0.711122621769204, 0.4772298021588722]))
+    contour_polydata_list_0.append(contour_set_0[-1].get_polydata())
+    contour_set_0.append(segmentation.Circle(0.28370300726648606,center=[-1.004285268431496, -0.6075068107481361, -0.6705808152169707],normal=[0.5787273259512318, 0.7026594980576154, 0.413937570156125]))
+    contour_polydata_list_0.append(contour_set_0[-1].get_polydata())
+    contour_set_0.append(segmentation.Circle(0.28192105167989856,center=[-0.9680286583460554, -0.5661196261065816, -0.6480217917251101],normal=[0.6385468488469027, 0.6879795075680398, 0.34487986168248264]))
+    contour_polydata_list_0.append(contour_set_0[-1].get_polydata())
+    contour_set_0.append(segmentation.Circle(0.27958705145206597,center=[-0.9285070590173082, -0.5257176982681014, -0.6294677052591978],normal=[0.6881273560965117, 0.66954801259221, 0.2796179547622904]))
+    contour_polydata_list_0.append(contour_set_0[-1].get_polydata())
+    contour_set_0.append(segmentation.Circle(0.276781354974895,center=[-0.8860349736857724, -0.4862061199343194, -0.6145327744910218],normal=[0.7280347758609589, 0.6492498434353844, 0.2200909038016157]))
+    contour_polydata_list_0.append(contour_set_0[-1].get_polydata())
+    contour_set_0.append(segmentation.Circle(0.27358431064029276,center=[-0.840926905591967, -0.4474899838068594, -0.602831218092371],normal=[0.7593952530334109, 0.628714946230672, 0.16744063442451765]))
+    contour_polydata_list_0.append(contour_set_0[-1].get_polydata())
+    contour_set_0.append(segmentation.Circle(0.27007626684016617,center=[-0.7934973579764097, -0.40947438258734487, -0.593977254735033],normal=[0.7835500804512782, 0.6092025897312349, 0.12215349397193805]))
+    contour_polydata_list_0.append(contour_set_0[-1].get_polydata())
+    contour_set_0.append(segmentation.Circle(0.26633757196642205,center=[-0.7440608340796194, -0.3720644089774, -0.5875851030907969],normal=[0.8018142167076161, 0.591602447555778, 0.0842644998297936]))
+    contour_polydata_list_0.append(contour_set_0[-1].get_polydata())
+    contour_set_0.append(segmentation.Circle(0.2624485744109675,center=[-0.6929318371421147, -0.33516515567864885, -0.583268981831451],normal=[0.8153427236599807, 0.5764969266380924, 0.05354938423136318]))
+    contour_polydata_list_0.append(contour_set_0[-1].get_polydata())
+    contour_set_0.append(segmentation.Circle(0.25848962256570945,center=[-0.6404248704044141, -0.29868171539271504, -0.5806431096287835],normal=[0.8250766003649094, 0.5642412061332694, 0.02967262764833785]))
+    contour_polydata_list_0.append(contour_set_0[-1].get_polydata())
+    contour_set_0.append(segmentation.Circle(0.25454106482255473,center=[-0.5868544371070352, -0.26251918082122216, -0.5793217051545831],normal=[0.831735038039454, 0.555036780120832, 0.012288173607458985]))
+    contour_polydata_list_0.append(contour_set_0[-1].get_polydata())
+    contour_set_0.append(segmentation.Circle(0.2506832495734104,center=[-0.5325350404904975, -0.22658264466579447, -0.5789189870806384],normal=[0.8358288221157906, 0.5489890398396607, 0.0011019330548503103]))
+    contour_polydata_list_0.append(contour_set_0[-1].get_polydata())
+    contour_set_0.append(segmentation.Circle(0.24699652521018328,center=[-0.4777811837953191, -0.19077719962805584, -0.5790491740787373],normal=[0.8376790445282717, 0.5461474804229032, -0.004092430319095033]))
+    contour_polydata_list_0.append(contour_set_0[-1].get_polydata())
+    contour_set_0.append(segmentation.Circle(0.24356124012478042,center=[-0.4229073702620185, -0.15500793840963012, -0.5793264848206686],normal=[0.837432486205479, 0.5465302417256327, -0.0033949855716032345]))
+    contour_polydata_list_0.append(contour_set_0[-1].get_polydata())
+    contour_set_0.append(segmentation.Circle(0.2404577427091088,center=[-0.368228103131114, -0.11917995371214077, -0.5793651379782209],normal=[0.8350695316211287, 0.5501350625637536, 0.0032078491304339436]))
+    contour_polydata_list_0.append(contour_set_0[-1].get_polydata())
+    contour_set_0.append(segmentation.Circle(0.23776638135507516,center=[-0.3140578856431241, -0.08319833823721197, -0.5787793522231822],normal=[0.830403080318305, 0.5569378276283414, 0.015842359498966976]))
+    contour_polydata_list_0.append(contour_set_0[-1].get_polydata())
+    contour_set_0.append(segmentation.Circle(0.23556379030891966,center=[-0.2606994898037963, -0.04697172484754407, -0.5771977362448214],normal=[0.8235540654859996, 0.5662464850466428, 0.03352043248235431]))
+    contour_polydata_list_0.append(contour_set_0[-1].get_polydata())
+    contour_set_0.append(segmentation.Circle(0.2338616236960099,center=[-0.2082504460581643, -0.010470682612773332, -0.5745006565144115],normal=[0.8165757154226384, 0.5750149601932547, 0.05061518088435625]))
+    contour_polydata_list_0.append(contour_set_0[-1].get_polydata())
+    contour_set_0.append(segmentation.Circle(0.2326162197117027,center=[-0.15663356791236718, 0.02628149467423736, -0.5707827945223807],normal=[0.809860831400291, 0.5828624045615383, 0.06630875592537606]))
+    contour_polydata_list_0.append(contour_set_0[-1].get_polydata())
+    contour_set_0.append(segmentation.Circle(0.23178215096700988,center=[-0.10576609222415329, 0.06325983034291062, -0.5661456723065817],normal=[0.8035220475613696, 0.5898033696597103, 0.08052517755854506]))
+    contour_polydata_list_0.append(contour_set_0[-1].get_polydata())
+    contour_set_0.append(segmentation.Circle(0.23131399007294334,center=[-0.055565255851271256, 0.10043934772266927, -0.5606908119048677],normal=[0.7976639182193888, 0.5958571797847384, 0.09320136731760138]))
+    contour_polydata_list_0.append(contour_set_0[-1].get_polydata())
+    contour_set_0.append(segmentation.Circle(0.2311663096405151,center=[-0.005948295651470075, 0.1377950701429354, -0.5545197353550916],normal=[0.7923812907646762, 0.6010460120714841, 0.10428605572688561]))
+    contour_polydata_list_0.append(contour_set_0[-1].get_polydata())
+    contour_set_0.append(segmentation.Circle(0.23129368228073696,center=[0.043167551517502706, 0.17530202093313257, -0.5477339646951057],normal=[0.7877580675801185, 0.6053930802025461, 0.11373849570532966]))
+    contour_polydata_list_0.append(contour_set_0[-1].get_polydata())
+    contour_set_0.append(segmentation.Circle(0.23165068060462093,center=[0.09186504879789809, 0.21293522342268295, -0.5404350219627637],normal=[0.7838663129240052, 0.6089209859594995, 0.12152710117926972]))
+    contour_polydata_list_0.append(contour_set_0[-1].get_polydata())
+    contour_set_0.append(segmentation.Circle(0.232191877223179,center=[0.14022695933196713, 0.250669700941009, -0.5327244291959181],normal=[0.7807656463412618, 0.611650283379156, 0.1276281173390484]))
+    contour_polydata_list_0.append(contour_set_0[-1].get_polydata())
+    contour_set_0.append(segmentation.Circle(0.23287184474742303,center=[0.18833604626196207, 0.28848047681753386, -0.5247037084324219],normal=[0.7785028585551157, 0.6135982836867804, 0.1320244124325152]))
+    contour_polydata_list_0.append(contour_set_0[-1].get_polydata())
+    contour_set_0.append(segmentation.Circle(0.23364515578836495,center=[0.23627507273013404, 0.32634257438168, -0.5164743817101279],normal=[0.777111687728504, 0.6147781164262971, 0.13470446302587882]))
+    contour_polydata_list_0.append(contour_set_0[-1].get_polydata())
+    contour_set_0.append(segmentation.Circle(0.23446638295701683,center=[0.2841268018787345, 0.36423101696287025, -0.5081379710668893],normal=[0.7766127019048916, 0.6151980535392647, 0.13566158690463487]))
+    contour_polydata_list_0.append(contour_set_0[-1].get_polydata())
+    contour_set_0.append(segmentation.Circle(0.23529009886439037,center=[0.3319739968500148, 0.4021208278905268, -0.49979599854055856],normal=[0.7770132457486447, 0.6148610982004529, 0.1348934611124249]))
+    contour_polydata_list_0.append(contour_set_0[-1].get_polydata())
+    contour_set_0.append(segmentation.Circle(0.23607087612149774,center=[0.3798994207862262, 0.4399870304940723, -0.49154998616898904],normal=[0.7783074249528837, 0.6137648382139265, 0.13240194724944196]))
+    contour_polydata_list_0.append(contour_set_0[-1].get_polydata())
+    contour_set_0.append(segmentation.Circle(0.23676328797033397,center=[0.4279858356800466, 0.47780464844985426, -0.4835014545798995],normal=[0.7804752249606857, 0.6119023383216896, 0.12819497485867323]))
+    contour_polydata_list_0.append(contour_set_0[-1].get_polydata())
+    contour_set_0.append(segmentation.Circle(0.23733215765353471,center=[0.4762973292776251, 0.5155543410407358, -0.47572901749448865],normal=[0.7829226698563624, 0.6097590924616338, 0.1233934446611732]))
+    contour_polydata_list_0.append(contour_set_0[-1].get_polydata())
+    contour_set_0.append(segmentation.Circle(0.23777856011375648,center=[0.5248319431650182, 0.5532366992865664, -0.46823027260939964],normal=[0.7851642547740425, 0.6077572958356494, 0.11894604820531694]))
+    contour_polydata_list_0.append(contour_set_0[-1].get_polydata())
+    contour_set_0.append(segmentation.Circle(0.23811158082879696,center=[0.5735731247137762, 0.5908567185214624, -0.46098491551706167],normal=[0.7872068770595008, 0.6058998628282272, 0.1148507245730884]))
+    contour_polydata_list_0.append(contour_set_0[-1].get_polydata())
+    contour_set_0.append(segmentation.Circle(0.2383403052764536,center=[0.6225043212954484, 0.6284193940795385, -0.45397264180990393],normal=[0.7890568898549449, 0.6041893777441281, 0.11110544718241537]))
+    contour_polydata_list_0.append(contour_set_0[-1].get_polydata())
+    contour_set_0.append(segmentation.Circle(0.23847381893452418,center=[0.6716089802815847, 0.6659297212949107, -0.4471731470803562],normal=[0.7907201024211469, 0.6026281201671999, 0.10770825600128307]))
+    contour_polydata_list_0.append(contour_set_0[-1].get_polydata())
+    contour_set_0.append(segmentation.Circle(0.23852120728080625,center=[0.7208705490437345, 0.7033926955016943, -0.44056612692084773],normal=[0.792201781625872, 0.6012180882564009, 0.10465728613963148]))
+    contour_polydata_list_0.append(contour_set_0[-1].get_polydata())
+    contour_set_0.append(segmentation.Circle(0.2384915557930975,center=[0.7702724749534477, 0.7408133120340044, -0.4341312769238082],normal=[0.7935066542609417, 0.5999610199345842, 0.10195079304576173]))
+    contour_polydata_list_0.append(contour_set_0[-1].get_polydata())
+    contour_set_0.append(segmentation.Circle(0.23839394994919538,center=[0.8197982053822741, 0.7781965662259569, -0.42784829268166674],normal=[0.7946389098922003, 0.5988584119439354, 0.09958717452224174]))
+    contour_polydata_list_0.append(contour_set_0[-1].get_polydata())
+    contour_set_0.append(segmentation.Circle(0.23823747522689764,center=[0.8694311877017633, 0.8155474534116673, -0.4216968697868527],normal=[0.7956022039858137, 0.5979115367558983, 0.09756498976126494]))
+    contour_polydata_list_0.append(contour_set_0[-1].get_polydata())
+    contour_set_0.append(segmentation.Circle(0.2380312171040018,center=[0.9191548692834647, 0.8528709689252505, -0.41565670383179587],normal=[0.7963996610907451, 0.5971214573335388, 0.09588297558178531]))
+    contour_polydata_list_0.append(contour_set_0[-1].get_polydata())
+    contour_set_0.append(segmentation.Circle(0.23778426105830555,center=[0.9689526974989287, 0.8901721081008227, -0.4097074904089252],normal=[0.7970338778910596, 0.5964890397511519, 0.0945400600311229]))
+    contour_polydata_list_0.append(contour_set_0[-1].get_polydata())
+    contour_set_0.append(segmentation.Circle(0.23750569256760654,center=[1.0188081197197048, 0.9274558662724992, -0.40382892511067053],normal=[0.7975069259731412, 0.5960149636800024, 0.09353537349257827]))
+    contour_polydata_list_0.append(contour_set_0[-1].get_polydata())
+    contour_set_0.append(segmentation.Circle(0.23720459710970226,center=[1.0687045833173423, 0.9647272387743954, -0.39800070352946104],normal=[0.7978203541821849, 0.5956997307509051, 0.09286825741830287]))
+    contour_polydata_list_0.append(contour_set_0[-1].get_polydata())
+    contour_set_0.append(segmentation.Circle(0.2368900601623904,center=[1.1186255356633912, 1.0019912209406263, -0.39220252125772614],normal=[0.7979751904698074, 0.5955436708043038, 0.09253827078355042]))
+    contour_polydata_list_0.append(contour_set_0[-1].get_polydata())
+    contour_set_0.append(segmentation.Circle(0.2365711672034685,center=[1.1685544241294008, 1.0392528081053078, -0.3864140738878954],normal=[0.7979719431605926, 0.595546946037049, 0.09254519433472548]))
+    contour_polydata_list_0.append(contour_set_0[-1].get_polydata())
+    contour_set_0.append(segmentation.Circle(0.23625700371073433,center=[1.218474696086922, 1.0765169956025558, -0.38061505701239823],normal=[0.7978106015902464, 0.5957095530525499, 0.09288903267953835]))
+    contour_polydata_list_0.append(contour_set_0[-1].get_polydata())
+    contour_set_0.append(segmentation.Circle(0.2359566551619853,center=[1.2683697989075027, 1.1137887787664846, -0.3747851662236637],normal=[0.7974906360921283, 0.5960313228177652, 0.09357001424322656]))
+    contour_polydata_list_0.append(contour_set_0[-1].get_polydata())
+    contour_set_0.append(segmentation.Circle(0.23567920703501916,center=[1.3182231799626936, 1.1510731529312104, -0.3689040971141217],normal=[0.7970109973326459, 0.5965119185269645, 0.09458858909034001]))
+    contour_polydata_list_0.append(contour_set_0[-1].get_polydata())
+    contour_set_0.append(segmentation.Circle(0.23543374480763346,center=[1.368018286624045, 1.188375113430849, -0.3629515452762013],normal=[0.7963701150197254, 0.5971508313686464, 0.09594542458712552]))
+    contour_polydata_list_0.append(contour_set_0[-1].get_polydata())
+    contour_set_0.append(segmentation.Circle(0.23522935395762587,center=[1.4177385662631061, 1.2256996555995157, -0.3569072063023323],normal=[0.7955658960326882, 0.5979473741888199, 0.09764139885520443]))
+    contour_polydata_list_0.append(contour_set_0[-1].get_polydata())
+    contour_set_0.append(segmentation.Circle(0.23507511996279398,center=[1.4673674662514262, 1.2630517747713252, -0.3507507757849436],normal=[0.7945957220467582, 0.5989006730413708, 0.09967759194314425]))
+    contour_polydata_list_0.append(contour_set_0[-1].get_polydata())
+    contour_set_0.append(segmentation.Circle(0.23498012830093537,center=[1.5168884339605553, 1.3004364662803942, -0.34446194931646507],normal=[0.7934564467514575, 0.6000096566148128, 0.10205527461883558]))
+    contour_polydata_list_0.append(contour_set_0[-1].get_polydata())
+    contour_set_0.append(segmentation.Circle(0.23495346444984766,center=[1.5662849167620423, 1.3378587254608365, -0.33802042248932596],normal=[0.7921443927896902, 0.6012730435247595, 0.10477589466249251]))
+    contour_polydata_list_0.append(contour_set_0[-1].get_polydata())
+    contour_set_0.append(segmentation.Circle(0.23500421388732845,center=[1.6155403620274387, 1.3753235476467691, -0.3314058908959555],normal=[0.790655348573681, 0.6026893274633438, 0.10784106051784413]))
+    contour_polydata_list_0.append(contour_set_0[-1].get_polydata())
+    contour_set_0.append(segmentation.Circle(0.23514146209117542,center=[1.6646382171282932, 1.4128359281723073, -0.32459805012878346],normal=[0.788984565165456, 0.6042567602010042, 0.11125252213798288]))
+    contour_polydata_list_0.append(contour_set_0[-1].get_polydata())
+    contour_set_0.append(segmentation.Circle(0.23537429453918612,center=[1.7135619294361546, 1.4504008623715654, -0.31757659578023906],normal=[0.7871267534434655, 0.6059733324430345, 0.11501214884277876]))
+    contour_polydata_list_0.append(contour_set_0[-1].get_polydata())
+    contour_set_0.append(segmentation.Circle(0.23571179670915826,center=[1.7622949463225748, 1.4880233455786605, -0.3103212234427517],normal=[0.7850760818134767, 0.6078367525535587, 0.11912190398723216]))
+    contour_polydata_list_0.append(contour_set_0[-1].get_polydata())
+    contour_set_0.append(segmentation.Circle(0.23616305407888932,center=[1.8108207151591016, 1.525708373127707, -0.30281162870875084],normal=[0.7828261747611336, 0.609844423173699, 0.12358381622522205]))
+    contour_polydata_list_0.append(contour_set_0[-1].get_polydata())
+    contour_set_0.append(segmentation.Circle(0.23673715212617696,center=[1.8591226833172854, 1.5634609403528206, -0.2950275071706659],normal=[0.7803701125856316, 0.6119934157792403, 0.12839994714152453]))
+    contour_polydata_list_0.append(contour_set_0[-1].get_polydata())
+    contour_list.append(contour_set_0)
+    contour_polydata.append(contour_polydata_list_0)
+    if True:
+        print("no dmg")
+    contour_set_1 = []
+    contour_polydata_list_1 = []
+    contour_set_1.append(segmentation.Circle(0.21249908395252856,center=[-1.0071126272571993, -0.6109580395063361, -0.6726266708225128],normal=[-0.18839606645170384, 0.524580021493429, 0.830254613474372]))
+    contour_polydata_list_1.append(contour_set_1[-1].get_polydata())
+    contour_set_1.append(segmentation.Circle(0.21249908395252853,center=[-1.0161416659624392, -0.585817104203029, -0.632836025606542],normal=[-0.18839606645170412, 0.5245800214934289, 0.8302546134743719]))
+    contour_polydata_list_1.append(contour_set_1[-1].get_polydata())
+    contour_set_1.append(segmentation.Circle(0.21249908395252856,center=[-1.0251707046676795, -0.560676168899722, -0.5930453803905714],normal=[-0.18839606645170445, 0.5245800214934289, 0.8302546134743719]))
+    contour_polydata_list_1.append(contour_set_1[-1].get_polydata())
+    contour_set_1.append(segmentation.Circle(0.21249908395252845,center=[-1.034199743372919, -0.5355352335964151, -0.5532547351746007],normal=[-0.1883960664517047, 0.5245800214934287, 0.8302546134743719]))
+    contour_polydata_list_1.append(contour_set_1[-1].get_polydata())
+    contour_set_1.append(segmentation.Circle(0.21249908395252853,center=[-1.0432287820781594, -0.5103942982931083, -0.5134640899586301],normal=[-0.188396066451705, 0.5245800214934285, 0.8302546134743719]))
+    contour_polydata_list_1.append(contour_set_1[-1].get_polydata())
+    contour_set_1.append(segmentation.Circle(0.21249908395252848,center=[-1.0522578207833995, -0.4852533629898013, -0.4736734447426594],normal=[-0.18839606645170529, 0.5245800214934286, 0.8302546134743719]))
+    contour_polydata_list_1.append(contour_set_1[-1].get_polydata())
+    contour_set_1.append(segmentation.Circle(0.21249908395252848,center=[-1.0612868594886393, -0.4601124276864943, -0.4338827995266887],normal=[-0.18839606645170548, 0.5245800214934284, 0.8302546134743719]))
+    contour_polydata_list_1.append(contour_set_1[-1].get_polydata())
+    contour_set_1.append(segmentation.Circle(0.21249908395252856,center=[-1.0703158981938798, -0.43497149238318766, -0.39409215431071815],normal=[-0.18839606645170567, 0.5245800214934283, 0.8302546134743718]))
+    contour_polydata_list_1.append(contour_set_1[-1].get_polydata())
+    contour_set_1.append(segmentation.Circle(0.2124990839525286,center=[-1.0793449368991201, -0.40983055707988075, -0.35430150909474756],normal=[-0.18839606645170592, 0.5245800214934283, 0.8302546134743719]))
+    contour_polydata_list_1.append(contour_set_1[-1].get_polydata())
+    contour_set_1.append(segmentation.Circle(0.21249908395252853,center=[-1.0883739756043598, -0.38468962177657373, -0.31451086387877675],normal=[-0.1883960664517061, 0.5245800214934283, 0.8302546134743718]))
+    contour_polydata_list_1.append(contour_set_1[-1].get_polydata())
+    contour_set_1.append(segmentation.Circle(0.21249908395252853,center=[-1.0974030143095999, -0.35954868647326677, -0.27472021866280605],normal=[-0.1883960664517063, 0.5245800214934283, 0.8302546134743719]))
+    contour_polydata_list_1.append(contour_set_1[-1].get_polydata())
+    contour_set_1.append(segmentation.Circle(0.21249908395252853,center=[-1.1064320530148402, -0.3344077511699599, -0.23492957344683543],normal=[-0.18839606645170645, 0.5245800214934282, 0.8302546134743719]))
+    contour_polydata_list_1.append(contour_set_1[-1].get_polydata())
+    contour_set_1.append(segmentation.Circle(0.21249908395252853,center=[-1.11546109172008, -0.30926681586665294, -0.1951389282308647],normal=[-0.18839606645170667, 0.5245800214934282, 0.8302546134743719]))
+    contour_polydata_list_1.append(contour_set_1[-1].get_polydata())
+    contour_set_1.append(segmentation.Circle(0.21249908395252856,center=[-1.1244901304253205, -0.2841258805633461, -0.15534828301489412],normal=[-0.18839606645170676, 0.5245800214934281, 0.8302546134743718]))
+    contour_polydata_list_1.append(contour_set_1[-1].get_polydata())
+    contour_set_1.append(segmentation.Circle(0.21249908395252853,center=[-1.1335191691305604, -0.2589849452600392, -0.11555763779892339],normal=[-0.18839606645170687, 0.5245800214934281, 0.8302546134743719]))
+    contour_polydata_list_1.append(contour_set_1[-1].get_polydata())
+    contour_set_1.append(segmentation.Circle(0.21249908395252856,center=[-1.1425482078358007, -0.23384400995673238, -0.07576699258295283],normal=[-0.188396066451707, 0.5245800214934281, 0.8302546134743719]))
+    contour_polydata_list_1.append(contour_set_1[-1].get_polydata())
+    contour_set_1.append(segmentation.Circle(0.2124990839525286,center=[-1.151577246541041, -0.2087030746534254, -0.03597634736698213],normal=[-0.1883960664517071, 0.524580021493428, 0.8302546134743719]))
+    contour_polydata_list_1.append(contour_set_1[-1].get_polydata())
+    contour_set_1.append(segmentation.Circle(0.21249908395252856,center=[-1.160606285246281, -0.1835621393501185, 0.003814297848988582],normal=[-0.18839606645170717, 0.524580021493428, 0.8302546134743718]))
+    contour_polydata_list_1.append(contour_set_1[-1].get_polydata())
+    contour_set_1.append(segmentation.Circle(0.21249908395252856,center=[-1.1696353239515211, -0.15842120404681165, 0.0436049430649592],normal=[-0.18839606645170726, 0.5245800214934281, 0.8302546134743719]))
+    contour_polydata_list_1.append(contour_set_1[-1].get_polydata())
+    contour_set_1.append(segmentation.Circle(0.21249908395252853,center=[-1.1786643626567612, -0.13328026874350463, 0.0833955882809299],normal=[-0.18839606645170726, 0.5245800214934279, 0.8302546134743719]))
+    contour_polydata_list_1.append(contour_set_1[-1].get_polydata())
+    contour_set_1.append(segmentation.Circle(0.21249908395252853,center=[-1.1876934013620015, -0.10813933344019783, 0.12318623349690047],normal=[-0.1883960664517073, 0.524580021493428, 0.8302546134743719]))
+    contour_polydata_list_1.append(contour_set_1[-1].get_polydata())
+    contour_set_1.append(segmentation.Circle(0.21249908395252848,center=[-1.1967224400672414, -0.08299839813689089, 0.1629768787128712],normal=[-0.1883960664517073, 0.524580021493428, 0.8302546134743719]))
+    contour_polydata_list_1.append(contour_set_1[-1].get_polydata())
+    contour_set_1.append(segmentation.Circle(0.21249908395252856,center=[-1.2057514787724817, -0.057857462833584075, 0.2027675239288418],normal=[-0.1883960664517073, 0.524580021493428, 0.8302546134743717]))
+    contour_polydata_list_1.append(contour_set_1[-1].get_polydata())
+    contour_set_1.append(segmentation.Circle(0.21249908395252848,center=[-1.2147805174777218, -0.03271652753027715, 0.24255816914481246],normal=[-0.1883960664517073, 0.524580021493428, 0.8302546134743719]))
+    contour_polydata_list_1.append(contour_set_1[-1].get_polydata())
+    contour_set_1.append(segmentation.Circle(0.21249908395252856,center=[-1.2238095561829623, -0.0075755922269702125, 0.28234881436078324],normal=[-0.18839606645170726, 0.524580021493428, 0.8302546134743718]))
+    contour_polydata_list_1.append(contour_set_1[-1].get_polydata())
+    contour_set_1.append(segmentation.Circle(0.21249908395252856,center=[-1.2328385948882024, 0.01756534307633671, 0.32213945957675394],normal=[-0.18839606645170723, 0.524580021493428, 0.8302546134743718]))
+    contour_polydata_list_1.append(contour_set_1[-1].get_polydata())
+    contour_set_1.append(segmentation.Circle(0.21249908395252856,center=[-1.2418676335934424, 0.0427062783796435, 0.3619301047927244],normal=[-0.18839606645170714, 0.524580021493428, 0.8302546134743718]))
+    contour_polydata_list_1.append(contour_set_1[-1].get_polydata())
+    contour_set_1.append(segmentation.Circle(0.21249908395252853,center=[-1.2508966722986825, 0.06784721368295045, 0.40172075000869506],normal=[-0.18839606645170714, 0.524580021493428, 0.8302546134743718]))
+    contour_polydata_list_1.append(contour_set_1[-1].get_polydata())
+    contour_set_1.append(segmentation.Circle(0.21249908395252856,center=[-1.259925711003923, 0.09298814898625737, 0.4415113952246658],normal=[-0.18839606645170714, 0.524580021493428, 0.8302546134743718]))
+    contour_polydata_list_1.append(contour_set_1[-1].get_polydata())
+    contour_set_1.append(segmentation.Circle(0.21249908395252853,center=[-1.268954749709163, 0.11812908428956434, 0.48130204044063657],normal=[-0.1883960664517071, 0.5245800214934281, 0.8302546134743718]))
+    contour_polydata_list_1.append(contour_set_1[-1].get_polydata())
+    contour_set_1.append(segmentation.Circle(0.21249908395252853,center=[-1.2779837884144032, 0.14327001959287108, 0.5210926856566072],normal=[-0.18839606645170703, 0.5245800214934281, 0.8302546134743718]))
+    contour_polydata_list_1.append(contour_set_1[-1].get_polydata())
+    contour_set_1.append(segmentation.Circle(0.21249908395252848,center=[-1.2870128271196433, 0.16841095489617802, 0.5608833308725777],normal=[-0.18839606645170698, 0.5245800214934281, 0.8302546134743718]))
+    contour_polydata_list_1.append(contour_set_1[-1].get_polydata())
+    contour_set_1.append(segmentation.Circle(0.21249908395252848,center=[-1.2960418658248831, 0.1935518901994849, 0.6006739760885483],normal=[-0.18839606645170695, 0.5245800214934281, 0.8302546134743719]))
+    contour_polydata_list_1.append(contour_set_1[-1].get_polydata())
+    contour_set_1.append(segmentation.Circle(0.21249908395252848,center=[-1.3050709045301234, 0.21869282550279187, 0.6404646213045191],normal=[-0.1883960664517069, 0.5245800214934281, 0.8302546134743718]))
+    contour_polydata_list_1.append(contour_set_1[-1].get_polydata())
+    contour_set_1.append(segmentation.Circle(0.21249908395252853,center=[-1.314099943235364, 0.24383376080609884, 0.6802552665204898],normal=[-0.18839606645170687, 0.524580021493428, 0.8302546134743718]))
+    contour_polydata_list_1.append(contour_set_1[-1].get_polydata())
+    contour_set_1.append(segmentation.Circle(0.21249908395252853,center=[-1.3231289819406038, 0.26897469610940566, 0.7200459117364604],normal=[-0.1883960664517068, 0.5245800214934281, 0.8302546134743718]))
+    contour_polydata_list_1.append(contour_set_1[-1].get_polydata())
+    contour_set_1.append(segmentation.Circle(0.21249908395252848,center=[-1.332158020645844, 0.2941156314127126, 0.7598365569524311],normal=[-0.18839606645170678, 0.5245800214934281, 0.8302546134743719]))
+    contour_polydata_list_1.append(contour_set_1[-1].get_polydata())
+    contour_set_1.append(segmentation.Circle(0.21249908395252853,center=[-1.3411870593510842, 0.31925656671601954, 0.7996272021684019],normal=[-0.18839606645170676, 0.5245800214934281, 0.8302546134743719]))
+    contour_polydata_list_1.append(contour_set_1[-1].get_polydata())
+    contour_set_1.append(segmentation.Circle(0.21249908395252853,center=[-1.3502160980563245, 0.34439750201932645, 0.8394178473843726],normal=[-0.1883960664517067, 0.5245800214934281, 0.8302546134743719]))
+    contour_polydata_list_1.append(contour_set_1[-1].get_polydata())
+    contour_set_1.append(segmentation.Circle(0.21249908395252848,center=[-1.3592451367615643, 0.36953843732263325, 0.8792084926003432],normal=[-0.18839606645170665, 0.5245800214934281, 0.8302546134743719]))
+    contour_polydata_list_1.append(contour_set_1[-1].get_polydata())
+    contour_set_1.append(segmentation.Circle(0.21249908395252848,center=[-1.3682741754668044, 0.39467937262594016, 0.9189991378163137],normal=[-0.18839606645170662, 0.5245800214934281, 0.8302546134743719]))
+    contour_polydata_list_1.append(contour_set_1[-1].get_polydata())
+    contour_set_1.append(segmentation.Circle(0.21249908395252845,center=[-1.3773032141720445, 0.41982030792924707, 0.9587897830322842],normal=[-0.18839606645170656, 0.5245800214934281, 0.8302546134743719]))
+    contour_polydata_list_1.append(contour_set_1[-1].get_polydata())
+    contour_set_1.append(segmentation.Circle(0.21249908395252848,center=[-1.3863322528772848, 0.44496124323255404, 0.9985804282482551],normal=[-0.18839606645170653, 0.5245800214934281, 0.830254613474372]))
+    contour_polydata_list_1.append(contour_set_1[-1].get_polydata())
+    contour_set_1.append(segmentation.Circle(0.21249908395252848,center=[-1.395361291582525, 0.4701021785358611, 1.038371073464226],normal=[-0.18839606645170645, 0.524580021493428, 0.830254613474372]))
+    contour_polydata_list_1.append(contour_set_1[-1].get_polydata())
+    contour_set_1.append(segmentation.Circle(0.21249908395252848,center=[-1.4043903302877652, 0.4952431138391678, 1.0781617186801964],normal=[-0.18839606645170642, 0.524580021493428, 0.830254613474372]))
+    contour_polydata_list_1.append(contour_set_1[-1].get_polydata())
+    contour_set_1.append(segmentation.Circle(0.21249908395252853,center=[-1.4134193689930052, 0.5203840491424748, 1.1179523638961673],normal=[-0.18839606645170634, 0.524580021493428, 0.830254613474372]))
+    contour_polydata_list_1.append(contour_set_1[-1].get_polydata())
+    contour_set_1.append(segmentation.Circle(0.21249908395252856,center=[-1.4224484076982455, 0.5455249844457819, 1.1577430091121381],normal=[-0.1883960664517063, 0.524580021493428, 0.8302546134743721]))
+    contour_polydata_list_1.append(contour_set_1[-1].get_polydata())
+    contour_set_1.append(segmentation.Circle(0.21249908395252848,center=[-1.4314774464034856, 0.5706659197490888, 1.197533654328109],normal=[-0.18839606645170628, 0.524580021493428, 0.8302546134743721]))
+    contour_polydata_list_1.append(contour_set_1[-1].get_polydata())
+    contour_set_1.append(segmentation.Circle(0.21249908395252856,center=[-1.4405064851087257, 0.5958068550523957, 1.2373242995440796],normal=[-0.1883960664517062, 0.524580021493428, 0.830254613474372]))
+    contour_polydata_list_1.append(contour_set_1[-1].get_polydata())
+    contour_set_1.append(segmentation.Circle(0.21249908395252853,center=[-1.4495355238139658, 0.6209477903557026, 1.2771149447600503],normal=[-0.18839606645170615, 0.5245800214934279, 0.830254613474372]))
+    contour_polydata_list_1.append(contour_set_1[-1].get_polydata())
+    contour_list.append(contour_set_1)
+    contour_polydata.append(contour_polydata_list_1)
+    return contour_list, contour_polydata
+
+def save_sample_path():
+    contour_list, contour_polydata = write_base_contours()
+    path = []
+    norms = []
+    radii = []
+    for contour in contour_list:
+        x = []; y = []; z = []
+        x_theta = []; y_theta = []; z_theta = []
+        radius_list = []
+        for seg in contour:
+            x.append(seg.get_center()[0])
+            y.append(seg.get_center()[1])
+            z.append(seg.get_center()[2])
+
+            x_theta.append(seg.get_normal()[0])
+            y_theta.append(seg.get_normal()[1])
+            z_theta.append(seg.get_normal()[2])
+
+            radius_list.append(seg.get_radius())
+        path.append([x,y,z])
+        norms.append([x_theta, y_theta, z_theta])
+        radii.append(radius_list)
+
+    if os.path.exists("results/path_planning") == False:
+        os.makedirs("results/path_planning")
+    save_dict(path, "results/path_planning/sample_path")
+    save_dict(norms, "results/path_planning/sample_norms")
+    save_dict(radii, "results/path_planning/sample_radii")
+    return 
+
+if __name__ == "__main__":
+    save_sample_path()
+    print("Sample path saved.")  

@@ -21,7 +21,7 @@ if __name__ == "__main__":
     network_params = {"num_input_features": 7,
                       "num_layers": 3,
                       "layer_width": 500,
-                      "num_output_features": 6,
+                      "num_output_features": 2,
                       "anatomy": anatomy,
                       "set_type": set_type,
                       "num_geos": num_geos,

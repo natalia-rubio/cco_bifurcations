@@ -15,12 +15,10 @@ from util.tools.vtk_functions import read_geo, write_geo, calculator, cut_plane,
 import pickle
 
 def compare_to_3d(junction_mode = "standard",
-                  tree_name = "tree_dec1",
-                  flow_amp = "full",
-                  gen_mode = "sv"):
+                  tree_name = "tree_20"):
 
-    reader_0d = read_geo(f"trees/zerod_output_cent_{gen_mode}_{junction_mode}/{tree_name}_{flow_amp}/centerline_sol.vtp").GetOutput()
-    reader_3d = read_geo(f"trees/threed_output_cent/{tree_name}/centerline_sol_{flow_amp}.vtp").GetOutput()
+    reader_0d = read_geo(f"trees/zerod_output_cent/{junction_mode}/{tree_name}/centerline_sol.vtp").GetOutput()
+    reader_3d = read_geo(f"trees/threed_output_cent/{tree_name}/centerline_sol.vtp").GetOutput()
     #was 300
 
     arrays_0d_0d = get_all_arrays(reader_0d)
@@ -65,10 +63,11 @@ def compare_to_3d(junction_mode = "standard",
     array.SetName("flow_0d")
     array.SetNumberOfValues(reader_3d.GetNumberOfPoints())
     reader_3d.GetPointData().AddArray(array)
-
-    write_geo(f"trees/threed_output_cent/{tree_name}/centerline_sol_{junction_mode}.vtp", reader_3d)
+    if not os.path.exists(f'trees/threed_output_cent/{junction_mode}/{tree_name}'):
+        os.makedirs(f'trees/threed_output_cent/{junction_mode}/{tree_name}')
+    write_geo(f"trees/threed_output_cent/{junction_mode}/{tree_name}/centerline_sol_{junction_mode}.vtp", reader_3d)
     return
 
 if __name__ == "__main__":
-    compare_to_3d(junction_mode = sys.argv[1])
+    compare_to_3d(junction_mode = sys.argv[1], tree_name= sys.argv[2])
                   

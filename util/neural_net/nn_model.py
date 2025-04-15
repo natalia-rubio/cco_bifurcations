@@ -60,35 +60,34 @@ def predict(input, weights):
 def loss(input, flow, dP_true, scaling_factors, scaling_dict, weights):
 
     coefs_pred = predict(input, weights)
-    #print(coefs_pred)
+    # print(coefs_pred)
 
-    R_lin_star_pred_inlet = inv_scale_jax(scaling_dict, coefs_pred[:,0], "inlet_R_lin_star") * 0
-    R_lin_star_pred1 = inv_scale_jax(scaling_dict, coefs_pred[:,1], "daughter1_R_lin_star")
-    R_lin_star_pred2 = inv_scale_jax(scaling_dict, coefs_pred[:,2], "daughter2_R_lin_star") * 0
-    R_quad_star_pred_inlet = inv_scale_jax(scaling_dict, coefs_pred[:,3], "inlet_R_quad_star") * 0
-    R_quad_star_pred1 = inv_scale_jax(scaling_dict, coefs_pred[:,4], "daughter1_R_quad_star")
-    R_quad_star_pred2 = inv_scale_jax(scaling_dict, coefs_pred[:,5], "daughter2_R_quad_star") * 0
+    # R_lin_star_pred_inlet = inv_scale_jax(scaling_dict, coefs_pred[:,0], "inlet_R_lin_star") * 0
+    R_lin_star_pred1 = inv_scale_jax(scaling_dict, coefs_pred[:,0], "daughter1_R_lin_star")
+    # R_lin_star_pred2 = inv_scale_jax(scaling_dict, coefs_pred[:,2], "daughter2_R_lin_star") * 0
+    # R_quad_star_pred_inlet = inv_scale_jax(scaling_dict, coefs_pred[:,3], "inlet_R_quad_star") * 0
+    R_quad_star_pred1 = inv_scale_jax(scaling_dict, coefs_pred[:,1], "daughter1_R_quad_star")
+    # R_quad_star_pred2 = inv_scale_jax(scaling_dict, coefs_pred[:,5], "daughter2_R_quad_star") * 0
 
 
-    R_lin_star_pred_inlet = 0 * R_lin_star_pred_inlet # No linear inlet resistor
-    R_quad_star_pred_inlet = relu(R_quad_star_pred_inlet) # Negative quadratic inlet resistor
+    # R_lin_star_pred_inlet = 0 * R_lin_star_pred_inlet # No linear inlet resistor
+    # R_quad_star_pred_inlet = relu(R_quad_star_pred_inlet) # Negative quadratic inlet resistor
 
-    R_quad_star_pred1 = relu(R_quad_star_pred1) # Positive quadratic daughter 1 resistor
+    #R_quad_star_pred1 = relu(R_quad_star_pred1) # Positive quadratic daughter 1 resistor
 
     A_char = scaling_factors[:,0].reshape(-1,1)
     U_char = scaling_factors[:,1].reshape(-1,1)
 
     dP_star_pred = jnp.zeros(flow.shape)
-    inflow = flow[:,:,0] + flow[:,:,1]
-    dP_star_pred = dP_star_pred.at[:,:,0].set(jnp.divide(R_lin_star_pred_inlet * inflow, A_char * U_char) + 
-                                            jnp.divide(R_quad_star_pred_inlet * jnp.square(inflow), jnp.square(A_char * U_char)) +
+    # inflow = flow[:,:,0] + flow[:,:,1]
+    dP_star_pred = dP_star_pred.at[:,:,0].set(
                                             jnp.divide(R_lin_star_pred1 * flow[:,:,0], A_char * U_char) + 
                                             jnp.divide(R_quad_star_pred1 * jnp.square(flow[:,:,0]), jnp.square(A_char * U_char)))
     
-    dP_star_pred = dP_star_pred.at[:,:,1].set(jnp.divide(R_lin_star_pred_inlet * inflow, A_char * U_char) + 
-                                            jnp.divide(R_quad_star_pred_inlet * jnp.square(inflow), jnp.square(A_char * U_char)) +
-                                            jnp.divide(R_lin_star_pred2 * flow[:,:,1], (A_char * U_char)) + 
-                                            jnp.divide(R_quad_star_pred2 * jnp.square(flow[:,:,1]), jnp.square(A_char * U_char)))
+    # dP_star_pred = dP_star_pred.at[:,:,1].set(jnp.divide(R_lin_star_pred_inlet * inflow, A_char * U_char) + 
+    #                                         jnp.divide(R_quad_star_pred_inlet * jnp.square(inflow), jnp.square(A_char * U_char)) +
+    #                                         jnp.divide(R_lin_star_pred2 * flow[:,:,1], (A_char * U_char)) + 
+    #                                         jnp.divide(R_quad_star_pred2 * jnp.square(flow[:,:,1]), jnp.square(A_char * U_char)))
     
     dP_pred = jnp.multiply(dP_star_pred, 1.06 * jnp.square(U_char.reshape(-1,1,1)))
 
@@ -98,10 +97,10 @@ def loss(input, flow, dP_true, scaling_factors, scaling_dict, weights):
 def coef_loss(output, flow, dP_true, scaling_factors, scaling_dict):
 
     R_lin_star_pred_inlet = 0 #inv_scale_jax(scaling_dict, output[:,0], "R_lin_star_inlet")
-    R_lin_star_pred1 = inv_scale_jax(scaling_dict, output[:,1], "daughter1_R_lin_star")
+    R_lin_star_pred1 = inv_scale_jax(scaling_dict, output[:,0], "daughter1_R_lin_star")
     R_lin_star_pred2 = 0 #inv_scale_jax(scaling_dict, output[:,2], "daughter2_R_lin_star")
     R_quad_star_pred_inlet = 0 #inv_scale_jax(scaling_dict, output[:,3], "R_quad_star_inlet")
-    R_quad_star_pred1 = inv_scale_jax(scaling_dict, output[:,4], "daughter1_R_quad_star")
+    R_quad_star_pred1 = inv_scale_jax(scaling_dict, output[:,1], "daughter1_R_quad_star")
     R_quad_star_pred2 = 0 #inv_scale_jax(scaling_dict, output[:,5], "R_quad_star2")
 
 
@@ -109,16 +108,15 @@ def coef_loss(output, flow, dP_true, scaling_factors, scaling_dict):
     U_char = scaling_factors[:,1].reshape(-1,1)
 
     dP_star_pred = jnp.zeros(flow.shape)
-    inflow = flow[:,:,0] + flow[:,:,1]
-    dP_star_pred = dP_star_pred.at[:,:,0].set(jnp.divide(R_lin_star_pred_inlet * inflow, A_char * U_char) + 
-                                            jnp.divide(R_quad_star_pred_inlet * jnp.square(inflow), jnp.square(A_char * U_char)) +
+    # inflow = flow[:,:,0] + flow[:,:,1]
+    dP_star_pred = dP_star_pred.at[:,:,0].set(
                                             jnp.divide(R_lin_star_pred1 * flow[:,:,0], A_char * U_char) + 
                                             jnp.divide(R_quad_star_pred1 * jnp.square(flow[:,:,0]), jnp.square(A_char * U_char)))
     
-    dP_star_pred = dP_star_pred.at[:,:,1].set(jnp.divide(R_lin_star_pred_inlet * inflow, A_char * U_char) + 
-                                            jnp.divide(R_quad_star_pred_inlet * jnp.square(inflow), jnp.square(A_char * U_char)) +
-                                            jnp.divide(R_lin_star_pred2 * flow[:,:,1], (A_char * U_char)) + 
-                                            jnp.divide(R_quad_star_pred2 * jnp.square(flow[:,:,1]), jnp.square(A_char * U_char)))
+    # dP_star_pred = dP_star_pred.at[:,:,1].set(jnp.divide(R_lin_star_pred_inlet * inflow, A_char * U_char) + 
+    #                                         jnp.divide(R_quad_star_pred_inlet * jnp.square(inflow), jnp.square(A_char * U_char)) +
+    #                                         jnp.divide(R_lin_star_pred2 * flow[:,:,1], (A_char * U_char)) + 
+    #                                         jnp.divide(R_quad_star_pred2 * jnp.square(flow[:,:,1]), jnp.square(A_char * U_char)))
     
     dP_pred = jnp.multiply(dP_star_pred, 1.06 * jnp.square(U_char.reshape(-1,1,1)))
     print(f"output: {output}")

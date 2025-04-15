@@ -20,7 +20,8 @@ def check_out_of_dist(param, param_name, scaling_dict):
     return param
 
 def get_R_values_bif(areas, tangents, length):
-    anatomy = "angles_CCO"
+    verbose = False
+    anatomy = "ideal"
     set_type = "random"
 
     scaling_dict = load_dict(f"data/scaling_dictionaries/{anatomy}_{set_type}_scaling_dict")
@@ -42,8 +43,8 @@ def get_R_values_bif(areas, tangents, length):
     
     length_add = max([length - L_char * scaling_dict["daughter1_length"][3], 0])
     res_add = length_add * 8 * np.pi * 0.04 / (areas[1]**2)
-    # if res_add > 0:
-    #     print(f"Length add: {length_add}, res_add: {res_add}")
+    if res_add > 0 and verbose:
+        print(f"Length add: {length_add}, res_add: {res_add}")
     input_tens = jnp.asarray([scale_jax(scaling_dict, jnp.asarray(daughter1_area_ratio, dtype=jnp.float32), "daughter1_area_ratio"),
                             scale_jax(scaling_dict, jnp.asarray(daughter2_area_ratio, dtype=jnp.float32), "daughter2_area_ratio"),
                             scale_jax(scaling_dict, jnp.asarray(daughter1_area_ratio_inv2, dtype=jnp.float32), "daughter1_area_ratio_inv2"),
@@ -53,60 +54,45 @@ def get_R_values_bif(areas, tangents, length):
                             scale_jax(scaling_dict, jnp.asarray(daughter1_length, dtype=jnp.float32), "daughter1_length"),
                                 ]).reshape(1,-1)
 
-    #model_name = "angles_CCO_ng_1728_nl_3_lw_500_ne_1000_bs_70_dr_0.9_model"
-    #model_name = #"angles_CCO_ng_1728_nl_3_lw_200_ne_1000_bs_40_dr_0.9_model"
-    model_name = "angles_CCO_ng_1434_nl_3_lw_500_ne_1000_bs_70_dr_0.9_model"
+    # model_name = "angles_CCO_ng_1434_nl_3_lw_500_ne_1000_bs_70_dr_0.9_model"
+    model_name = "ideal_ng_2094_nl_3_lw_500_ne_1000_bs_70_dr_0.9_model"
     nn_model = dill_load(f"results/models/{anatomy}/{model_name}")
 
     coefs_pred = predict(input_tens, nn_model.weights)
 
     #R_lin_star_pred_inlet = inv_scale_jax(scaling_dict, coefs_pred[0][0], "R_lin_star_inlet"); check_out_of_dist(R_lin_star_pred_inlet, "R_lin_star_inlet", scaling_dict)
-    R_lin_star_pred1 = float(inv_scale_jax(scaling_dict, coefs_pred[0][1], "daughter1_R_lin_star")[0][0]); R_lin_star_pred1 = check_out_of_dist(R_lin_star_pred1, "daughter1_R_lin_star", scaling_dict)
+    R_lin_star_pred1 = float(inv_scale_jax(scaling_dict, coefs_pred[0][0], "daughter1_R_lin_star")[0][0]); R_lin_star_pred1 = check_out_of_dist(R_lin_star_pred1, "daughter1_R_lin_star", scaling_dict)
     # R_lin_star_pred2 = inv_scale_jax(scaling_dict, coefs_pred[0][2], "daughter2_R_lin_star"); check_out_of_dist(R_lin_star_pred2, "daughter2_R_lin_star", scaling_dict)
     #R_quad_star_pred_inlet = inv_scale_jax(scaling_dict, coefs_pred[0][3], "R_quad_star_inlet"); check_out_of_dist(R_quad_star_pred_inlet, "R_quad_star_inlet", scaling_dict)
-    R_quad_star_pred1 = float(inv_scale_jax(scaling_dict, coefs_pred[0][4], "daughter1_R_quad_star")[0][0]); R_quad_star_pred1 = check_out_of_dist(R_quad_star_pred1, "daughter1_R_quad_star", scaling_dict)
-    #print(f"R_quad_star_pred1: {R_quad_star_pred1}")
+    R_quad_star_pred1 = float(inv_scale_jax(scaling_dict, coefs_pred[0][1], "daughter1_R_quad_star")[0][0]); R_quad_star_pred1 = check_out_of_dist(R_quad_star_pred1, "daughter1_R_quad_star", scaling_dict)
     #R_quad_star_pred2 = inv_scale_jax(scaling_dict, coefs_pred[0][5], "R_quad_star2"); check_out_of_dist(R_quad_star_pred2, "R_quad_star2", scaling_dict)
     
     inlet_R_lin = 0 #* -1.06 * jnp.square(U_char) * R_lin_star_pred_inlet /  (A_char * U_char)
     daughter1_R_lin = float((1.06 * jnp.square(U_char) * R_lin_star_pred1 /  (A_char * U_char))) + res_add
     daughter1_R_lin_poiseuille = length * 8 * np.pi * 0.04 / (areas[1]**2)
-    # if daughter1_R_lin < daughter1_R_lin_poiseuille:
-    #     print(f"Daughter 1 R_lin smaller than Poiseuille: {daughter1_R_lin}, {daughter1_R_lin_poiseuille}")
-    #     daughter1_R_lin = daughter1_R_lin_poiseuille
     daughter2_R_lin = 0 #-1.06 * jnp.square(U_char) * R_lin_star_pred2 /  (A_char * U_char)
 
     inlet_R_quad = 0 #* -1.06 * jnp.square(U_char) * R_quad_star_pred_inlet / jnp.square(A_char * U_char)
     daughter1_R_quad = float(1.06 * jnp.square(U_char) * R_quad_star_pred1 / jnp.square(A_char * U_char))
     #daughter1_R_quad = check_out_of_dist(daughter1_R_quad, "daughter1_R_quad", scaling_dict)
-    #pdb.set_trace()
     daughter2_R_quad = 0 #* -1.06 * jnp.square(U_char) * R_quad_star_pred2 / jnp.square(A_char * U_char)
-    # if daughter1_R_quad < -50:
-    #     print(f"Daughter 1 Area ratio: {daughter1_area_ratio}, Daughter 1 Angle: {daughter1_angle}, Daughter 1 Length: {daughter1_length}")
-    #     print(f"Daughter 2 Area ratio: {daughter2_area_ratio}, Daughter 2 Angle: {daughter2_angle}")
-    #     pdb.set_trace()
-    if daughter1_R_quad < 0:
-        print(f"Negative daughter1_R_quad: {daughter1_R_quad}")
-        daughter1_R_quad *= 0
 
-    R_dict = {"inlet_R_lin": 0, #float(inlet_R_lin[0][0]), 
-              "daughter1_R_lin": daughter1_R_lin, #float(daughter1_R_lin[0][0]), 
-              "daughter2_R_lin": 0, #float(daughter2_R_lin[0][0]), 
-              "inlet_R_quad": 0, #float(inlet_R_quad[0][0]), 
-              "daughter1_R_quad": daughter1_R_quad, #float(daughter1_R_quad[0][0]), 
-              "daughter2_R_quad": 0}#float(daughter2_R_quad[0][0])}
+
+    R_dict = {"inlet_R_lin": 0,
+              "daughter1_R_lin": daughter1_R_lin,
+              "daughter2_R_lin": 0,
+              "inlet_R_quad": 0,
+              "daughter1_R_quad": daughter1_R_quad,
+              "daughter2_R_quad": 0}
 
 
     return R_dict
 
 if __name__ == "__main__":
-    flow_amp = "full"
-    tree_name = "tree_dec1"
-    zerod_gen = "sv"
-    if zerod_gen == "CCO":
-        input_file_standard = f'trees/zerod_input_CCO_standard/{tree_name}_{flow_amp}/solver_0d.json'
-    else:
-        input_file_standard = f'trees/zerod_input_sv_standard/{tree_name}_{flow_amp}/solver_0d.json'
+    
+    tree_name = sys.argv[1]
+    
+    input_file_standard = f'trees/zerod_input/standard/{tree_name}/solver_0d.json'
     with open(input_file_standard) as json_file:
         input_file = json.load(json_file)
 
@@ -195,17 +181,6 @@ if __name__ == "__main__":
         L = [0 * area for area in junction["areas"][1:]]
         inlet_area = junction["areas"][0]
 
-        # r_quad_arr = np.asarray(r_quad)
-        # keep_r_quad = False
-        # if np.all(r_quad_arr > 0):
-        #     keep_r_quad = True
-        # elif np.all(r_quad_arr < 0):
-        #     keep_r_quad = True
-        # else:
-        #     keep_r_quad = False
-        #     print(f"Junction {junction_name} has different signs for daughter 1 R_quad values: {r_quad}")
-        #     r_quad = [0 for r in r_quad]
-
         print(f"Junction {junction_name} has daughter 1 R_lin values: {r_lin}")
         junction["junction_type"] = "BloodVesselJunction"
         junction["junction_values"] = {"R_poiseuille": r_lin, 
@@ -213,23 +188,11 @@ if __name__ == "__main__":
                             "pressure_recovery_coefficient": r_quad,
                             "L": L,}
         
-        # Add inlet resistor vessel
-        # 
-
-    # num_steps = 100
-    # max_Q = input_file["boundary_conditions"][0]["bc_values"]["Q"][-1]
-    # input_file["boundary_conditions"][0]["bc_values"]["Q"] = list(np.linspace(0, max_Q/2, num_steps))
-    # input_file["boundary_conditions"][0]["bc_values"]["t"] = list(np.linspace(0, 10, num_steps))
-    # input_file["simulation_parameters"]["number_of_time_pts_per_cardiac_cycle"] = num_steps
-    # input_file["simulation_parameters"]["number_of_cardiac_cycles"] = 1
-    # input_file["simulation_parameters"]["steady_initial"] = False
-    # input_file["simulation_parameters"]["maximum_nonlinear_iterations"] = 100
-
     input_file["junctions"] += new_junction_list
-    if not os.path.exists(f'trees/zerod_input_{zerod_gen}_RR/{tree_name}_{flow_amp}'):
-        os.makedirs(f'trees/zerod_input_{zerod_gen}_RR/{tree_name}_{flow_amp}')
-    if not os.path.exists(f'trees/zerod_output_{zerod_gen}_RR/{tree_name}_{flow_amp}'):
-        os.makedirs(f'trees/zerod_output_{zerod_gen}_RR/{tree_name}_{flow_amp}')
-    with open(f'trees/zerod_input_{zerod_gen}_RR/{tree_name}_{flow_amp}/solver_0d.json', 'w') as fp:
+    if not os.path.exists(f'trees/zerod_input/RR/{tree_name}'):
+        os.makedirs(f'trees/zerod_input/RR/{tree_name}')
+    if not os.path.exists(f'trees/zerod_output/RR/{tree_name}'):
+        os.makedirs(f'trees/zerod_output/RR/{tree_name}')
+    with open(f'trees/zerod_input/RR/{tree_name}/solver_0d.json', 'w') as fp:
         json.dump(input_file, indent = 4, fp = fp)
-    print(f"RRI 0D input file saved to trees/zerod_input_RR/{tree_name}_{flow_amp}/solver_0d.json")
+    print(f"RRI 0D input file saved to trees/zerod_input/RR/{tree_name}/solver_0d.json")

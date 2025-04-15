@@ -26,7 +26,7 @@ def extract_characteristic_values(tree_name):
     results_dir = f"data/characteristic_value_dictionaries/{tree_name}_char_val_dict"
     if not os.path.exists("data/characteristic_value_dictionaries"):
         os.makedirs("data/characteristic_value_dictionaries")
-    # soln_dir = "data/CCO_tree"
+
     soln_dir = f"trees/threed_output_cent/{tree_name}"
     # centerline_dir = "data/CCO_tree/geometry/centerlines.vtp"
     char_val_dict = {}

@@ -204,7 +204,7 @@ def loft(contours,num_pts=50,distance=False):
         if idx != 0:
             contours[idx] = geometry.align_profile(contours[idx-1],contours[idx],distance)
     nurbs_options = geometry.LoftNurbsOptions()
-    #nurbs_options.u_degree = 3
+    nurbs_options.u_degree = 3
     #options = geometry.LoftOptions()     
     #pdb.set_trace()
     #loft_polydata = geometry.loft_nurbs(polydata_list=contours,loft_options=options)

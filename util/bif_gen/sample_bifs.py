@@ -8,41 +8,42 @@ plt.rcParams.update(plt.rcParamsDefault)
 plt.rcParams['font.family'] = 'serif'
 plt.rcParams['font.size'] = 16
 
-tree_name = "tree_80"
-anatomy = "angles_CCO"
+anatomy = "ideal_fix_areas"
 num_geos = 400
 sampler = qmc.LatinHypercube(d=4,seed = 0)
-samples = sampler.random(n=num_geos)
+samples = sampler.random(n=num_geos*10)
 
 samples_uniform = uniform(loc=0, scale=1).ppf(samples)
 samples_normal = norm(loc=0, scale=1).ppf(samples)
 
 
-tree_data_dict = load_dict(f"data/CCO_tree/{tree_name}_data_dict")
-CCO_sampled_params_dict = {"daughter1_angle": [],
+tree_data_dict =    {"daughter1_angle": {"lowest": 0.0, "highest": np.pi, "mean": np.pi/4, "range": np.pi/2},
+                    "daughter2_angle": {"lowest": 0.0, "highest": np.pi, "mean": np.pi/4, "range": np.pi/2},
+                    "total_daughter_area_ratio": {"lowest": 0.7, "highest": 1.5, "mean": 1.1, "range": 0.8},
+                    "daughter1_area_ratio": {"lowest": 0.2, "highest": 1, "mean": 0.8, "range": 1.1}}
+CCO_sampled_params_dict =   {"daughter1_angle": [],
                             "daughter2_angle": [],
-                           "daughter1_area_ratio": [],
-                           "daughter12_area_ratio": []}
-
-for i in range(num_geos):
-    area_inconsistency = False
-        
-    # while area_consistency:
-    for param_ind, param in enumerate(CCO_sampled_params_dict.keys()):
-        #if i < num_geos/2:
-            CCO_sampled_params_dict[param].append(
-            0.5 * (0.8 * tree_data_dict[param]["lowest"] + samples_uniform[i, param_ind] * tree_data_dict[param]["range"] * 1.4) + \
-            + 0.5 * (samples_normal[i, param_ind]*tree_data_dict[param]["std"] + tree_data_dict[param]["mean"]))
-        # else:
-        #     CCO_sampled_params_dict[param].append(
-        #         0.5 * (0.8 * tree_data_dict[param]["lowest"] + samples_uniform[i, param_ind] * tree_data_dict[param]["range"] * 1.2) + \
-        #         + 0.5 * (samples_normal[i, param_ind]*tree_data_dict[param]["std"] + tree_data_dict[param]["mean"]))
-        
-        # if CCO_sampled_params_dict["daughter1_area_ratio"][-1] > CCO_sampled_params_dict["daughter2_area_ratio"][-1]:
-        #     area_consistency = True
-        # else:
-        #     for param in CCO_sampled_params_dict.keys():
-        #         CCO_sampled_params_dict[param].pop()
+                            "total_daughter_area_ratio": [],
+                            "daughter1_area_ratio": []}
+success_counter = 0
+i = 0
+while success_counter < num_geos:
+    area_consistency = False
+    while not area_consistency:
+        for param_ind, param in enumerate(CCO_sampled_params_dict.keys()):
+                CCO_sampled_params_dict[param].append(
+                tree_data_dict[param]["lowest"] + samples_uniform[i, param_ind] * tree_data_dict[param]["range"])
+        d1ar = CCO_sampled_params_dict["daughter1_area_ratio"][-1]
+        d2ar = CCO_sampled_params_dict["total_daughter_area_ratio"][-1] - d1ar
+        print(d1ar, d2ar)
+        if d1ar < 1 and d2ar < 1 and d2ar > 0.2:
+            area_consistency = True
+        else:
+            for param_ind, param in enumerate(CCO_sampled_params_dict.keys()):
+                CCO_sampled_params_dict[param].pop(-1)
+            area_consistency = False
+        i += 1
+    success_counter += 1
         
 if not os.path.exists("data/sampled_params_dict"):
     os.mkdir("data/sampled_params_dict")

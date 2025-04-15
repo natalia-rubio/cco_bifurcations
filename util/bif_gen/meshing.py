@@ -69,9 +69,9 @@ def build_model(contours):
         for idx, contour_set in enumerate(contours):
             if idx == 0:
                 continue
-            smoothing_params = {'method':'constrained', 'num_iterations':3, 'constrain_factor':0.1+(0.9*(1-contour_set[10].get_radius()/contours[0][0].get_radius())), 'num_cg_solves':30}
+            smoothing_params = {'method':'constrained', 'num_iterations':3, 'constrain_factor':1, 'num_cg_solves':30}
             #smoothing_params = {'method':'constrained', 'num_iterations':10, 'constrain_factor':1, 'num_cg_solves':50}
-            smooth_model = geometry.local_sphere_smooth(smooth_model,contour_set[0].get_radius()*4,contour_set[2].get_center(),smoothing_params)
+            smooth_model = geometry.local_sphere_smooth(smooth_model,contours[0][0].get_radius()*10,contour_set[0].get_center(),smoothing_params)
             print('local sphere smoothing {}'.format(idx))
         model.set_surface(smooth_model)
     model = clean(model)
@@ -86,7 +86,7 @@ def get_mesh(model, contours, walls, edge_size=0.1):
     v2_start = contours[1][0].get_center()
     v2_end = contours[1][-1].get_center()
     v2_mid = [(v2_start[i] + v2_end[i])/2 for i in range(3)]
-    v2_len = np.sqrt(np.linalg.norm(np.array(v2_end) - np.array(v2_start)))
+    v2_len = np.linalg.norm(np.array(v2_end) - np.array(v2_start))
     v2_rad = contours[1][-1].get_radius()
     v1_rad = contours[0][0].get_radius()
     edge_size = v1_rad/3
@@ -121,15 +121,11 @@ def get_mesh(model, contours, walls, edge_size=0.1):
     tet_options.quality_ratio = 1.4
     #tet_options.no_bisect = True
 
-
-
-
-    tet_options.local_edge_size_on =  True
-    tet_options.local_edge_size = []
-    for i in range(len(caps)):
-        tet_options.local_edge_size.append({'face_id':caps[i], 'edge_size':cap_edge_size[i]})
-    tet_options.local_edge_size_on = True 
-
+    # tet_options.local_edge_size_on =  True
+    # tet_options.local_edge_size = []
+    # for i in range(len(caps)):
+    #     tet_options.local_edge_size.append({'face_id':caps[i], 'edge_size':cap_edge_size[i]})
+    # tet_options.local_edge_size_on = True 
 
     mesher.set_boundary_layer_options(number_of_layers=4, edge_size_fraction=0.8, layer_decreasing_ratio=0.8, constant_thickness=False)
     for idx, contour_set in enumerate(contours):
@@ -138,11 +134,12 @@ def get_mesh(model, contours, walls, edge_size=0.1):
         print('adding sphere refinement')
         print("edge_size: {}".format(edge_size))
 
-        tet_options.sphere_refinement.append({'edge_size':edge_size * np.sqrt(v2_rad/v1_rad), 'radius':v2_len*0.5, 
+        tet_options.sphere_refinement.append({'edge_size':edge_size*min([0.5, 2*v2_rad/v1_rad]), 'radius':v2_len*0.7, #*0.5, 
                         'center':v2_mid})
-
-        tet_options.sphere_refinement.append({'edge_size':edge_size*min([0.7, 1.5*v2_rad/v1_rad]), 'radius':v1_rad*3, 
-                                'center':contour_set[2].get_center()})
+        # tet_options.sphere_refinement.append({'edge_size':edge_size*min([0.5, 2*v2_rad/v1_rad]), 'radius':1*v2_len, #*0.5, 
+        #                 'center':v2_end})
+        # tet_options.sphere_refinement.append({'edge_size':edge_size*min([0.5, 2*v2_rad/v1_rad]), 'radius':v1_rad*2, 
+        #                         'center':contour_set[0].get_center()})
         
         
     tet_options.sphere_refinement_on = True
