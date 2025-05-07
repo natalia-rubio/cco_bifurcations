@@ -73,7 +73,6 @@ def extract_results(fpath_1d, fpath_3d, fpath_out, only_caps=False, num_time_ste
 
     reader_1d = read_geo(fpath_1d).GetOutput()
     reader_3d = read_geo(fpath_3d).GetOutput()# get all result array names
-    pdb.set_trace() 
     res_names = get_res_names(reader_3d, ['Pressure', 'Velocity'])# get point and normals from centerline
     points = v2n(reader_1d.GetPoints().GetData())
     normals = v2n(reader_1d.GetPointData().GetArray('CenterlineSectionNormal'))
@@ -115,14 +114,16 @@ def extract_results(fpath_1d, fpath_3d, fpath_out, only_caps=False, num_time_ste
     return
 
 if __name__ == "__main__":
-    tree_name = "tree_dec1"
+    # tree_name = "tree_dec1"
+    tree_name = sys.argv[1]
+    time_step = sys.argv[2]
     flow_amp = "full"
     # fpath_1d = "data/CCO_tree/geometry/centerlines.vtp"
     fpath_1d = f"trees/geo_files/{tree_name}/centerlines/centerlines.vtp"
     # fpath_3d = "data/CCO_tree/sim_3D/solution_CCO.vtu"
-    fpath_3d = f"trees/threed_results/{tree_name}/{tree_name}_{flow_amp}.vtu"
+    fpath_3d = f"trees/threed_results/{tree_name}/{time_step}/.vtu"
     # fpath_out = "data/CCO_tree/centerline_sol.vtp"
-    fpath_out = f"trees/threed_output_cent/{tree_name}/centerline_sol_{flow_amp}.vtp"
+    fpath_out = f"trees/threed_output_cent/{tree_name}/centerline_sol_{time_step}.vtp"
     if not os.path.exists(f"trees/threed_output_cent/{tree_name}"):
         os.makedirs(f"trees/threed_output_cent/{tree_name}")
     extract_results(fpath_1d, fpath_3d, fpath_out, only_caps=False, num_time_steps = 50)

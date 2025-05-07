@@ -23,10 +23,11 @@ def check_convergence_offsets(geo_name, flow_index, anatomy, set_type, num_time_
     for percent_offset in offset_list:
         print(f"Percent offset: {percent_offset}")
         junction_dict = util.junction_proc.identify_junctions_percent_offset(junction_id, branch_id, pt_id, path, points, percent_offset)
-        results_dir = f"/scratch/users/nrubio/synthetic_junctions_reduced_results/{anatomy}/{set_type}/{geo_name}/flow_{flow_index}_offset_{int(percent_offset*100)}"
+        results_dir = f"/scratch/users/nrubio/synthetic_junctions_reduced_results/{anatomy}/{set_type}/{geo_name}/flow_{flow_index}_offset_{int(percent_offset*100)}_red_sol"
         print(f"Results dir: {results_dir}")
         print(f"Junction dict: {junction_dict}")
-        
+        if os.path.exists(results_dir):
+            continue
         soln_dict, conv = get_avg_sol.get_avg_steady_results(ss_tol= 0.02, inc = inc,
                         fpath_1d = centerline_dir,
                         fpath_3d = f"/scratch/users/nrubio/synthetic_junctions/{anatomy}/{set_type}/{geo_name}/{flow_name}/solution_flow_{flow_index}_{int(num_time_steps):03d}.vtu",

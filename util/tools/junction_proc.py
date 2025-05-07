@@ -111,11 +111,11 @@ def load_centerline_data(fpath_1d):
     area = cent_array["CenterlineSectionArea"]
     direction = cent_array["CenterlineSectionNormal"]  # vector normal direction
     direction_norm = np.linalg.norm( direction, axis=1, keepdims=True)  # norm of direction vector
-    direction = np.transpose(np.divide(direction,direction_norm))  # normalized direction vector
-    angle1 = direction[0,:].reshape(-1,)
-    angle2 = direction[1,:].reshape(-1,)
-    angle3 = direction[2,:].reshape(-1,)
-    return pt_id, num_pts, branch_id, junction_id, area, angle1, angle2, angle3, path
+    direction = np.divide(direction,direction_norm)  # normalized direction vector
+    angle1 = direction[:,0].reshape(-1,)
+    angle2 = direction[:,1].reshape(-1,)
+    angle3 = direction[:,2].reshape(-1,)
+    return pt_id, num_pts, branch_id, junction_id, area, angle1, angle2, angle3, path, direction
 
 def identify_junctions(junction_id, branch_id, pt_id):
     junction_ids = np.linspace(0,max(junction_id),max(junction_id)+1).astype(int)
@@ -150,6 +150,7 @@ def identify_junctions_offset(junction_id, branch_id, pt_id, path, offset):
     junction_ids = np.linspace(0,max(junction_id),max(junction_id)+1).astype(int)
     branch_ids = np.linspace(0,max(branch_id),max(branch_id)+1).astype(int)
     junction_dict = {}
+    branch_id_dict = {}
     for i in junction_ids:
 
         junction_pts = pt_id[junction_id == i] # find all points in junction
@@ -177,9 +178,10 @@ def identify_junctions_offset(junction_id, branch_id, pt_id, path, offset):
                 branch_pts_junc.append(branch_pt_offset) # add outlet point Id to outlet point array
                 offsets.append(path[pt_id == branch_pt_offset]- path[pt_id == branch_pt_junc])
         junction_dict.update({i : branch_pts_junc})
+        branch_id_dict.update({i : branch_ids_junc})
         #assert i == 0, "There should only be one junction,"
     #pdb.set_trace()
-    return junction_dict, offsets, branch_pts_junc
+    return junction_dict, offsets, branch_id_dict
 
 def identify_branches_offset(branch_id, pt_id, path, offset):
     branch_ids = np.linspace(0,max(branch_id),max(branch_id)+1).astype(int)
@@ -253,11 +255,11 @@ def load_vmr_model_data(model, fpath_1dsol):
     direction = soln_array["CenterlineSectionNormal"]  # vector normal direction
     area = soln_array["CenterlineSectionArea"]
     direction_norm = np.linalg.norm( direction, axis=1, keepdims=True)  # norm of direction vector
-    direction = np.transpose(np.divide(direction,direction_norm))  # normalized direction vector
+    direction = np.divide(direction,direction_norm)  # normalized direction vector
     #pdb.set_trace()
-    angle1 = direction[0,:].reshape(-1,)
-    angle2 = direction[1,:].reshape(-1,)
-    angle3 = direction[2,:].reshape(-1,)
+    angle1 = direction[:,0].reshape(-1,)
+    angle2 = direction[:,1].reshape(-1,)
+    angle3 = direction[:,2].reshape(-1,)
 
     # Extract timesteps and pressures + velocities at each timestep -------
     pressure_in_time= np.zeros((0,num_pts)) # initialize pressure_in_time matrix, each column is a mesh point, each row is a timestep
@@ -273,7 +275,7 @@ def load_vmr_model_data(model, fpath_1dsol):
                 flow_in_time, soln_array[key]))  # add timestep column to flow_in_time
     #q
     # pdb.set_trace()
-    return pt_id, num_pts, branch_id, junction_id, area, angle1, angle2, angle3, axial_distance, pressure_in_time, flow_in_time, times, time_interval
+    return pt_id, num_pts, branch_id, junction_id, area, angle1, angle2, angle3, axial_distance, direction, pressure_in_time, flow_in_time, times, time_interval
 
 def classify_branches(flow, junc_pts, pt_arr):
     inlets = []; outlets = [] # initialize inlet and outlet list
@@ -290,6 +292,15 @@ def classify_branches(flow, junc_pts, pt_arr):
           outlets.append(branch_pt)
     return inlets, outlets
 
+
+def classify_branches_backflow_allowed(flow, junc_pts, pt_arr):
+    inlets = []; outlets = [] # initialize inlet and outlet list
+    for branch_pt in junc_pts:
+      if branch_pt == min(junc_pts):
+          inlets.append(branch_pt)
+      else:
+          outlets.append(branch_pt)
+    return inlets, outlets
 
 def get_angle_diff(angle1, angle2):
     try:

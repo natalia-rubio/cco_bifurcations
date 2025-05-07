@@ -343,7 +343,7 @@ def get_avg_steady_results(ss_tol,
 
     if conv == True:
         res_dict.update({"pt_inds": pt_inds})
-        save_dict(res_dict, fpath_out + "_red_sol")
+        save_dict(res_dict, fpath_out )#+ "_red_sol")
     else:
         os.system(f"rm {fpath_out}")
 

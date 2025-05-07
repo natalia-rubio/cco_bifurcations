@@ -15,10 +15,11 @@ from util.tools.vtk_functions import read_geo, write_geo, calculator, cut_plane,
 import pickle
 
 def compare_to_3d(junction_mode = "standard",
-                  tree_name = "tree_20"):
+                  tree_name = "tree_20_100",
+                  time_step = "700"):
 
     reader_0d = read_geo(f"trees/zerod_output_cent/{junction_mode}/{tree_name}/centerline_sol.vtp").GetOutput()
-    reader_3d = read_geo(f"trees/threed_output_cent/{tree_name}/centerline_sol.vtp").GetOutput()
+    reader_3d = read_geo(f"trees/threed_output_cent/{tree_name}/centerline_sol_{time_step}.vtp").GetOutput()
     #was 300
 
     arrays_0d_0d = get_all_arrays(reader_0d)
@@ -32,17 +33,22 @@ def compare_to_3d(junction_mode = "standard",
     pressure_0d = arrays_0d_0d["pressure"]
     pressure_3d = arrays_3d["Pressure"]
 
-    flow_error_0d = (flow_0d-flow_3d)/flow_3d
-    flow_error_0d[arrays_3d["BifurcationId"] >= 0] = 0
-    print(f"Flow error: {compute_rmse(flow_error_0d,0*flow_error_0d)}")
-
+    flow_error_0d_rel = (flow_0d-flow_3d)/flow_3d
+    flow_error_0d_tot = (flow_0d-flow_3d)
+    flow_error_0d_rel[arrays_3d["BifurcationId"] >= 0] = 0
+    flow_error_0d_tot[arrays_3d["BifurcationId"] >= 0] = 0
+    print(f"Flow error      (Relative):     {compute_rmse(flow_error_0d_rel,0*flow_error_0d_rel)}")
+    print(f"Flow error      (Total):        {compute_rmse(flow_error_0d_tot,0*flow_error_0d_tot)}")
    
-    pressure_error_0d = (pressure_0d - pressure_3d)/pressure_3d
-    pressure_error_0d[arrays_3d["BifurcationId"] >= 0] = 0
-    print(f"Pressure error: {compute_rmse(pressure_error_0d,0*pressure_error_0d)}")
+    pressure_error_0d_rel = (pressure_0d - pressure_3d)/pressure_3d
+    pressure_error_0d_tot = (pressure_0d - pressure_3d)/1333
+    pressure_error_0d_rel[arrays_3d["BifurcationId"] >= 0] = 0
+    pressure_error_0d_tot[arrays_3d["BifurcationId"] >= 0] = 0
+    print(f"Pressure error  (Relative):     {compute_rmse(pressure_error_0d_rel,0*pressure_error_0d_rel)}")
+    print(f"Pressure error  (Total):        {compute_rmse(pressure_error_0d_tot,0*pressure_error_0d_tot)}")
 
 
-    array = n2v(pressure_error_0d)
+    array = n2v(pressure_error_0d_rel)
     array.SetName("pressure_error_0d")
     array.SetNumberOfValues(reader_3d.GetNumberOfPoints())
     reader_3d.GetPointData().AddArray(array) 
@@ -53,7 +59,7 @@ def compare_to_3d(junction_mode = "standard",
     array.SetNumberOfValues(reader_3d.GetNumberOfPoints())
     reader_3d.GetPointData().AddArray(array) 
 
-    array = n2v(flow_error_0d)
+    array = n2v(flow_error_0d_rel)
     array.SetName("flow_error_0d")
     array.SetNumberOfValues(reader_3d.GetNumberOfPoints())
     reader_3d.GetPointData().AddArray(array) 

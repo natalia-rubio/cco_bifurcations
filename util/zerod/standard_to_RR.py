@@ -21,17 +21,21 @@ def check_out_of_dist(param, param_name, scaling_dict):
 
 def get_R_values_bif(areas, tangents, length):
     verbose = False
-    anatomy = "ideal"
-    set_type = "random"
+    # anatomy = "ideal" #
+    # anatomy = "tree_20" #
+    #anatomy = "ideal_fix_areas"
+    #anatomy = "angles_CCO"
+    anatomy = "tree_20_res2"
+    set_type = "dict" #
+    #set_type = "random"
 
     scaling_dict = load_dict(f"data/scaling_dictionaries/{anatomy}_{set_type}_scaling_dict")
 
     re_char = 4500
     A_char = areas[0]
-    U_char = re_char * 0.04 / (1.06 * 2*np.sqrt(A_char/np.pi))
-    
+    U_char = re_char * 0.04 / (1.06 * 2 *np.sqrt(A_char/np.pi))
+
     L_char = np.sqrt(A_char/np.pi)
-    
 
     daughter1_area_ratio = areas[1]/A_char; daughter1_area_ratio = check_out_of_dist(daughter1_area_ratio, "daughter1_area_ratio", scaling_dict)
     daughter2_area_ratio = areas[2]/A_char; daughter2_area_ratio = check_out_of_dist(daughter2_area_ratio, "daughter2_area_ratio", scaling_dict)
@@ -39,42 +43,47 @@ def get_R_values_bif(areas, tangents, length):
     daughter2_area_ratio_inv2 = (areas[2]/A_char)**-2;  daughter2_area_ratio_inv2 = check_out_of_dist(daughter2_area_ratio_inv2, "daughter2_area_ratio_inv2", scaling_dict)
     daughter1_angle = get_angle_diff(np.asarray(tangents[0]), np.asarray(tangents[1])); daughter1_angle = check_out_of_dist(daughter1_angle, "daughter1_angle", scaling_dict)
     daughter2_angle = get_angle_diff(np.asarray(tangents[0]), np.asarray(tangents[2])); daughter2_angle = check_out_of_dist(daughter2_angle, "daughter2_angle", scaling_dict)
-    daughter1_length = length/L_char; daughter1_length = check_out_of_dist(daughter1_length, "daughter1_length", scaling_dict)
+    #pdb.set_trace()
+    daughter1_length_star = length/L_char; daughter1_length_star = check_out_of_dist(daughter1_length_star, "daughter1_length_star", scaling_dict)
     
-    length_add = max([length - L_char * scaling_dict["daughter1_length"][3], 0])
+    length_add = max([length - L_char * scaling_dict["daughter1_length_star"][3], 0])
     res_add = length_add * 8 * np.pi * 0.04 / (areas[1]**2)
     if res_add > 0 and verbose:
         print(f"Length add: {length_add}, res_add: {res_add}")
+    print(f"Length star: {daughter1_length_star}")
     input_tens = jnp.asarray([scale_jax(scaling_dict, jnp.asarray(daughter1_area_ratio, dtype=jnp.float32), "daughter1_area_ratio"),
                             scale_jax(scaling_dict, jnp.asarray(daughter2_area_ratio, dtype=jnp.float32), "daughter2_area_ratio"),
                             scale_jax(scaling_dict, jnp.asarray(daughter1_area_ratio_inv2, dtype=jnp.float32), "daughter1_area_ratio_inv2"),
                             scale_jax(scaling_dict, jnp.asarray(daughter2_area_ratio_inv2, dtype=jnp.float32), "daughter2_area_ratio_inv2"),
                             scale_jax(scaling_dict, jnp.asarray(daughter1_angle, dtype=jnp.float32), "daughter1_angle"),
                             scale_jax(scaling_dict, jnp.asarray(daughter2_angle, dtype=jnp.float32), "daughter2_angle"),
-                            scale_jax(scaling_dict, jnp.asarray(daughter1_length, dtype=jnp.float32), "daughter1_length"),
+                            scale_jax(scaling_dict, jnp.asarray(daughter1_length_star, dtype=jnp.float32), "daughter1_length_star"),
                                 ]).reshape(1,-1)
 
-    # model_name = "angles_CCO_ng_1434_nl_3_lw_500_ne_1000_bs_70_dr_0.9_model"
-    model_name = "ideal_ng_2094_nl_3_lw_500_ne_1000_bs_70_dr_0.9_model"
+    #model_name = "angles_CCO_ng_1434_nl_3_lw_500_ne_1000_bs_70_dr_0.9_model"
+    # model_name = "ideal_ng_2094_nl_3_lw_500_ne_1000_bs_70_dr_0.9_model"
+    # model_name = "ideal_fix_areas_ng_1768_nl_2_lw_40_ne_1000_bs_70_dr_0.9_model"
+    model_name = "tree_20_res2_ng_342_nl_2_lw_40_ne_1000_bs_70_dr_0.9_model"
+    #model_name = "rand_res_ng_2816_nl_2_lw_40_ne_1000_bs_70_dr_0.9_model"
     nn_model = dill_load(f"results/models/{anatomy}/{model_name}")
 
     coefs_pred = predict(input_tens, nn_model.weights)
 
-    #R_lin_star_pred_inlet = inv_scale_jax(scaling_dict, coefs_pred[0][0], "R_lin_star_inlet"); check_out_of_dist(R_lin_star_pred_inlet, "R_lin_star_inlet", scaling_dict)
+    # R_lin_star_pred_inlet = inv_scale_jax(scaling_dict, coefs_pred[0][0], "R_lin_star_inlet"); check_out_of_dist(R_lin_star_pred_inlet, "R_lin_star_inlet", scaling_dict)
     R_lin_star_pred1 = float(inv_scale_jax(scaling_dict, coefs_pred[0][0], "daughter1_R_lin_star")[0][0]); R_lin_star_pred1 = check_out_of_dist(R_lin_star_pred1, "daughter1_R_lin_star", scaling_dict)
     # R_lin_star_pred2 = inv_scale_jax(scaling_dict, coefs_pred[0][2], "daughter2_R_lin_star"); check_out_of_dist(R_lin_star_pred2, "daughter2_R_lin_star", scaling_dict)
-    #R_quad_star_pred_inlet = inv_scale_jax(scaling_dict, coefs_pred[0][3], "R_quad_star_inlet"); check_out_of_dist(R_quad_star_pred_inlet, "R_quad_star_inlet", scaling_dict)
+    # R_quad_star_pred_inlet = inv_scale_jax(scaling_dict, coefs_pred[0][3], "R_quad_star_inlet"); check_out_of_dist(R_quad_star_pred_inlet, "R_quad_star_inlet", scaling_dict)
     R_quad_star_pred1 = float(inv_scale_jax(scaling_dict, coefs_pred[0][1], "daughter1_R_quad_star")[0][0]); R_quad_star_pred1 = check_out_of_dist(R_quad_star_pred1, "daughter1_R_quad_star", scaling_dict)
-    #R_quad_star_pred2 = inv_scale_jax(scaling_dict, coefs_pred[0][5], "R_quad_star2"); check_out_of_dist(R_quad_star_pred2, "R_quad_star2", scaling_dict)
+    # R_quad_star_pred2 = inv_scale_jax(scaling_dict, coefs_pred[0][5], "R_quad_star2"); check_out_of_dist(R_quad_star_pred2, "R_quad_star2", scaling_dict)
     
     inlet_R_lin = 0 #* -1.06 * jnp.square(U_char) * R_lin_star_pred_inlet /  (A_char * U_char)
     daughter1_R_lin = float((1.06 * jnp.square(U_char) * R_lin_star_pred1 /  (A_char * U_char))) + res_add
-    daughter1_R_lin_poiseuille = length * 8 * np.pi * 0.04 / (areas[1]**2)
+    # daughter1_R_lin_poiseuille = length * 8 * np.pi * 0.04 / (areas[1]**2)
     daughter2_R_lin = 0 #-1.06 * jnp.square(U_char) * R_lin_star_pred2 /  (A_char * U_char)
 
     inlet_R_quad = 0 #* -1.06 * jnp.square(U_char) * R_quad_star_pred_inlet / jnp.square(A_char * U_char)
     daughter1_R_quad = float(1.06 * jnp.square(U_char) * R_quad_star_pred1 / jnp.square(A_char * U_char))
-    #daughter1_R_quad = check_out_of_dist(daughter1_R_quad, "daughter1_R_quad", scaling_dict)
+    # daughter1_R_quad = check_out_of_dist(daughter1_R_quad, "daughter1_R_quad", scaling_dict)
     daughter2_R_quad = 0 #* -1.06 * jnp.square(U_char) * R_quad_star_pred2 / jnp.square(A_char * U_char)
 
 
@@ -85,7 +94,7 @@ def get_R_values_bif(areas, tangents, length):
               "daughter1_R_quad": daughter1_R_quad,
               "daughter2_R_quad": 0}
 
-
+    # pdb.set_trace()
     return R_dict
 
 if __name__ == "__main__":
@@ -118,7 +127,7 @@ if __name__ == "__main__":
         seg_id = int(vessel["vessel_name"].split("_")[1][3:])
         vessel_ids.append( vessel["vessel_id"])
         lengths.append(vessel["vessel_length"])
-        areas.append(np.sqrt(0.04*8*np.pi*vessel["vessel_length"] /vessel["zero_d_element_values"]["R_poiseuille"]))
+        areas.append(np.sqrt(0.04*8*np.pi*vessel["vessel_length"] / vessel["zero_d_element_values"]["R_poiseuille"]))
         vessel["zero_d_element_values"]["pressure_recovery_coefficient"] = 0
         if not branch_id == 0:
             vessel["zero_d_element_values"]["R_poiseuille"] = 0
@@ -127,6 +136,7 @@ if __name__ == "__main__":
             vessel["zero_d_element_values"]["L"] = 0
             vessel["zero_d_element_values"]["C"] = 0
     length_dict = {"branch_ids": np.asarray(branch_ids), "vessel_ids": np.asarray(vessel_ids), "lengths": np.asarray(lengths), "areas": np.asarray(areas)}
+    # pdb.set_trace()
     inds = []
     new_junction_list = []
 
@@ -159,9 +169,9 @@ if __name__ == "__main__":
             
             length = junction["lengths"][i] + float(np.sum(length_dict["lengths"][np.where(length_dict["branch_ids"] == outlet_branch)]))
             primary_area = min(length_dict["areas"][np.where(length_dict["branch_ids"] == outlet_branch)])
-            print(f"Primary area: {primary_area} vs {junction['areas'][i+1]}")
+            #print(f"Primary area: {primary_area} vs {junction['areas'][i+1]}")
             aux_area = min(length_dict["areas"][np.where(length_dict["branch_ids"] == aux_outlet_branch)])
-            print(f"Aux area: {aux_area} vs {junction['areas'][aux_i+1]}")
+            #print(f"Aux area: {aux_area} vs {junction['areas'][aux_i+1]}")
             aux_area_tan = sum([junction["areas"][j+1] for j in range(0, num_outlets) if j != i])
             tangent_array = np.asarray(junction["tangents"])
             
@@ -181,7 +191,7 @@ if __name__ == "__main__":
         L = [0 * area for area in junction["areas"][1:]]
         inlet_area = junction["areas"][0]
 
-        print(f"Junction {junction_name} has daughter 1 R_lin values: {r_lin}")
+        #print(f"Junction {junction_name} has daughter 1 R_lin values: {r_lin}")
         junction["junction_type"] = "BloodVesselJunction"
         junction["junction_values"] = {"R_poiseuille": r_lin, 
                             "stenosis_coefficient": L,

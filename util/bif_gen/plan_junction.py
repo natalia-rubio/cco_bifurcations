@@ -2,6 +2,7 @@ import sys
 sys.path.append('/Users/natalia/Desktop/dec_tree_gen')
 import numpy as np
 import pickle
+import pdb
 # import matplotlib.pyplot as plt
 #from util.tools.basic import save_dict, load_dict
 
@@ -20,6 +21,7 @@ def plan_junction(geo_params):
                             "angles": [90 - geo_params["daughter2_angle"]*180/np.pi,], 
                             "connection_branch":"branch1", "connection_seg":0},
                 }
+
 
     for branch_name in ["branch1", "branch2"]:
         #print(branch_dict)
@@ -59,9 +61,9 @@ def plan_junction(geo_params):
 
             for j in range(pts_per_branch):
 
-                locs.append([starts[i][0] + j / pts_per_branch * (end[0] - starts[i][0]),
-                            starts[i][1] + j / pts_per_branch * (end[1] - starts[i][1]),
-                            starts[i][2] + j / pts_per_branch * (end[2] - starts[i][2])])
+                locs.append([starts[i][0] + (j / pts_per_branch) * (end[0] - starts[i][0]),
+                            starts[i][1] + (j / pts_per_branch) * (end[1] - starts[i][1]),
+                            starts[i][2] + (j / pts_per_branch) * (end[2] - starts[i][2])])
                 norms.append([end[0] - starts[i][0], end[1] - starts[i][1], end[2] - starts[i][2]])
                 if j == 0 and i > 0:
                     radii.append(float(branch_radii[i-1]))

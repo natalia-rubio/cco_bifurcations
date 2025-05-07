@@ -2,6 +2,9 @@ import os
 import sys
 import pdb
 inflow_dict = {"tree_20": 84,
+                "tree_20_flow_100": 84,
+                "tree_20_flow_50": 42,
+                "tree_20_flow_150": 126,
                "tree_80": 339,
                "tree_dec1": 646,
                "tree_dec":483.4}
@@ -28,7 +31,7 @@ if junction_mode != "standard":
         print("Invalid junction mode. Exiting.")
     
     # Solve the 0D equations with CasADi
-    os.system(f"python3 util/zerod/svzerod_to_casadi.py {tree_name} {junction_mode}")
+    os.system(f"python3 util/zerod/svzerod_to_casadi_single.py {tree_name} {junction_mode}")
 
 # Project the 0D results to the 3D centerline
 os.system(f"python3 util/centerline_projection/project_0d_to_3d.py {tree_name} {junction_mode}")
@@ -36,8 +39,8 @@ os.system(f"python3 util/centerline_projection/project_0d_to_3d.py {tree_name} {
 # Compare the 0D and 3D results
 print("Centerline errors:")
 os.system(f"python3 util/fidelity_comparison/compare_to_3d.py {junction_mode} {tree_name}")
-print("Nodal errors:")
-os.system(f"python3 util/fidelity_comparison/compare_to_3d_nodal.py {junction_mode} {tree_name}")
+print("Inlet errors:")
+os.system(f"python3 util/fidelity_comparison/compare_to_3d_inlet.py {junction_mode} {tree_name}")
 
     
 

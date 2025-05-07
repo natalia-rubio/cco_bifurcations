@@ -8,7 +8,7 @@ plt.rcParams.update(plt.rcParamsDefault)
 plt.rcParams['font.family'] = 'serif'
 plt.rcParams['font.size'] = 16
 
-anatomy = "ideal_fix_areas"
+anatomy = "long_outlets"
 num_geos = 400
 sampler = qmc.LatinHypercube(d=4,seed = 0)
 samples = sampler.random(n=num_geos*10)

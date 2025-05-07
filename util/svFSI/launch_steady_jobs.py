@@ -31,13 +31,13 @@ while num_launched < num_geos:
         print("Problem with caps.")
         continue
         
-    inlet_area = np.pi * 0.28382253272887237 **2
+    inlet_area = np.pi * 0.28382253272887237 ** 2
     re = 5500
     inlet_vel = re * 0.04 / (1.06 * 2 * 0.28382253272887237)
     inlet_flow = inlet_area * inlet_vel
 
 
-    for i, inlet_flow_fac in enumerate([0.25, 0.5, 0.75, 1]):
+    for i, inlet_flow_fac in enumerate([0.25, 0.5, 0.75, 1, 2, 3]):
         
         
         try:
@@ -45,9 +45,9 @@ while num_launched < num_geos:
             if num_flows == 2:
                 if i == 0 or i == 2:
                     continue
-            for offset in range(10):
+            for offset in range(1,10):
                 if os.path.exists(f"/scratch/users/nrubio/synthetic_junctions_reduced_results/{anatomy}/{set_type}/{geo_name}/flow_{i}_offset_{offset*10}_red_sol"):
-                    print(f"Simulation already complete for flow {flow_index}")
+                    print(f"Simulation already complete for flow {flow_index} offset {offset*10}")
                     continue
                 else:
                     print(f"Launching flow {i}.")

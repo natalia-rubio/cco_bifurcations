@@ -1,0 +1,108 @@
+import json
+import pdb
+import sys
+import os
+sys.path.append("/Users/natalia/Desktop/cco_bifurcations")
+from util.tools.basic import *
+from util.tools.junction_proc import get_angle_diff
+from util.neural_net.nn_util import scale_jax, inv_scale_jax, dill_load
+import jax.numpy as jnp
+from util.neural_net.nn_model import NeuralNet, predict
+
+def get_input_file_junction_dict_master(tree_name):
+    
+    input_file_standard = f'trees/zerod_input/standard/{tree_name}/solver_0d.json'
+    with open(input_file_standard) as json_file:
+        input_file = json.load(json_file)
+    
+    lengths = []; areas = []; vessel_ids = []; branch_ids = []
+    for vessel in input_file["vessels"]:
+        branch_id = int(vessel["vessel_name"].split("_")[0][6:])
+        branch_ids.append(branch_id)
+        seg_id = int(vessel["vessel_name"].split("_")[1][3:])
+        vessel_ids.append( vessel["vessel_id"])
+        lengths.append(vessel["vessel_length"])
+        areas.append(np.sqrt(0.04*8*np.pi*vessel["vessel_length"] / vessel["zero_d_element_values"]["R_poiseuille"]))
+        vessel["zero_d_element_values"]["pressure_recovery_coefficient"] = 0
+        if not branch_id == 0:
+            vessel["zero_d_element_values"]["R_poiseuille"] = 0
+            vessel["zero_d_element_values"]["stenosis_coefficient"] = 0
+            
+            vessel["zero_d_element_values"]["L"] = 0
+            vessel["zero_d_element_values"]["C"] = 0
+    vessel_dict = {"branch_ids": np.asarray(branch_ids), "vessel_ids": np.asarray(vessel_ids), "lengths": np.asarray(lengths), "areas": np.asarray(areas)}
+
+    # junction_geo_dict = {"primary_area_ratio": [], "total_area_ratio": [], "primary_angle": [], "angle_diff": [], "length": [], "norm_length": []}
+    junction_dict = {}
+    for junction in input_file["junctions"]:
+
+        if len(junction["outlet_vessels"]) == 1:
+            continue
+        
+        # Initialize the dictionary for the junction
+        junction_name = junction["junction_name"]
+        junction_id = int(junction_name[1:])
+        print(f"Processing junction {junction_name}")
+        junction_dict[junction_name] = {}
+        junction_dict[junction_name]["junction_id"] = junction_id
+
+        # Get the inlet vessel id and branch id
+        original_inlet_vessel_id = copy.copy(junction["inlet_vessels"][0])
+        assert len(junction["inlet_vessels"]) == 1; "Junction with more than one inlet vessel."
+        junction_dict[junction_name]["inlet_vessel_id"] = original_inlet_vessel_id
+        junction_dict[junction_name]["inlet_branch_id"] = vessel_dict["branch_ids"][np.where(vessel_dict["vessel_ids"] == original_inlet_vessel_id)]
+        
+        # Get the outlet vessel ids and branch ids
+        num_outlets = len(junction["outlet_vessels"]); i = 0; aux_i = 1
+        assert num_outlets == 2, "Junction with more than two outlet vessels."
+        outlet_branch = vessel_dict["branch_ids"][np.where(vessel_dict["vessel_ids"] == junction["outlet_vessels"][i])]
+        aux_outlet_branch = vessel_dict["branch_ids"][np.where(vessel_dict["vessel_ids"] == junction["outlet_vessels"][aux_i])]
+        junction_dict[junction_name]["0D_outlet1_vessel_id"] = junction["outlet_vessels"][i] 
+        junction_dict[junction_name]["0D_outlet1_branch_id"] = outlet_branch[0]
+        junction_dict[junction_name]["0D_outlet2_vessel_id"] = junction["outlet_vessels"][aux_i]
+        junction_dict[junction_name]["0D_outlet2_branch_id"] = aux_outlet_branch[0]
+
+        # Get outlet lengths
+        A_char = junction["areas"][0]
+        length = junction["lengths"][i] + float(np.sum(vessel_dict["lengths"][np.where(vessel_dict["branch_ids"] == outlet_branch)]))
+        aux_length = junction["lengths"][aux_i] + float(np.sum(vessel_dict["lengths"][np.where(vessel_dict["branch_ids"] == aux_outlet_branch)]))
+        L_char = np.sqrt(A_char/np.pi)
+        junction_dict[junction_name]["0D_length1"] = length
+        junction_dict[junction_name]["0D_length1_base"] =  junction["lengths"][0]
+        junction_dict[junction_name]["0D_length_star"] = length/L_char
+        junction_dict[junction_name]["0D_length2"] = aux_length
+        junction_dict[junction_name]["0D_length2_base"] =  junction["lengths"][1]
+        junction_dict[junction_name]["0D_length2_star"] = aux_length/L_char
+
+        
+        primary_area = min(vessel_dict["areas"][np.where(vessel_dict["branch_ids"] == outlet_branch)])
+        primary_area_ratio = primary_area/A_char
+        aux_area = min(vessel_dict["areas"][np.where(vessel_dict["branch_ids"] == aux_outlet_branch)])
+        aux_area_ratio = aux_area/A_char
+        junction_dict[junction_name]["0D_inlet_area"] = A_char
+        junction_dict[junction_name]["0D_outlet1_area"] = primary_area
+        junction_dict[junction_name]["0D_outlet1_junction_area"] = junction["areas"][1]
+        junction_dict[junction_name]["0D_outlet2_area"] = aux_area
+        junction_dict[junction_name]["0D_outlet2_junction_area"] = junction["areas"][2]
+        #pdb.set_trace()
+        
+        aux_area_tan = sum([junction["areas"][j+1] for j in range(0, num_outlets) if j != i])
+        tangent_array = np.asarray(junction["tangents"])
+        tangents = junction["tangents"]
+        aux_tangent = 0 * tangent_array[0,:]
+        for j in range(num_outlets):
+            if j != i:
+                aux_tangent += (tangent_array[j+1,:]*junction["areas"][j+1]/aux_area_tan)
+        
+        assert np.linalg.norm(aux_tangent - np.asarray(tangents[2])) < 0.01, "Tangent calculation not consistent."
+        tangents = [junction["tangents"][0], junction["tangents"][i+1], list(aux_tangent)]
+        daughter1_angle = get_angle_diff(np.asarray(tangents[0]), np.asarray(tangents[1]))[0]
+        daughter2_angle = get_angle_diff(np.asarray(tangents[0]), np.asarray(tangents[2]))[0]
+        junction_dict[junction_name]["0D_daughter1_angle"] = daughter1_angle
+        junction_dict[junction_name]["0D_daughter2_angle"] = daughter2_angle
+        inlet_tangent = np.asarray(tangents[0])
+        junction_dict[junction_name]["0D_inlet_tangent"] = inlet_tangent
+        junction_dict[junction_name]["0D_daughter1_tangent"] = tangents[1]
+        junction_dict[junction_name]["0D_daughter2_tangent"] = tangents[2]
+    # pdb.set_trace()
+    return junction_dict

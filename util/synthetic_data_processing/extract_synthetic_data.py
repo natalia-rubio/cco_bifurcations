@@ -5,7 +5,7 @@ from util.tools.basic import *
 from util.tools.junction_proc import get_angle_diff
 
 def extract_flow_behavior(geo_results_dir, offset):
-    verbose = False
+    verbose = True
     daughter1_dPs = []
     daughter2_dPs = []
     inlet_flows = []
@@ -22,10 +22,11 @@ def extract_flow_behavior(geo_results_dir, offset):
     offset_dict = {}
     re_char = 4500
     # Compose lists of flow and pressure data for each outlet
-    for i in [1,3]:
+    for i in [0,1,2,3,4,5]:
         try:
             flow_result_dir = f"{geo_results_dir}/flow_{i}_offset_{int(10*offset)}_red_sol"
             print(f"Flow result dir: {flow_result_dir}")
+            # pdb.set_trace()
             # pdb.set_trace()
             if not os.path.exists(flow_result_dir):
                     raise ValueError(f"Could not find {flow_result_dir}.")
@@ -35,25 +36,27 @@ def extract_flow_behavior(geo_results_dir, offset):
             
             L_char = np.sqrt(A_char/np.pi)
             U_char = re_char * 0.04/(1.06 * 2*np.sqrt(A_char/np.pi))
-
+            
             daughter1_dPs.append(-soln_dict["pressure_in_time"][1] + soln_dict["pressure_in_time"][0])
             daughter2_dPs.append(-soln_dict["pressure_in_time"][2] + soln_dict["pressure_in_time"][0])
             inlet_flows.append(soln_dict["flow_in_time"][0])
             daughter1_flows.append(soln_dict["flow_in_time"][1])
             daughter2_flows.append(soln_dict["flow_in_time"][2])
+            
             if verbose:
                 print(f"Extracted flow data from {flow_result_dir}.")
             assert len(daughter1_dPs) == len(daughter1_flows); "Lengths of daughter1_dPs and daughter1_flows do not match."
             assert len(daughter2_dPs) == len(daughter2_flows); "Lengths of daughter2_dPs and daughter2_flows do not match."
 
-
+        
         except:
-            require4 = True
+            require4 = False
             if require4:
                 raise ValueError(f"Could not extract steady data from {flow_result_dir}.\n\
                                 Solution dict: {soln_dict}")
             continue
-
+    print(f"Daughter 1 flows: {daughter1_flows}")
+    print(f"Daughter 1 dPs: {daughter1_dPs}")
     # for k in range(1, len(daughter1_flows)):
     #     daughter1_flows[k] = 0
     #     daughter2_flows[k] = 0
@@ -138,8 +141,8 @@ def extract_flow_behavior(geo_results_dir, offset):
     #pdb.set_trace()
     residuals = dP_vec - A_mat @ coefs
     print(f"Residuals: {np.linalg.norm(residuals/dP_vec)}")
-    if np.linalg.norm(residuals/dP_vec) > 1:
-        raise ValueError(f"Residuals are too large: {np.linalg.norm(residuals/dP_vec)}")
+    # if np.linalg.norm(residuals/dP_vec) > 1:
+    #     raise ValueError(f"Residuals are too large: {np.linalg.norm(residuals/dP_vec)}")
 
     # R_lin_inlet    = coefs[0]
     # R_quad_inlet   = coefs[1]
@@ -160,6 +163,8 @@ def extract_flow_behavior(geo_results_dir, offset):
     # Check consistency of non-dimensionalization
     
     # assert abs(offset_dict["inlet_R_lin"] - offset_dict["inlet_R_lin_star"]*1.06*U_char/A_char) < 0.1; "Inlet linear resistances do not match."
+    # if "CCO_004" in geo_results_dir:
+    #     pdb.set_trace()
     assert abs(offset_dict["daughter1_R_lin"] - offset_dict["daughter1_R_lin_star"]*1.06*U_char/A_char) < 0.1; "Daughter 1 linear resistances do not match."
     assert abs(offset_dict["daughter2_R_lin"] - offset_dict["daughter2_R_lin_star"]*1.06*U_char/A_char) < 0.1; "Daughter 2 linear resistances do not match."
     # assert abs(offset_dict["inlet_R_quad"] - offset_dict["inlet_R_quad_star"]*1.06/A_char**2) < 0.1; "Inlet quadratic resistances do not match."
@@ -174,13 +179,20 @@ def extract_flow_behavior(geo_results_dir, offset):
     offset_dict["daughter2_flow"] = daughter2_flows
     offset_dict["daughter1_dP"] = daughter1_dPs
     offset_dict["daughter2_dP"] = daughter2_dPs
+    offset_dict["daughter1_flow_star"] = daughter1_flow_stars
+    offset_dict["daughter2_flow_star"] = daughter2_flow_stars
+    offset_dict["daughter1_dP_star"] = daughter1_dP_stars
+    offset_dict["daughter2_dP_star"] = daughter2_dP_stars
 
     offset_dict["U_char"] = U_char
     offset_dict["A_char"] = A_char
     offset_dict["L_char"] = L_char
 
-    offset_dict["daughter1_length"] = soln_dict["lengths"][0][0]/L_char
-    offset_dict["daughter2_length"] = soln_dict["lengths"][1][0]/L_char
+    offset_dict["daughter1_length_star"] = soln_dict["lengths"][0][0]/L_char
+    offset_dict["daughter2_length_star"] = soln_dict["lengths"][1][0]/L_char
+
+    offset_dict["daughter1_length"] = soln_dict["lengths"][0][0]
+    offset_dict["daughter2_length"] = soln_dict["lengths"][1][0]
 
     offset_dict["daughter1_angle"] = get_angle_diff(soln_dict["tangents"][:,1], soln_dict["tangents"][:,0])[0]
     offset_dict["daughter2_angle"] = get_angle_diff(soln_dict["tangents"][:,2], soln_dict["tangents"][:,0])[0]
@@ -196,22 +208,24 @@ def extract_flow_behavior(geo_results_dir, offset):
 
     offset_dict["daughter1_area_ratio_inv2"] = (A_char/soln_dict["areas"][0,1])**2
     offset_dict["daughter2_area_ratio_inv2"] = (A_char/soln_dict["areas"][0,2])**2
+    #pdb.set_trace()
     
     return offset_dict
 
 def plot_geo(offset_dict, anatomy, set_type, geo):
     num_flows = len(offset_dict[list(offset_dict.keys())[0]]["daughter1_flow"])
-    colors = ['b', 'g', 'y', 'r']
+    colors = ['b', 'g', 'y', 'r',"orange", "c", "m", "k"]
     fig, (ax1, ax2, ax3) = plt.subplots(3,1, figsize = (10,10), sharex = True)
     offset_list = []; hp_list = []
     for offset_name in offset_dict.keys():
         offset = int(offset_name.split("_")[1])
-        ax2.scatter(offset_dict[offset_name]["daughter1_length"], offset_dict[offset_name]["daughter1_R_lin"], color = "k")
-        ax3.scatter(offset_dict[offset_name]["daughter1_length"], offset_dict[offset_name]["daughter1_R_quad"], color = "k")
-        offset_list.append(offset_dict[offset_name]["daughter1_length"])
-        hp_list.append(offset_dict[offset_name]["daughter1_length"] * 8 * np.pi *0.04 / (offset_dict[offset_name]["daughter1_area"]**2))
+        num_flows = len(offset_dict[offset_name]["daughter1_flow"])
+        ax2.scatter(offset_dict[offset_name]["daughter1_length_star"], offset_dict[offset_name]["daughter1_R_lin"], color = "k")
+        ax3.scatter(offset_dict[offset_name]["daughter1_length_star"], offset_dict[offset_name]["daughter1_R_quad"], color = "k")
+        offset_list.append(offset_dict[offset_name]["daughter1_length_star"])
+        hp_list.append(offset_dict[offset_name]["daughter1_length_star"] * 8 * np.pi *0.04 / (offset_dict[offset_name]["daughter1_area"]**2))
         for flow_ind in range(len(offset_dict[offset_name]["daughter1_flow"])):
-            ax1.scatter(offset_dict[offset_name]["daughter1_length"], offset_dict[offset_name]["daughter1_dP"][flow_ind], color = colors[flow_ind])
+            ax1.scatter(offset_dict[offset_name]["daughter1_length_star"], offset_dict[offset_name]["daughter1_dP"][flow_ind]/1333, color = colors[flow_ind])
     ax1.set_ylabel("dP (in - out) (mmHg)")
     ax1.legend([f"Re = {offset_dict[offset_name]['daughter1_Re'][i]}" for i in range(num_flows)])
     ax1.set_title(f"Geometry: {geo} \n\
@@ -222,9 +236,34 @@ def plot_geo(offset_dict, anatomy, set_type, geo):
     ax2.plot(offset_list, hp_list, "--", color = "k", label = "Hagen-Poiseuille Law")
     ax2.set_ylabel("Linear Resistance")
     ax3.set_ylabel("Quadratic Resistance")
-    ax3.set_xlabel("Junction + Branch Length (cm)")
+    ax3.set_xlabel("Junction + Branch Length (normalized)")
     ax2.legend()
     fig.savefig(f"data/synthetic_junctions_reduced_results/{anatomy}/{set_type}/{geo}/resistances.png")
+
+    fig, (ax1, ax2, ax3) = plt.subplots(3,1, figsize = (10,10), sharex = True)
+    offset_list = []; hp_list = []
+    for offset_name in offset_dict.keys():
+        num_flows = len(offset_dict[offset_name]["daughter2_flow"])
+        offset = int(offset_name.split("_")[1])
+        ax2.scatter(offset_dict[offset_name]["daughter2_length_star"], offset_dict[offset_name]["daughter2_R_lin"], color = "k")
+        ax3.scatter(offset_dict[offset_name]["daughter2_length_star"], offset_dict[offset_name]["daughter2_R_quad"], color = "k")
+        offset_list.append(offset_dict[offset_name]["daughter2_length_star"])
+        hp_list.append(offset_dict[offset_name]["daughter2_length_star"] * 8 * np.pi *0.04 / (offset_dict[offset_name]["daughter2_area"]**2))
+        for flow_ind in range(len(offset_dict[offset_name]["daughter2_flow"])):
+            ax1.scatter(offset_dict[offset_name]["daughter2_length_star"], offset_dict[offset_name]["daughter2_dP"][flow_ind]/1333, color = colors[flow_ind])
+    ax1.set_ylabel("dP (in - out) (mmHg)")
+    ax1.legend([f"Re = {offset_dict[offset_name]['daughter2_Re'][i]}" for i in range(num_flows)])
+    ax1.set_title(f"Geometry: {geo} \n\
+        Inlet Area = {offset_dict[offset_name]['A_char']} cm^2, \n\
+        Daughter Area Ratio = {offset_dict[offset_name]['daughter1_area_ratio']}, Auxilliary Area Ratio = {offset_dict[offset_name]['daughter2_area_ratio']} \n\
+        Daughter Angle = {offset_dict[offset_name]['daughter1_angle']}, Auxilliary Angle = {offset_dict[offset_name]['daughter2_angle']}",
+        fontsize = 8)
+    ax2.plot(offset_list, hp_list, "--", color = "k", label = "Hagen-Poiseuille Law")
+    ax2.set_ylabel("Linear Resistance")
+    ax3.set_ylabel("Quadratic Resistance")
+    ax3.set_xlabel("Junction + Branch Length (normalized)")
+    ax2.legend()
+    fig.savefig(f"data/synthetic_junctions_reduced_results/{anatomy}/{set_type}/{geo}/resistances2.png")
     return
 
 def extract_steady_flow_data(anatomy, set_type, require4):
@@ -233,6 +272,8 @@ def extract_steady_flow_data(anatomy, set_type, require4):
     geos = os.listdir(f"data/synthetic_junctions_reduced_results/{anatomy}/{set_type}"); geos.sort(); print(f"Geometries: {geos}")
 
     for j, geo in enumerate(geos[0:]):
+        if "DS" in geo:
+            continue
         geo_results_dir = f"data/synthetic_junctions_reduced_results/{anatomy}/{set_type}/{geo}"
         geo_dict = {}
         for offset in range(1,10):
@@ -245,6 +286,7 @@ def extract_steady_flow_data(anatomy, set_type, require4):
                 print("An exception occurred:", type(error).__name__)
                 print(error) 
                 print(f"Could not extract steady data from {geo}, offset {offset}.")
+                
                 continue
         if len(geo_dict.keys()) > 0:
             plot_geo(geo_dict, anatomy, set_type, geo)

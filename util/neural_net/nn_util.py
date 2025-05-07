@@ -15,10 +15,10 @@ def get_sizes(network_params):
     sizes = [num_input_features] + [layer_width]*num_layers + [num_output_features]
     return sizes
 
-def random_layer_params(m, n, key, scale=1e-2):
+def random_layer_params(m, n, key, scale=1e-1):
     # Randomly initialize the weights of a layer
     w_key, b_key = random.split(key)
-    return scale * random.normal(w_key, (n, m)), scale * random.normal(b_key, (n,))
+    return scale * random.normal(w_key, (n, m)), 0*scale * random.normal(b_key, (n,))
 
 def init_weights(network_params):
     # Initialize the weights of the network
@@ -72,6 +72,7 @@ def forward_pass(input,weights):
 
     final_w, final_b = weights[-1]
     output = jnp.dot(final_w, latent_rep) + final_b
+    #output = input[5:] * weights
     return output
 
 batched_forward_pass = vmap(forward_pass, in_axes=(0, None))

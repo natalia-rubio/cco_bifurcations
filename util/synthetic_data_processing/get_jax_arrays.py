@@ -22,7 +22,9 @@ def get_jax_arrays(anatomy, set_type, unsteady = True):
                             scale_jax(scaling_dict, jnp.asarray(char_val_dict["daughter2_area_ratio_inv2"], dtype=jnp.float32), "daughter2_area_ratio_inv2"),
                             scale_jax(scaling_dict, jnp.asarray(char_val_dict["daughter1_angle"], dtype=jnp.float32), "daughter1_angle"),
                             scale_jax(scaling_dict, jnp.asarray(char_val_dict["daughter2_angle"], dtype=jnp.float32), "daughter2_angle"),
-                            scale_jax(scaling_dict, jnp.asarray(char_val_dict["daughter1_length"], dtype=jnp.float32), "daughter1_length"),
+                            scale_jax(scaling_dict, jnp.asarray(char_val_dict["daughter1_length_star"], dtype=jnp.float32), "daughter1_length_star"),
+                            # scale_jax(scaling_dict, jnp.asarray(char_val_dict["daughter1_R_lin_star"], dtype=jnp.float32), "daughter1_R_lin_star"),
+                            # scale_jax(scaling_dict, jnp.asarray(char_val_dict["daughter1_R_quad_star"], dtype=jnp.float32), "daughter1_R_quad_star"),
 
                                 ), axis = -1)
 
@@ -30,17 +32,19 @@ def get_jax_arrays(anatomy, set_type, unsteady = True):
                             scale_jax(scaling_dict, jnp.asarray(char_val_dict["daughter1_R_lin_star"], dtype=jnp.float32), "daughter1_R_lin_star"),
                             scale_jax(scaling_dict, jnp.asarray(char_val_dict["daughter1_R_quad_star"], dtype=jnp.float32), "daughter1_R_quad_star"),
                             ), axis = -1)
+    pdb.set_trace()
     
     scaling_factors = jnp.concatenate((jnp.reshape(jnp.asarray(char_val_dict["A_char"], dtype=jnp.float32), (num_geos, 1)),
                                 jnp.reshape(jnp.asarray(char_val_dict["U_char"], dtype=jnp.float32), (num_geos, 1))), axis = -1)
     
-    flows = jnp.stack((jnp.asarray(char_val_dict["daughter1_flow"], dtype=jnp.float32),
-                            # 0*jnp.asarray(char_val_dict["daughter2_flow"], dtype=jnp.float32),
-                            ), axis = -1)
+    flows = None; dPs = None
+    # flows = jnp.stack((jnp.asarray(char_val_dict["daughter1_flow"], dtype=jnp.float32),
+    #                         # 0*jnp.asarray(char_val_dict["daughter2_flow"], dtype=jnp.float32),
+    #                         ), axis = -1)
     
-    dPs = jnp.stack((jnp.asarray(char_val_dict["daughter1_dP"], dtype=jnp.float32),
-                            # 0*jnp.asarray(char_val_dict["daughter2_dP"], dtype=jnp.float32),
-                            ), axis = -1)
+    # dPs = jnp.stack((jnp.asarray(char_val_dict["daughter1_dP"], dtype=jnp.float32),
+    #                         # 0*jnp.asarray(char_val_dict["daughter2_dP"], dtype=jnp.float32),
+    #                         ), axis = -1)
     
     if not os.path.exists(f"data/jax_arrays"):
         os.mkdir(f"data/jax_arrays")
