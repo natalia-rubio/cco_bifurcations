@@ -209,6 +209,7 @@ def extract_flow_behavior(geo_results_dir, offset):
 
         offset_dict[f"base_flow_{base_flow_index}"]["daughter1_area"] = soln_dict["areas"][0,1]
         offset_dict[f"base_flow_{base_flow_index}"]["daughter2_area"] = soln_dict["areas"][0,2]
+        pdb.set_trace()
 
         offset_dict[f"base_flow_{base_flow_index}"]["daughter1_area_ratio_inv2"] = (A_char/soln_dict["areas"][0,1])**2
         offset_dict[f"base_flow_{base_flow_index}"]["daughter2_area_ratio_inv2"] = (A_char/soln_dict["areas"][0,2])**2
@@ -385,74 +386,80 @@ def extract_resistances(geo_results_dir, offset):
     return offset_dict
 
 def plot_geo(offset_dict, anatomy, set_type, geo):
-    #plt.rcParams['text.usetex'] = True
-    
+    plt.rcParams['text.usetex'] = True
     num_flows = len(offset_dict[list(offset_dict.keys())[0]]["outlet_flow_mag_dict"][f"base_flow_0"]["daughter1_flow"])
     colors = ['slateblue', 'seagreen', 'darkorange', 'crimson',"orange", "c", "m", "k"]
-    fig, (ax1, ax2, ax3) = plt.subplots(3,1, figsize = (6,10), sharex = True)
+    fig, (ax1, ax2, ax3) = plt.subplots(3,1, figsize = (6,12), sharex = True)
     offset_name = "offset_70"
     color_cnt = 0
+    flow_split_list = []
+    R_lin_list = []
+    R_quad_list = []
 
     for i, (base_flow_index, base_flow_dict) in enumerate(offset_dict[offset_name]["outlet_flow_mag_dict"].items()):
 
         offset = int(offset_name.split("_")[1])
-        #pdb.set_trace()
+        pdb.set_trace()
+        flow_split_list.append(offset_dict[offset_name]["flow_split_dict"][f"flow_split_{i}"]["daughter2_flow_split"][0])
         num_splits = len(offset_dict[offset_name]["outlet_flow_mag_dict"][f"{base_flow_index}"]["daughter1_flow"])
         ax2.scatter(offset_dict[offset_name]["flow_split_dict"][f"flow_split_{i}"]["daughter2_flow_split"][0], 
                     offset_dict[offset_name]["flow_split_dict"][f"flow_split_{i}"]["daughter2_R_lin"], 
                     color = "k")
-        ax3.scatter(offset_dict[offset_name]["flow_split_dict"][f"flow_split_{i}"]["daughter2_flow_split"][0], 
-                    offset_dict[offset_name]["flow_split_dict"][f"flow_split_{i}"]["daughter2_R_quad"], 
+        ax3.scatter(offset_dict[offset_name]["flow_split_dict"][f"flow_split_{i}"]["daughter2_flow_split"][0],
+                    offset_dict[offset_name]["flow_split_dict"][f"flow_split_{i}"]["daughter2_R_quad"],
                     color = "k")
+        R_lin_list.append(offset_dict[offset_name]["flow_split_dict"][f"flow_split_{i}"]["daughter2_R_lin"])
+        R_quad_list.append(offset_dict[offset_name]["flow_split_dict"][f"flow_split_{i}"]["daughter2_R_quad"])
         ax1.plot(offset_dict[offset_name]["outlet_flow_mag_dict"][base_flow_index]["daughter2_flow_split"],
                  [dP/1333 for dP in offset_dict[offset_name]["outlet_flow_mag_dict"][base_flow_index]["daughter2_dP"]], 
                  color = colors[color_cnt],
                  marker = "o",
                  linewidth = 2,
-                 label = f"Outlet Re = {offset_dict[offset_name]["outlet_flow_mag_dict"][base_flow_index]['daughter2_Re'][0]:0.0f}")
+                 label = f"Outlet 2 flow: {offset_dict[offset_name]["outlet_flow_mag_dict"][base_flow_index]['daughter2_flow'][0]:0.0f} \
+                    ($cm^3/s$) Re = {offset_dict[offset_name]["outlet_flow_mag_dict"][base_flow_index]['daughter2_Re'][0]:0.0f}")
         #pdb.set_trace()
-        ax1.set_ylabel("dP (in - out) (mmHg)")
-        ax2.set_ylabel("Linear Resistance")
-        ax3.set_ylabel("Quadratic Resistance")
-        ax3.set_xlabel("Daughter 2 Flow Split (%)")
-        ax1.set_title(f"Geometry: {geo} \n\
-            Inlet Area = {offset_dict[offset_name]["outlet_flow_mag_dict"][base_flow_index]['A_char']} cm^2, \n\
-            Daughter Area Ratio = {offset_dict[offset_name]["outlet_flow_mag_dict"][base_flow_index]['daughter1_area_ratio']}, Auxilliary Area Ratio = {offset_dict[offset_name]["outlet_flow_mag_dict"][base_flow_index]['daughter2_area_ratio']} \n\
-            Daughter Angle = {offset_dict[offset_name]["outlet_flow_mag_dict"][base_flow_index]['daughter1_angle']}, Auxilliary Angle = {offset_dict[offset_name]["outlet_flow_mag_dict"][base_flow_index]['daughter2_angle']}",
-            fontsize = 8,)
-        # ax1.legend(loc='center', bbox_to_anchor=(0.5, 1.2), ncol=2, fontsize = 12)
-        # ax2.plot(offset_list, hp_list, "--", color = "k", label = "Hagen-Poiseuille Law")
-        # ax2.set_ylabel("Linear Resistance")
-        # ax3.set_ylabel("Quadratic Resistance")
-        # ax3.set_xlabel("Junction + Branch Length (normalized)")
-        # ax2.legend()
+        ax1.set_ylabel("$P_{in} - P_2$ (mmHg)")
+        ax2.set_ylabel("$R_{lin}$")
+        ax3.set_ylabel("$R_{quad}$")
+        ax3.set_xlabel("\% Flow through Outlet 2 ($\eta$)")
+        # ax1.set_title(f"Geometry: {geo} \n\
+        #     Inlet Area = {offset_dict[offset_name]["outlet_flow_mag_dict"][base_flow_index]['A_char']} $cm^2$, \n\
+        #     Daughter Area Ratio = {offset_dict[offset_name]["outlet_flow_mag_dict"][base_flow_index]['daughter1_area_ratio']}, Auxilliary Area Ratio = {offset_dict[offset_name]["outlet_flow_mag_dict"][base_flow_index]['daughter2_area_ratio']} \n\
+        #     Daughter Angle = {offset_dict[offset_name]["outlet_flow_mag_dict"][base_flow_index]['daughter1_angle']}, Auxilliary Angle = {offset_dict[offset_name]["outlet_flow_mag_dict"][base_flow_index]['daughter2_angle']}",
+        #     fontsize = 8,)
+        ax1.legend(loc='center', bbox_to_anchor=(0.5, 1.3), ncol=1, fontsize = 14, frameon=False)
         color_cnt += 1
-        fig.savefig(f"data/synthetic_junctions_reduced_results/{anatomy}/{set_type}/{geo}/flow_split_sweep.png")
 
-    # fig, (ax1, ax2, ax3) = plt.subplots(3,1, figsize = (10,10), sharex = True)
-    # offset_list = []; hp_list = []
-    # for offset_name in offset_dict.keys():
-    #     num_flows = len(offset_dict[offset_name]["daughter2_flow"])
-    #     offset = int(offset_name.split("_")[1])
-    #     ax2.scatter(offset_dict[offset_name]["daughter2_length_star"], offset_dict[offset_name]["daughter2_R_lin"], color = "k")
-    #     ax3.scatter(offset_dict[offset_name]["daughter2_length_star"], offset_dict[offset_name]["daughter2_R_quad"], color = "k")
-    #     offset_list.append(offset_dict[offset_name]["daughter2_length_star"])
-    #     hp_list.append(offset_dict[offset_name]["daughter2_length_star"] * 8 * np.pi *0.04 / (offset_dict[offset_name]["daughter2_area"]**2))
-    #     for flow_ind in range(len(offset_dict[offset_name]["daughter2_flow"])):
-    #         ax1.scatter(offset_dict[offset_name]["daughter2_length_star"], offset_dict[offset_name]["daughter2_dP"][flow_ind]/1333, color = colors[flow_ind])
-    # ax1.set_ylabel("dP (in - out) (mmHg)")
-    # ax1.legend([f"Re = {offset_dict[offset_name]['daughter2_Re'][i]}" for i in range(num_flows)])
-    # ax1.set_title(f"Geometry: {geo} \n\
-    #     Inlet Area = {offset_dict[offset_name]['A_char']} cm^2, \n\
-    #     Daughter Area Ratio = {offset_dict[offset_name]['daughter1_area_ratio']}, Auxilliary Area Ratio = {offset_dict[offset_name]['daughter2_area_ratio']} \n\
-    #     Daughter Angle = {offset_dict[offset_name]['daughter1_angle']}, Auxilliary Angle = {offset_dict[offset_name]['daughter2_angle']}",
-    #     fontsize = 8)
-    # ax2.plot(offset_list, hp_list, "--", color = "k", label = "Hagen-Poiseuille Law")
-    # ax2.set_ylabel("Linear Resistance")
-    # ax3.set_ylabel("Quadratic Resistance")
-    # ax3.set_xlabel("Junction + Branch Length (normalized)")
-    # ax2.legend()
-    fig.savefig(f"data/synthetic_junctions_reduced_results/{anatomy}/{set_type}/{geo}/resistances2.png")
+    R_lin_arr = np.asarray(R_lin_list)
+    R_quad_arr = np.asarray(R_quad_list)
+    flow_split_arr = np.asarray(flow_split_list)
+
+    A_lin = np.vstack([flow_split_arr**2, flow_split_arr, np.ones(len(flow_split_arr))]).T
+    coefs_lin, residuals, t, q = np.linalg.lstsq(A_lin, R_lin_arr, rcond=None)
+    a_lin = coefs_lin[0]
+    b_lin = coefs_lin[1]
+    c_lin = coefs_lin[2]
+
+    A_quad = np.vstack([flow_split_arr**2, flow_split_arr, np.ones(len(flow_split_arr))]).T
+    coefs_quad, residuals, t, q = np.linalg.lstsq(A_quad, R_quad_arr, rcond=None)
+    a_quad = coefs_quad[0]
+    b_quad = coefs_quad[1]
+    c_quad = coefs_quad[2]
+
+    flow_split_range = np.linspace(np.min(flow_split_arr), np.max(flow_split_arr), 100)
+    ax2.plot(flow_split_range, a_lin*flow_split_range**2 + b_lin*flow_split_range + c_lin,
+            color = "k", linestyle = "--", linewidth = 2, label = f"${a_lin:0.4f} \eta ^2 + {b_lin:0.2f} \eta + {c_lin:0.2f}$")
+    ax2.legend(fontsize = 14, frameon=False)
+    
+    ax3.plot(flow_split_range, a_quad*flow_split_range**2 + b_quad*flow_split_range + c_quad,
+            color = "k", linestyle = "--", linewidth = 2, label = f"${a_quad:0.4f} \eta^2 + {b_quad:0.2f} \eta + {c_quad:0.2f}$")
+    ax3.legend(fontsize = 14, frameon=False)
+
+
+        
+
+    fig.savefig(f"data/synthetic_junctions_reduced_results/{anatomy}/{set_type}/{geo}/flow_split_sweep.png")
+    fig.savefig(f"data/synthetic_junctions_reduced_results/{anatomy}/{set_type}/{geo}/flow_split_sweep.pdf")
     return
 
 def extract_steady_flow_data(anatomy, set_type, require4):

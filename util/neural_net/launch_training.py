@@ -18,7 +18,7 @@ if __name__ == "__main__":
 
     split_ind_dict = load_dict(f"data/split_indices/{anatomy}/{set_type}/train_val_ind_{anatomy}_num_geos_{num_geos}")
 
-    network_params = {"num_input_features": 7,
+    network_params = {"num_input_features": 8,
                       "num_layers": 2,
                       "layer_width": 400,
                       "num_output_features": 2,

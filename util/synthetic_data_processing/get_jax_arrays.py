@@ -23,6 +23,7 @@ def get_jax_arrays(anatomy, set_type, unsteady = True):
                             scale_jax(scaling_dict, jnp.asarray(char_val_dict["daughter1_angle"], dtype=jnp.float32), "daughter1_angle"),
                             scale_jax(scaling_dict, jnp.asarray(char_val_dict["daughter2_angle"], dtype=jnp.float32), "daughter2_angle"),
                             scale_jax(scaling_dict, jnp.asarray(char_val_dict["daughter1_length_star"], dtype=jnp.float32), "daughter1_length_star"),
+                            scale_jax(scaling_dict, jnp.asarray(char_val_dict["daughter1_flow_ratio"], dtype=jnp.float32), "daughter1_flow_ratio"),
                             # scale_jax(scaling_dict, jnp.asarray(char_val_dict["daughter1_R_lin_star"], dtype=jnp.float32), "daughter1_R_lin_star"),
                             # scale_jax(scaling_dict, jnp.asarray(char_val_dict["daughter1_R_quad_star"], dtype=jnp.float32), "daughter1_R_quad_star"),
 

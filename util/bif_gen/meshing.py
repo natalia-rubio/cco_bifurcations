@@ -134,7 +134,7 @@ def get_mesh(model, contours, walls, edge_size=0.1):
         print('adding sphere refinement')
         print("edge_size: {}".format(edge_size))
 
-        tet_options.sphere_refinement.append({'edge_size':edge_size*min([0.5, 2*v2_rad/v1_rad]), 'radius':v2_len*0.7, #*0.5, 
+        tet_options.sphere_refinement.append({'edge_size':edge_size*min([0.5, 2*v2_rad/v1_rad]), 'radius':v2_len*0.6, #*0.7, 
                         'center':v2_mid})
         # tet_options.sphere_refinement.append({'edge_size':edge_size*min([0.5, 2*v2_rad/v1_rad]), 'radius':1*v2_len, #*0.5, 
         #                 'center':v2_end})

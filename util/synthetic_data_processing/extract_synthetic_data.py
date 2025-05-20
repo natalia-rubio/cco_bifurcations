@@ -65,6 +65,8 @@ def extract_flow_behavior(geo_results_dir, offset):
 
 
     assert len(daughter1_dPs) > 0; "Length of daughter1_dPs should be > 0."
+    flow_ratio = [daughter1_flows[i]/daughter2_flows[i] for i in range(len(daughter1_flows))]
+
     daughter1_flow_stars = [daughter1_flow/(U_char * A_char) for daughter1_flow in daughter1_flows]
     daughter2_flow_stars = [daughter2_flow/(U_char * A_char) for daughter2_flow in daughter2_flows]
     
@@ -183,6 +185,8 @@ def extract_flow_behavior(geo_results_dir, offset):
     offset_dict["daughter2_flow_star"] = daughter2_flow_stars
     offset_dict["daughter1_dP_star"] = daughter1_dP_stars
     offset_dict["daughter2_dP_star"] = daughter2_dP_stars
+    offset_dict["daughter1_flow_ratio"] = flow_ratio[0]
+    offset_dict["daughter2_flow_ratio"] = flow_ratio[0]**-1
 
     offset_dict["U_char"] = U_char
     offset_dict["A_char"] = A_char
