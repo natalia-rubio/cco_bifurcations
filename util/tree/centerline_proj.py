@@ -9,7 +9,7 @@ from tqdm import tqdm
 
 from util.tools.get_bc_integrals import get_res_names
 #from util.junction_proc import *
-from geo_processing import *
+from util.tree.geo_processing import *
 from util.tools.vtk_functions import read_geo, write_geo, calculator, cut_plane, connectivity, get_points_cells, clean, Integration
 import pickle
 #from sklearn.linear_model import LinearRegression

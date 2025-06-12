@@ -145,7 +145,7 @@ def write_svfsiplus_xml(parent_file_dir, geo_name, sim_dir, n_tsteps=800, dt=0.0
     fpath_temp_vals = ET.SubElement(add_bc, "Temporal_values_file_path")
     fpath_temp_vals.text = sim_dir + f"inflow_svFSI_flow_{flow_mag}.flow"
     profile = ET.SubElement(add_bc, "Profile")
-    profile.text = "Parabolic"
+    profile.text = "Flat"
 
     for outlet in outlet_caps:
         add_bc = ET.SubElement(add_eqn, "Add_BC")

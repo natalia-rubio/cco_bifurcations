@@ -65,28 +65,23 @@ def solve_casadi(tree_name, junction_mode, sol_prev = None, coef_factor = 1.0):
     # Dictionary to organize vessel information (needing for wiring junctions)
     vessel_dict = defaultdict(dict)
 
+    bc_ind_dict = {}
+    for ind, bc in enumerate(input_file["boundary_conditions"]):
+        bc_ind_dict[bc["bc_name"]] = ind
+
     for i, vessel in enumerate(input_file["vessels"]):
 
         vessel_dict[vessel["vessel_id"]]["v_ind"] = i
         vessel_dict[vessel["vessel_id"]]["v_name"] = vessel["vessel_name"]
 
-        R_lin = vessel["zero_d_element_values"]["R_poiseuille"]
-        R_sten = vessel["zero_d_element_values"]["stenosis_coefficient"]
+        R_lin = vessel["zero_d_element_values"]["R_poiseuille"]*0
+        R_sten = vessel["zero_d_element_values"]["stenosis_coefficient"]*0
         if "pressure_recovery_coefficient" in vessel["zero_d_element_values"].keys():
-            R_quad = vessel["zero_d_element_values"]["pressure_recovery_coefficient"]
+            R_quad = vessel["zero_d_element_values"]["pressure_recovery_coefficient"]*0
         else:
             R_quad = 0
-        C = vessel["zero_d_element_values"]["C"]
-        L = vessel["zero_d_element_values"]["L"]
-
-        
-        # if i > 2:
-        #     #pdb.set_trace()
-        #     assert R_lin == 0; 
-        #     assert R_sten == 0; 
-        #     assert R_quad == 0; 
-        #     assert C == 0; 
-        #     assert L == 0; # as these are not used in the zerod solver
+        C = vessel["zero_d_element_values"]["C"]*0
+        L = vessel["zero_d_element_values"]["L"]*0
 
         objective += (
             P_in[i] +
@@ -108,7 +103,11 @@ def solve_casadi(tree_name, junction_mode, sol_prev = None, coef_factor = 1.0):
         # Outlet boundary conditions (to satisfy exactly)
         if "boundary_conditions" in vessel.keys():
             if "outlet" in vessel["boundary_conditions"].keys():
-                opti.subject_to(P_out[i] - Q_out[i] * 61.56 == 0)
+                bc_name = vessel["boundary_conditions"]["outlet"]
+                bc_ind = bc_ind_dict[bc_name]
+                resistance = input_file["boundary_conditions"][bc_ind]["bc_values"]["R"]
+                #opti.subject_to(P_out[i] - Q_out[i] * 61.56 == 0)
+                opti.subject_to(P_out[i] - Q_out[i] * resistance == 0)
                 BC_constraint_counter += 1
         
         # Inlet boundary conditions (to satisfy exactly)
@@ -117,6 +116,8 @@ def solve_casadi(tree_name, junction_mode, sol_prev = None, coef_factor = 1.0):
                 inflow = input_file["boundary_conditions"][0]["bc_values"]["Q"][-1]
                 opti.subject_to(Q_in[i] == inflow)
                 BC_constraint_counter += 1
+        # if vessel["vessel_name"] == "branch32_seg0":
+        #     pdb.set_trace()
                 
     for i, junction in enumerate(input_file["junctions"]):
         j_name = junction["junction_name"]
@@ -148,10 +149,19 @@ def solve_casadi(tree_name, junction_mode, sol_prev = None, coef_factor = 1.0):
                 )**2
                 junction_constraint_counter += 1
                 
-                enforce_pressure_loss = True
+                enforce_pressure_loss = False
                 if enforce_pressure_loss:
                     opti.subject_to(
                         P_out[inlet_vessel_ind] - P_in[outlet_vessel_ind] >= 0
+                    )
+
+                enforce_flow_splits = True
+                if enforce_flow_splits:
+                    # objective += (
+                    #     100 * (Q_in[outlet_vessel_ind] - junction["junction_values"]["flow_split"][j] *  Q_out[inlet_vessel_ind])
+                    # )
+                    opti.subject_to(
+                        Q_in[outlet_vessel_ind] - junction["junction_values"]["flow_split"][j] *  Q_out[inlet_vessel_ind] == 0
                     )
 
             elif junction["junction_type"] == "NORMAL_JUNCTION":
@@ -161,6 +171,9 @@ def solve_casadi(tree_name, junction_mode, sol_prev = None, coef_factor = 1.0):
 
             
             opti.set_value(outflow_extractors[outlet_vessel_ind, i], -1)
+
+            enforce_flow_splits = True
+
         # Conservation of mass
         opti.set_value(inflow_extractors[inlet_vessel_ind, i], 1)
         opti.subject_to(Q_out.T@inflow_extractors[:,i] + Q_in.T@outflow_extractors[:,i] == 0)

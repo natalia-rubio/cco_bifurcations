@@ -104,6 +104,8 @@ def get_mesh(model, contours, walls, edge_size=0.1):
         cap_radii.append(np.sqrt(cap_areas[-1]/np.pi))
         cap_edge_size.append(min([cap_radii[-1]/3, edge_size]))
         cap_dict.update({id:surf_area(model.get_face_polydata(id))})
+    print("cap_dict: ")
+    print(cap_dict)
 
     # while edge_size > min_edge and not done:
     #     try:

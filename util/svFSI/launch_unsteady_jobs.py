@@ -6,7 +6,7 @@ set_type = sys.argv[2]
 num_time_steps = int(sys.argv[3])
 num_cores = int(sys.argv[4])
 num_geos = int(sys.argv[5])
-num_flows = int(sys.argv[6])
+num_flows = 1 #int(sys.argv[6])
 inc = int(sys.argv[7])
 
 time_step_size = 0.001
@@ -31,42 +31,74 @@ while num_launched < num_geos:
         print("Problem with caps.")
         continue
         
-    inlet_area = np.pi * 0.28382253272887237 **2
-    re = 5500
-    inlet_vel = re * 0.04 / (1.06 * 2 * 0.28382253272887237)
-    inlet_flow = inlet_area * inlet_vel
+    
+    geo_dict = load_dict(f"{dir}/{geo_name}/geo_params_dict")
+    flow_split = geo_dict["flow_split"][0]
+    inlet_area_3D = geo_dict["inlet_area_3D"]
+    inlet_area = geo_dict["inlet_area"] #np.pi * 0.28382253272887237 **2
+    
+    max_inlet_re = 5500
+    max_inlet_flow = max_inlet_re * 0.04 / (1.06 * 2 * (inlet_area/np.pi)**0.5)
+    flow_name = f"flow_unsteady"
+
+    for offset in range(1,10):
+        if os.path.exists(f"/scratch/users/nrubio/synthetic_junctions_reduced_results/{anatomy}/{set_type}/{geo_name}/flow_{i}_offset_{offset*10}_red_sol"):
+            print(f"Simulation already complete for unsteady flow offset {offset*10}")
+            continue
+        else:
+            try:
+                print(f"Launching unsteady flow.")
+
+                set_up_sim_directories(anatomy, set_type, geo_name, flow_name, num_cores)
+                flow_params = {"flow_amp": max_inlet_flow, #inlet_flow*inlet_flow_fac,
+                            "vel_in": max_inlet_flow/inlet_area} #inlet_vel*inlet_flow_fac}
+
+                cap_dict = load_dict(f"/scratch/users/nrubio/synthetic_junctions/{anatomy}/{set_type}/{geo_name}/cap_dict")
+                print(cap_dict)
+                res_caps = list(cap_dict.keys())
+                #res_caps.remove(inlet_cap_number)
+                
+                outlet_area_total = sum([cap_dict[res_cap] for res_cap in res_caps])
+                min_cap_area = min([cap_dict[res_cap] for res_cap in res_caps])
+                new_cap_dict = {"inlet": {},
+                        "daughter1_outlet": {},
+                        "daughter2_outlet": {}}
+                
+                
+                for res_cap in res_caps:
+                        
+                        if res_cap == inlet_cap_number:
+                            new_cap_dict["inlet"]["id"] = res_cap
+                            new_cap_dict["inlet"]["area"] = cap_dict[res_cap]
+                            new_cap_dict["inlet"]["flow"] = flow_params["flow_amp"]
+                            print(f'Inflow {new_cap_dict["inlet"]["flow"]}')
+                        
+                        elif cap_dict[res_cap] == min_cap_area:
+                            new_cap_dict["daughter2_outlet"]["id"] = res_cap
+                            new_cap_dict["daughter2_outlet"]["area"] = cap_dict[res_cap]
+                            new_cap_dict["daughter2_outlet"]["res"] = geo_dict["flow_split"][0]*10000
+                        else:
+                            new_cap_dict["daughter1_outlet"]["id"] = res_cap
+                            new_cap_dict["daughter1_outlet"]["area"] = cap_dict[res_cap]
+                            new_cap_dict["daughter1_outlet"]["res"] =  10000
+
+                time_step_size = (np.sqrt(inlet_area/np.pi))/flow_params["vel_in"]
+                print(f"Time step size: {time_step_size}")
+                # write_svfsi_2flow(anatomy, set_type, geo_name, flow_name, flow_params, new_cap_dict, inlet_cap_number, num_time_steps, time_step_size, inc = inc)
+                write_svfsi_unsteady(anatomy, set_type, geo_name, flow_name, flow_params, new_cap_dict, inlet_cap_number, num_time_steps, time_step_size, inc = inc)
+                write_unsteady_flow(anatomy, set_type, geo_name, new_cap_dict["inlet"]["flow"], num_time_steps, time_step_size)
+                # write_flow_steady(anatomy, set_type, geo_name, flow_index, flow_params["flow_amp"], inlet_cap_number, num_time_steps, time_step_size)
+                print("Done writing solver files.")
+                f = open(f"/scratch/users/nrubio/synthetic_junctions/{anatomy}/{set_type}/{geo_name}/{flow_name}/numstart.dat", "w"); f.write("0"); f.close()
 
 
-    #try:
-    flow_index = "unsteady"; flow_name = f"unsteady"
+                write_job_unsteady(anatomy, set_type, geo_name, flow_name = flow_name, num_cores = num_cores, num_time_steps = num_time_steps, inc = inc)
+                os.system(f"sbatch /scratch/users/nrubio/job_scripts/{geo}_{flow_name}.sh")
+                print(f"Started job for {geo} unsteady flow")
+                print("\n\
+                    ---------------------------------\n")    
+                break
 
-    if os.path.exists(f"/scratch/users/nrubio/synthetic_junctions_reduced_results/{anatomy}/{set_type}/{geo_name}/{flow_name}_red_sol"):
-        print(f"Simulation already complete for flow {flow_index}")
-        continue
-
-
-    set_up_sim_directories(anatomy, set_type, geo_name, flow_name, num_cores)
-    flow_params = {"flow_amp": inlet_flow,
-                    "vel_in": inlet_vel,
-                    "res_1": 100,
-                    "res_2": 100}
-
-    #time_step_size = (np.sqrt(inlet_area/np.pi))/flow_params["vel_in"]
-    time_step_size = 2*0.4/num_time_steps
-    print(f"Time step size: {time_step_size}")
-    write_svfsi_unsteady(anatomy, set_type, geo_name, flow_index, flow_params, copy.deepcopy(cap_numbers), inlet_cap_number, num_time_steps, time_step_size, inc = inc)
-    write_flow_unsteady(anatomy, set_type, geo_name, flow_params["flow_amp"], inlet_cap_number, num_time_steps, time_step_size)
-    print("Done writing solver files.")
-    f = open(f"/scratch/users/nrubio/synthetic_junctions/{anatomy}/{set_type}/{geo_name}/{flow_name}/numstart.dat", "w"); f.write("0"); f.close()
-
-
-    write_job_unsteady(anatomy, set_type, geo_name, flow_name = flow_name, flow_index = flow_index, num_cores = num_cores, num_time_steps = num_time_steps, inc = inc)
-    i = "unsteady"
-    os.system(f"sbatch /scratch/users/nrubio/job_scripts/{geo}_{i}.sh")
-    print(f"Started job for {geo} flow {flow_index}")
-    print("\n\
-            ---------------------------------\n")    
-
-    # except:
-    #     continue
+            except:
+                continue
     num_launched +=1

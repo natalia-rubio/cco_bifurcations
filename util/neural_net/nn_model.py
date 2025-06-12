@@ -20,9 +20,10 @@ class NeuralNet():
         self.scaling_dict   = load_dict(f"data/scaling_dictionaries/{self.anatomy}_{self.set_type}_scaling_dict")
         
         self.pred_mode      = network_params["pred_mode"]
-        model_name = "ideal_fix_areas_ng_1768_nl_1_lw_30_ne_1000_bs_70_dr_0.9_model"
+        #model_name = "tree_20_ng_280_nl_3_lw_400_ne_3000_bs_20_dr_0.95_model"
         #nn_model = dill_load(f"results/models/{network_params["anatomy"]}/{model_name}")
-        self.weights        =  init_weights(network_params) # nn_model.weights# jnp.asarray([1.005]) #
+        self.weights        =  init_weights(network_params) # 
+        #self.weights = nn_model.weights# jnp.asarray([1.005]) #
         self.num_input_features = network_params["num_input_features"]
         self.num_layers     = network_params["num_layers"]
         self.layer_width    = network_params["layer_width"]
@@ -106,26 +107,27 @@ def loss(input, outputs, scaling_factors, scaling_dict, weights):
     # print(f"coefs shape: {coefs_pred.shape}")
     # print(f"outputs shape: {outputs.shape}")
     return jnp.sqrt(jnp.mean(jnp.square(coefs_pred - outputs)))
+    #return jnp.sqrt(jnp.mean(jnp.square((coefs_pred[:,0] - outputs[:,0])))) + jnp.sqrt(jnp.mean(jnp.square((coefs_pred[:,1] - outputs[:,1]))))
 
 @jit
 def coef_loss(output, flow, dP_true, scaling_factors, scaling_dict):
 
-    R_lin_star_pred_inlet = 0 #inv_scale_jax(scaling_dict, output[:,0], "R_lin_star_inlet")
-    R_lin_star_pred1 = inv_scale_jax(scaling_dict, output[:,0], "daughter1_R_lin_star")
-    R_lin_star_pred2 = 0 #inv_scale_jax(scaling_dict, output[:,2], "daughter2_R_lin_star")
-    R_quad_star_pred_inlet = 0 #inv_scale_jax(scaling_dict, output[:,3], "R_quad_star_inlet")
-    R_quad_star_pred1 = inv_scale_jax(scaling_dict, output[:,1], "daughter1_R_quad_star")
-    R_quad_star_pred2 = 0 #inv_scale_jax(scaling_dict, output[:,5], "R_quad_star2")
+    # R_lin_star_pred_inlet = 0 #inv_scale_jax(scaling_dict, output[:,0], "R_lin_star_inlet")
+    # R_lin_star_pred1 = inv_scale_jax(scaling_dict, output[:,0], "daughter1_R_lin_star")
+    # R_lin_star_pred2 = 0 #inv_scale_jax(scaling_dict, output[:,2], "daughter2_R_lin_star")
+    # R_quad_star_pred_inlet = 0 #inv_scale_jax(scaling_dict, output[:,3], "R_quad_star_inlet")
+    # R_quad_star_pred1 = inv_scale_jax(scaling_dict, output[:,1], "daughter1_R_quad_star")
+    # R_quad_star_pred2 = 0 #inv_scale_jax(scaling_dict, output[:,5], "R_quad_star2")
 
 
-    A_char = scaling_factors[:,0].reshape(-1,1)
-    U_char = scaling_factors[:,1].reshape(-1,1)
+    # A_char = scaling_factors[:,0].reshape(-1,1)
+    # U_char = scaling_factors[:,1].reshape(-1,1)
 
-    dP_star_pred = jnp.zeros(flow.shape)
-    # inflow = flow[:,:,0] + flow[:,:,1]
-    dP_star_pred = dP_star_pred.at[:,:,0].set(
-                                            jnp.divide(R_lin_star_pred1 * flow[:,:,0], A_char * U_char) + 
-                                            jnp.divide(R_quad_star_pred1 * jnp.square(flow[:,:,0]), jnp.square(A_char * U_char)))
+    # dP_star_pred = jnp.zeros(flow.shape)
+    # # inflow = flow[:,:,0] + flow[:,:,1]
+    # dP_star_pred = dP_star_pred.at[:,:,0].set(
+    #                                         jnp.divide(R_lin_star_pred1 * flow[:,:,0], A_char * U_char) + 
+    #                                         jnp.divide(R_quad_star_pred1 * jnp.square(flow[:,:,0]), jnp.square(A_char * U_char)))
     
     # dP_star_pred = dP_star_pred.at[:,:,1].set(jnp.divide(R_lin_star_pred_inlet * inflow, A_char * U_char) + 
     #                                         jnp.divide(R_quad_star_pred_inlet * jnp.square(inflow), jnp.square(A_char * U_char)) +

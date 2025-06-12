@@ -14,6 +14,8 @@ def save_dict(di_, filename_):
 def plan_junction(geo_params):
     pts_per_branch = 4
     #tree_1
+    L_char = np.sqrt(geo_params["inlet_area"]/np.pi)
+    L_char_3D = np.sqrt(geo_params["inlet_area_3D"]/np.pi)
     branch_dict = {"branch1": {"branch_radii": [(geo_params["inlet_area"]/3.14)**0.5, 
                                                 (geo_params["daughter1_area_ratio"]*geo_params["inlet_area"]/3.14)**0.5,], 
                                "angles": [90, 90 + geo_params["daughter1_angle"]*180/np.pi], 
@@ -55,10 +57,10 @@ def plan_junction(geo_params):
                 length = branch_radii[i] * 10
                 pts_per_branch = int(length / (2*branch_radii[i]))
             elif branch_name == "branch1" and i == 1:
-                length = geo_params["len1"]#branch_radii[i] * 10
+                length = geo_params["len1"]*L_char/L_char_3D #branch_radii[i] * 10
                 pts_per_branch = int(length / (2*branch_radii[i]))
             else:
-                length = geo_params["len2"]
+                length = geo_params["len2"]*L_char/L_char_3D
                 pts_per_branch = int(length / (2*branch_radii[i])) #10*2
             end = (starts[i][0] + length * np.cos(np.radians(angles[i])),
                     starts[i][1] + length * np.sin(np.radians(angles[i])),

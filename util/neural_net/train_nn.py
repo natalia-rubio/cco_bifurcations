@@ -10,7 +10,6 @@ from util.neural_net.nn_model import loss, coef_loss
 import time
 import matplotlib.pyplot as plt
 import pdb
-plt.rcParams.update(plt.rcParamsDefault)
 def train_nn(model, training_params):
 
     model_name = f"{model.anatomy}_ng_{model.num_geos}_nl_{model.num_layers}_lw_{model.layer_width}_ne_{training_params['num_epochs']}_bs_{training_params['batch_size']}_dr_{model.decay_rate}"

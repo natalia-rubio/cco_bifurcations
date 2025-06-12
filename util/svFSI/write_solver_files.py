@@ -7,7 +7,7 @@ def write_job_steady(anatomy, set_type, geo_name, flow_name, flow_index, num_cor
 #SBATCH --partition=amarsden\n\
 #SBATCH --output=/scratch/users/nrubio/job_scripts/{geo_name}_{flow_name}.o%j\n\
 #SBATCH --error=/scratch/users/nrubio/job_scripts/{geo_name}_{flow_name}.e%j\n\
-#SBATCH --time=02:00:00\n\
+#SBATCH --time=003:00:00\n\
 #SBATCH --mem=50000\n\
 #SBATCH --nodes={int(num_cores/24)}\n\
 #SBATCH --tasks-per-node=24\n\
@@ -35,7 +35,8 @@ module load py-scikit-learn/1.0.2_py39\n\
 module load gcc/10.1.0\n\
 # Name of the executable you want to run\n\
 \n\
-singularity exec $IMAGE_PATH bash -c 'mpirun --mca opal_cuda_support 0 -n {int(num_cores)} /build-trilinos/svFSIplus-build/bin/svfsiplus $F1/{geo_name}_{flow_name}.xml'\n\
+#singularity exec $IMAGE_PATH bash -c 'mpirun --mca opal_cuda_support 0 -n {int(num_cores)} /build-trilinos/svFSIplus-build/bin/svfsiplus $F1/{geo_name}_{flow_name}.xml'\n\
+singularity exec $IMAGE_PATH bash -c 'mpirun --mca opal_cuda_support 0 -n {int(num_cores)} /home/users/nrubio/svMultiPhysics/build/svMultiPhysics-build/bin/svmultiphysics $F1/{geo_name}_{flow_name}.xml'\n\
 python3 /home/users/nrubio/SV_scripts/svFSI/check_convergence.py {geo_name} {flow_index} {anatomy} {set_type} {num_time_steps} {inc}\n\
 "
     f = open(f"/scratch/users/nrubio/job_scripts/{geo_name}_f{flow_index}.sh", "w")
@@ -45,14 +46,9 @@ python3 /home/users/nrubio/SV_scripts/svFSI/check_convergence.py {geo_name} {flo
 
 def write_svfsi_2flow(anatomy, set_type, geo, flow_name, flow_params, cap_dict, inlet_cap_number, num_time_steps, time_step_size, inc):
     geo_dir = f"/scratch/users/nrubio/synthetic_junctions/{anatomy}/{set_type}/{geo}"
-    # res_caps = list(cap_dict.keys())
-    # res_caps.remove(inlet_cap_number)
-    # print(cap_dict)
-    # outlet_area_total = sum([cap_dict[res_cap] for res_cap in res_caps])
-    # print(f"outlet_area_total: {outlet_area_total}")
-    #flow_name = f"flow_{flow_index}"
+
     svfsi = f"<?xml version='1.0' encoding='UTF-8' ?>\n\
-    <svFSIFile version='0.1'>\n\
+    <svMultiPhysicsFile version='0.1'>\n\
     \n\
     <GeneralSimulationParameters>\n\
     \n\
@@ -66,7 +62,7 @@ def write_svfsi_2flow(anatomy, set_type, geo, flow_name, flow_params, cap_dict, 
     <Save_results_to_VTK_format> 1 </Save_results_to_VTK_format> \n\
     <Name_prefix_of_saved_VTK_files> solution_{flow_name} </Name_prefix_of_saved_VTK_files> \n\
     <Increment_in_saving_VTK_files> {inc} </Increment_in_saving_VTK_files> \n\
-    <Save_results_in_folder> {geo_dir}/flow_{flow_name} </Save_results_in_folder> \n\
+    <Save_results_in_folder> {geo_dir}/{flow_name} </Save_results_in_folder> \n\
     <Start_saving_after_time_step> 0 </Start_saving_after_time_step> \n\
     \n\
     <Increment_in_saving_restart_files> {inc} </Increment_in_saving_restart_files> \n\
@@ -140,6 +136,7 @@ def write_svfsi_2flow(anatomy, set_type, geo, flow_name, flow_params, cap_dict, 
             <Time_dependence> Steady </Time_dependence> \n\
             <Value> {-1 * cap_dict['inlet']['flow']} </Value> \n\
             <Profile> Parabolic </Profile> \n\
+            <Impose_flux> true </Impose_flux> \n\
         </Add_BC> \n\
         \n\
         <Add_BC name='outlet0' > \n\
@@ -153,6 +150,7 @@ def write_svfsi_2flow(anatomy, set_type, geo, flow_name, flow_params, cap_dict, 
             <Time_dependence> Steady </Time_dependence> \n\
             <Value> {cap_dict['daughter2_outlet']['flow']} </Value> \n\
             <Profile> Parabolic </Profile> \n\
+            <Impose_flux> true </Impose_flux> \n\
         </Add_BC> \n\
         \n\
         <Add_BC name='walls' > \n\
@@ -163,21 +161,16 @@ def write_svfsi_2flow(anatomy, set_type, geo, flow_name, flow_params, cap_dict, 
         \n\
     </Add_equation>\n\
     \n\
-    </svFSIFile>"
+    </svMultiPhysicsFile>"
     f = open(f"/scratch/users/nrubio/synthetic_junctions/{anatomy}/{set_type}/{geo}/{flow_name}/{geo}_{flow_name}.xml", "w")
     f.write(svfsi)
     f.close()
     return
-def write_svfsi(anatomy, set_type, geo, flow_index, flow_params, cap_dict, inlet_cap_number, num_time_steps, time_step_size, inc):
+def write_svfsi(anatomy, set_type, geo, flow_name, flow_params, cap_dict, inlet_cap_number, num_time_steps, time_step_size, inc):
     geo_dir = f"/scratch/users/nrubio/synthetic_junctions/{anatomy}/{set_type}/{geo}"
-    res_caps = list(cap_dict.keys())
-    res_caps.remove(inlet_cap_number)
-    print(cap_dict)
-    outlet_area_total = sum([cap_dict[res_cap] for res_cap in res_caps])
-    print(f"outlet_area_total: {outlet_area_total}")
-    flow_name = f"flow_{flow_index}"
+    flow_name = flow_name
     svfsi = f"<?xml version='1.0' encoding='UTF-8' ?>\n\
-    <svFSIFile version='0.1'>\n\
+    <svMultiPhysicsFile version='0.1'>\n\
     \n\
     <GeneralSimulationParameters>\n\
     \n\
@@ -189,10 +182,10 @@ def write_svfsi(anatomy, set_type, geo, flow_index, flow_params, cap_dict, inlet
     <Searched_file_name_to_trigger_stop> STOP_SIM </Searched_file_name_to_trigger_stop> \n\
     \n\
     <Save_results_to_VTK_format> 1 </Save_results_to_VTK_format> \n\
-    <Name_prefix_of_saved_VTK_files> solution_flow_{flow_index} </Name_prefix_of_saved_VTK_files> \n\
+    <Name_prefix_of_saved_VTK_files> solution_{flow_name} </Name_prefix_of_saved_VTK_files> \n\
     <Increment_in_saving_VTK_files> {inc} </Increment_in_saving_VTK_files> \n\
-    <Save_results_in_folder> {geo_dir}/flow_{flow_index} </Save_results_in_folder> \n\
-    <Start_saving_after_time_step> {num_time_steps-inc} </Start_saving_after_time_step> \n\
+    <Save_results_in_folder> {geo_dir}/{flow_name} </Save_results_in_folder> \n\
+    <Start_saving_after_time_step> 0 </Start_saving_after_time_step> \n\
     \n\
     <Increment_in_saving_restart_files> {inc} </Increment_in_saving_restart_files> \n\
     <Convert_BIN_to_VTK_format> 0 </Convert_BIN_to_VTK_format> \n\
@@ -208,15 +201,15 @@ def write_svfsi(anatomy, set_type, geo, flow_index, flow_params, cap_dict, inlet
     <Mesh_file_path> {geo_dir}/mesh-complete/mesh-complete.mesh.vtu </Mesh_file_path>\n\
     \n\
     <Add_face name='inlet'>\n\
-        <Face_file_path> {geo_dir}/mesh-complete/mesh-surfaces/cap_{inlet_cap_number}.vtp </Face_file_path>\n\
+        <Face_file_path> {geo_dir}/mesh-complete/mesh-surfaces/cap_{cap_dict['inlet']['id']}.vtp </Face_file_path>\n\
     </Add_face>\n\
     \n\
     <Add_face name='outlet0'>\n\
-        <Face_file_path> {geo_dir}/mesh-complete/mesh-surfaces/cap_{res_caps[0]}.vtp </Face_file_path>\n\
+        <Face_file_path> {geo_dir}/mesh-complete/mesh-surfaces/cap_{cap_dict['daughter1_outlet']['id']}.vtp </Face_file_path>\n\
     </Add_face>\n\
     \n\
     <Add_face name='outlet1'>\n\
-        <Face_file_path> {geo_dir}/mesh-complete/mesh-surfaces/cap_{res_caps[1]}.vtp </Face_file_path>\n\
+        <Face_file_path> {geo_dir}/mesh-complete/mesh-surfaces/cap_{cap_dict['daughter2_outlet']['id']}.vtp </Face_file_path>\n\
     </Add_face>\n\
     \n\
     <Add_face name='walls'>\n\
@@ -260,24 +253,24 @@ def write_svfsi(anatomy, set_type, geo, flow_index, flow_params, cap_dict, inlet
             <Krylov_space_dimension> 250 </Krylov_space_dimension>\n\
         </LS>\n\
         \n\
-        <Add_BC name='inlet' > \n\
+        \<Add_BC name='inlet' > \n\
             <Type> Dir </Type> \n\
-            <Time_dependence> Unsteady </Time_dependence> \n\
-            <Temporal_values_file_path> {geo_dir}/flow_{flow_index}/{flow_index}.flow </Temporal_values_file_path> \n\
-            <Profile> Parabolic </Profile> \n\
+            <Time_dependence> Steady </Time_dependence> \n\
+            <Value> {-1 * cap_dict['inlet']['flow']} </Value> \n\
+            <Profile> Flat </Profile> \n\
             <Impose_flux> true </Impose_flux> \n\
         </Add_BC> \n\
         \n\
         <Add_BC name='outlet0' > \n\
             <Type> Neu </Type> \n\
             <Time_dependence> Resistance </Time_dependence> \n\
-            <Value> {(0.5+random.random())*1000*(cap_dict[res_caps[1]]/cap_dict[res_caps[0]])} </Value> \n\
+            <Value> {cap_dict['daughter1_outlet']['res']} </Value> \n\
         </Add_BC> \n\
         \n\
         <Add_BC name='outlet1' > \n\
             <Type> Neu </Type> \n\
             <Time_dependence> Resistance </Time_dependence> \n\
-            <Value> {(0.5+random.random())*1000*(cap_dict[res_caps[0]]/cap_dict[res_caps[1]])} </Value> \n\
+            <Value> {cap_dict['daughter2_outlet']['res']} </Value> \n\
         </Add_BC> \n\
         \n\
         <Add_BC name='walls' > \n\
@@ -288,8 +281,8 @@ def write_svfsi(anatomy, set_type, geo, flow_index, flow_params, cap_dict, inlet
         \n\
     </Add_equation>\n\
     \n\
-    </svFSIFile>"
-    f = open(f"/scratch/users/nrubio/synthetic_junctions/{anatomy}/{set_type}/{geo}/{flow_name}/{geo}_f{flow_index}.xml", "w")
+    </svMultiPhysicsFile>"
+    f = open(f"/scratch/users/nrubio/synthetic_junctions/{anatomy}/{set_type}/{geo}/{flow_name}/{geo}_{flow_name}.xml", "w")
     f.write(svfsi)
     f.close()
     return

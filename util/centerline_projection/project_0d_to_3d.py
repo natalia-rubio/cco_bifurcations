@@ -65,7 +65,7 @@ def project_to_centerline(tree_name, junction_mode):
     input_file = f"trees/zerod_input/standard/{tree_name}/solver_0d.json"
     zerod_handler = SvZeroDSolverInputHandler.from_file(input_file)
     casadi = False
-    print(f"Input file: {input_file}")
+    #print(f"Input file: {input_file}")
     
     zerod_handler.update_simparams(last_cycle_only=True)
 

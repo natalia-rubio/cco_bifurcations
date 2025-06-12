@@ -146,7 +146,7 @@ def solve_casadi(tree_name, junction_mode, sol_prev = None, coef_factor = 1.0):
                 )**2
                 junction_constraint_counter += 1
                 
-                enforce_pressure_loss = True
+                enforce_pressure_loss = False
                 if enforce_pressure_loss:
                     opti.subject_to(
                         P_out[inlet_vessel_ind] - P_in[outlet_vessel_ind] >= 0
@@ -179,11 +179,11 @@ def solve_casadi(tree_name, junction_mode, sol_prev = None, coef_factor = 1.0):
         opti.subject_to(casadi.vec(Q_in)  >= 0)
         opti.subject_to(casadi.vec(Q_out) >= 0)
 
-    print(f"Number of vessel constraints: {vessel_constraint_counter}")
-    print(f"Number of junction constraints: {junction_constraint_counter}")
-    print(f"Number of boundary condition constraints: {BC_constraint_counter}")
-    print(f"Number of steady state constraints: {SS_constraint_counter}")
-    print(f"Total number of constraints: {vessel_constraint_counter + junction_constraint_counter + BC_constraint_counter + SS_constraint_counter}")
+    # print(f"Number of vessel constraints: {vessel_constraint_counter}")
+    # print(f"Number of junction constraints: {junction_constraint_counter}")
+    # print(f"Number of boundary condition constraints: {BC_constraint_counter}")
+    # print(f"Number of steady state constraints: {SS_constraint_counter}")
+    # print(f"Total number of constraints: {vessel_constraint_counter + junction_constraint_counter + BC_constraint_counter + SS_constraint_counter}")
     # Solve NLP with IPOPT
     opti.minimize(objective) # Dummy objective
     opti.solver('ipopt')

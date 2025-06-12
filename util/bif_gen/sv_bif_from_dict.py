@@ -7,7 +7,7 @@ import platform
 import numpy as np
 import pathplanning
 import util.bif_gen.meshing as meshing
-from util.bif_gen.plan_junction_nondim import plan_junction
+from util.bif_gen.plan_junction_dim import plan_junction
 import pickle
 import pdb
 
@@ -22,7 +22,7 @@ def save_dict(dict, filename_):
 
 
 tree_name = "tree_20"
-set_type = "dict_flat_dim"
+set_type = "dict_flat"
 junction_dict = load_dict("trees/reports/{tree_name}/junction_dict.json".format(tree_name=tree_name))
 junction_names = list(junction_dict.keys())
 junction_names.sort()
@@ -44,18 +44,18 @@ for geo_index in range(len(junction_dict.keys())):
         inlet_flow_list.append(junction_dict[junction_name]['3D_junc_inlet_flow_fm_'+flow_mag+'_ts_700'])
         res1_list.append(junction_dict[junction_name]['3D_branch1_outlet_resistance_fm_'+flow_mag+'_ts_700'][0])
         res2_list.append(junction_dict[junction_name]['3D_branch2_outlet_resistance_fm_'+flow_mag+'_ts_700'][0])
-    #pdb.set_trace()
     geo_dir = '/Users/natalia/Desktop/cco_bifurcations/data/synthetic_junctions/{}/{}/CCO_{:03d}'.format(tree_name, set_type, geo_index)
+    
     if os.path.exists(geo_dir):
         print("Geometry directory {:03d} already exists".format(geo_index))
         continue
     else:
         os.mkdir(geo_dir)
     print("Generating geometry for CCO {:03d}".format(geo_index))
-    #pdb.set_trace()
 
     geo_params={"daughter1_angle": junction_dict[junction_name]["3D_junc_outlet1_angle"],
                 "daughter2_angle": junction_dict[junction_name]["3D_junc_outlet2_angle"],
+                "inlet_area_3D": junction_dict[junction_name]["3D_junc_inlet_area"],
                 "inlet_area": junction_dict[junction_name]["3D_junc_inlet_area"],
                 "daughter1_area_ratio": junction_dict[junction_name]["3D_branch1_outlet_area"]/junction_dict[junction_name]["3D_junc_inlet_area"],
                 "total_daughter_area_ratio": (junction_dict[junction_name]["3D_branch2_outlet_area"]+
@@ -68,7 +68,7 @@ for geo_index in range(len(junction_dict.keys())):
                 "flow_split": junction_dict[junction_name]["3D_flow_split_flow_fm_100_ts_700"],
                 "res1": res1_list,
                 "res2": res2_list, 
-                "inlet_flows": inlet_flow_list,
+                "inlet_flows_3D": inlet_flow_list,
                 "geo_name": junction_name,}
     
     print(geo_params) 

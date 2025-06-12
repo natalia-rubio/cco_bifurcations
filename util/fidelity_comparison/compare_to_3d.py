@@ -1,4 +1,5 @@
 import sys
+import pandas as pd
 import vtk
 import os
 import numpy as np
@@ -46,7 +47,7 @@ def compare_to_3d(junction_mode = "standard",
     pressure_error_0d_tot[arrays_3d["BifurcationId"] >= 0] = 0
     print(f"Pressure error  (Relative):     {compute_rmse(pressure_error_0d_rel,0*pressure_error_0d_rel)}")
     print(f"Pressure error  (Total):        {compute_rmse(pressure_error_0d_tot,0*pressure_error_0d_tot)}")
-
+    pdb.set_trace()
 
     array = n2v(pressure_error_0d_rel)
     array.SetName("pressure_error_0d")

@@ -1,14 +1,13 @@
 import numpy as np
+import random
+def write_job_unsteady(anatomy, set_type, geo_name, flow_name, num_cores, num_time_steps, inc):
 
-def write_job_unsteady(anatomy, set_type, geo_name, flow_name, flow_index, num_cores, num_time_steps, inc):
-    flow_name = f"unsteady"
-    flow_index = "unsteady"
     geo_job_script = f"#!/bin/bash\n\
 #SBATCH --job-name={geo_name}_{flow_name}\n\
 #SBATCH --partition=amarsden\n\
 #SBATCH --output=/scratch/users/nrubio/job_scripts/{geo_name}_{flow_name}.o%j\n\
 #SBATCH --error=/scratch/users/nrubio/job_scripts/{geo_name}_{flow_name}.e%j\n\
-#SBATCH --time=00:60:00\n\
+#SBATCH --time=003:00:00\n\
 #SBATCH --mem=50000\n\
 #SBATCH --nodes={int(num_cores/24)}\n\
 #SBATCH --tasks-per-node=24\n\
@@ -36,26 +35,25 @@ module load py-scikit-learn/1.0.2_py39\n\
 module load gcc/10.1.0\n\
 # Name of the executable you want to run\n\
 \n\
-singularity exec $IMAGE_PATH bash -c 'mpirun --mca opal_cuda_support 0 -n {int(num_cores)} /home/users/nrubio/svMultiPhysics/build/svMultiPhysics-build/bin/svmultiphysics $F1/{geo_name}_{flow_index}.xml'\n\
-python3 /home/users/nrubio/SV_scripts/svFSI/construct_unsteady_soln.py {geo_name} {anatomy} {set_type} {num_time_steps} {inc}\n\
+#singularity exec $IMAGE_PATH bash -c 'mpirun --mca opal_cuda_support 0 -n {int(num_cores)} /build-trilinos/svFSIplus-build/bin/svfsiplus $F1/{geo_name}_{flow_name}.xml'\n\
+singularity exec $IMAGE_PATH bash -c 'mpirun --mca opal_cuda_support 0 -n {int(num_cores)} /home/users/nrubio/svMultiPhysics/build/svMultiPhysics-build/bin/svmultiphysics $F1/{geo_name}_{flow_name}.xml'\n\
+python3 /home/users/nrubio/SV_scripts/svFSI/check_convergence.py {geo_name} {flow_name} {anatomy} {set_type} {num_time_steps} {inc}\n\
 "
-    f = open(f"/scratch/users/nrubio/job_scripts/{geo_name}_{flow_index}.sh", "w")
+    f = open(f"/scratch/users/nrubio/job_scripts/{geo_name}_{flow_name}.sh", "w")
     f.write(geo_job_script)
     f.close()
     return
 
-def write_svfsi_unsteady(anatomy, set_type, geo, flow_index, flow_params, cap_numbers, inlet_cap_number, num_time_steps, time_step_size, inc):
+
+def write_svfsi_unsteady(anatomy, set_type, geo, flow_name, flow_params, cap_dict, inlet_cap_number, num_time_steps, time_step_size, inc):
     geo_dir = f"/scratch/users/nrubio/synthetic_junctions/{anatomy}/{set_type}/{geo}"
-    flow_name = f"unsteady"
-    flow_index = "unsteady"
-    res_caps = cap_numbers
-    res_caps.remove(inlet_cap_number)
+    flow_name = flow_name
     svfsi = f"<?xml version='1.0' encoding='UTF-8' ?>\n\
     <svMultiPhysicsFile version='0.1'>\n\
     \n\
     <GeneralSimulationParameters>\n\
     \n\
-    <Continue_previous_simulation> 1 </Continue_previous_simulation>\n\
+    <Continue_previous_simulation> true </Continue_previous_simulation>\n\
     <Number_of_spatial_dimensions> 3 </Number_of_spatial_dimensions> \n\
     <Number_of_time_steps> {num_time_steps} </Number_of_time_steps> \n\
     <Time_step_size> {time_step_size} </Time_step_size> \n\
@@ -63,10 +61,10 @@ def write_svfsi_unsteady(anatomy, set_type, geo, flow_index, flow_params, cap_nu
     <Searched_file_name_to_trigger_stop> STOP_SIM </Searched_file_name_to_trigger_stop> \n\
     \n\
     <Save_results_to_VTK_format> 1 </Save_results_to_VTK_format> \n\
-    <Name_prefix_of_saved_VTK_files> solution_{flow_index} </Name_prefix_of_saved_VTK_files> \n\
+    <Name_prefix_of_saved_VTK_files> solution_{flow_name} </Name_prefix_of_saved_VTK_files> \n\
     <Increment_in_saving_VTK_files> {inc} </Increment_in_saving_VTK_files> \n\
-    <Save_results_in_folder> {geo_dir}/{flow_index} </Save_results_in_folder> \n\
-    <Start_saving_after_time_step> {inc} </Start_saving_after_time_step> \n\
+    <Save_results_in_folder> {geo_dir}/{flow_name} </Save_results_in_folder> \n\
+    <Start_saving_after_time_step> 0 </Start_saving_after_time_step> \n\
     \n\
     <Increment_in_saving_restart_files> {inc} </Increment_in_saving_restart_files> \n\
     <Convert_BIN_to_VTK_format> 0 </Convert_BIN_to_VTK_format> \n\
@@ -82,15 +80,15 @@ def write_svfsi_unsteady(anatomy, set_type, geo, flow_index, flow_params, cap_nu
     <Mesh_file_path> {geo_dir}/mesh-complete/mesh-complete.mesh.vtu </Mesh_file_path>\n\
     \n\
     <Add_face name='inlet'>\n\
-        <Face_file_path> {geo_dir}/mesh-complete/mesh-surfaces/cap_{inlet_cap_number}.vtp </Face_file_path>\n\
+        <Face_file_path> {geo_dir}/mesh-complete/mesh-surfaces/cap_{cap_dict['inlet']['id']}.vtp </Face_file_path>\n\
     </Add_face>\n\
     \n\
     <Add_face name='outlet0'>\n\
-        <Face_file_path> {geo_dir}/mesh-complete/mesh-surfaces/cap_{res_caps[0]}.vtp </Face_file_path>\n\
+        <Face_file_path> {geo_dir}/mesh-complete/mesh-surfaces/cap_{cap_dict['daughter1_outlet']['id']}.vtp </Face_file_path>\n\
     </Add_face>\n\
     \n\
     <Add_face name='outlet1'>\n\
-        <Face_file_path> {geo_dir}/mesh-complete/mesh-surfaces/cap_{res_caps[1]}.vtp </Face_file_path>\n\
+        <Face_file_path> {geo_dir}/mesh-complete/mesh-surfaces/cap_{cap_dict['daughter2_outlet']['id']}.vtp </Face_file_path>\n\
     </Add_face>\n\
     \n\
     <Add_face name='walls'>\n\
@@ -102,7 +100,7 @@ def write_svfsi_unsteady(anatomy, set_type, geo, flow_index, flow_params, cap_nu
     <Add_equation type='fluid' > \n\
         <Coupled> true </Coupled>\n\
         <Min_iterations> 2 </Min_iterations>  \n\
-        <Max_iterations> 20 </Max_iterations> \n\
+        <Max_iterations> 12 </Max_iterations> \n\
         <Tolerance> 1e-7 </Tolerance> \n\
         <Backflow_stabilization_coefficient> 0.2 </Backflow_stabilization_coefficient> \n\
         \n\
@@ -134,24 +132,24 @@ def write_svfsi_unsteady(anatomy, set_type, geo, flow_index, flow_params, cap_nu
             <Krylov_space_dimension> 250 </Krylov_space_dimension>\n\
         </LS>\n\
         \n\
-        <Add_BC name='inlet' > \n\
+        \<Add_BC name='inlet' > \n\
             <Type> Dir </Type> \n\
             <Time_dependence> Unsteady </Time_dependence> \n\
-            <Temporal_values_file_path> {geo_dir}/{flow_index}/{flow_index}.flow </Temporal_values_file_path> \n\
-            <Profile> Parabolic </Profile> \n\
+            <Temporal_values_file_path> /scratch/users/nrubio/synthetic_junctions/{anatomy}/{set_type}/{geo}/{flow_name}/inlet_flow.flow</Temporal_values_file_path>\n\
+            <Profile> Flat </Profile> \n\
             <Impose_flux> true </Impose_flux> \n\
         </Add_BC> \n\
         \n\
         <Add_BC name='outlet0' > \n\
             <Type> Neu </Type> \n\
             <Time_dependence> Resistance </Time_dependence> \n\
-            <Value> 10000 </Value> \n\
+            <Value> {cap_dict['daughter1_outlet']['res']} </Value> \n\
         </Add_BC> \n\
         \n\
         <Add_BC name='outlet1' > \n\
             <Type> Neu </Type> \n\
             <Time_dependence> Resistance </Time_dependence> \n\
-            <Value> 10000 </Value> \n\
+            <Value> {cap_dict['daughter2_outlet']['res']} </Value> \n\
         </Add_BC> \n\
         \n\
         <Add_BC name='walls' > \n\
@@ -163,22 +161,22 @@ def write_svfsi_unsteady(anatomy, set_type, geo, flow_index, flow_params, cap_nu
     </Add_equation>\n\
     \n\
     </svMultiPhysicsFile>"
-    f = open(f"/scratch/users/nrubio/synthetic_junctions/{anatomy}/{set_type}/{geo}/{flow_name}/{geo}_{flow_index}.xml", "w")
+    f = open(f"/scratch/users/nrubio/synthetic_junctions/{anatomy}/{set_type}/{geo}/{flow_name}/{geo}_{flow_name}.xml", "w")
     f.write(svfsi)
     f.close()
     return
 
 
-def write_flow_unsteady(anatomy, set_type, geo, flow_amp, cap_number, num_time_steps, time_step_size):
-    flow_name = f"unsteady"
+def write_unsteady_flow(anatomy, set_type, geo, flow_amp, num_time_steps, time_step_size):
+    flow_name = f"flow_unsteady"
     flow_index = "unsteady"
     flow = f"{int(num_time_steps)}    16\n"
     t = np.linspace(start = 0, stop = 4*np.pi, num = num_time_steps)
     q = (flow_amp/2) * (np.cos(t)-1)
     for i in range(t.size):
-        flow = flow + "%1.5f    %1.3f\n" %(i*time_step_size, q[i])
+        flow = flow + "%1.3f    %1.3f\n" %(i*time_step_size, q[i])
 
-    f = open(f"/scratch/users/nrubio/synthetic_junctions/{anatomy}/{set_type}/{geo}/{flow_name}/{flow_index}.flow", "w")
+    f = open(f"/scratch/users/nrubio/synthetic_junctions/{anatomy}/{set_type}/{geo}/{flow_name}/inlet_flow.flow", "w")
     f.write(flow)
     f.close()
     return

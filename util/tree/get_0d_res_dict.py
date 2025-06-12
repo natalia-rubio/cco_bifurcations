@@ -8,12 +8,21 @@ from util.tools.junction_proc import get_angle_diff
 from util.neural_net.nn_util import scale_jax, inv_scale_jax, dill_load
 import jax.numpy as jnp
 from util.neural_net.nn_model import NeuralNet, predict
+#from util.tree.extract_true_junctions_helpers import *
 
 def get_input_file_junction_dict_master(tree_name):
     
-    input_file_standard = f'trees/zerod_input/standard/{tree_name}/solver_0d.json'
-    with open(input_file_standard) as json_file:
-        input_file = json.load(json_file)
+    try:
+        input_file_standard = f'trees/zerod_input/original_BCs/{tree_name}/solver_0d.json'
+
+        with open(input_file_standard) as json_file:
+            input_file = json.load(json_file)
+    except:
+        input_file_standard = f'trees/zerod_input/standard/{tree_name}/solver_0d.json'
+
+        with open(input_file_standard) as json_file:
+            input_file = json.load(json_file)
+
     
     terminal_junction_dict = {}
     for junction in input_file["junctions"]:
@@ -123,10 +132,10 @@ def get_input_file_junction_dict_master(tree_name):
         junction_dict[junction_name]["0D_R_poiseuille_outlet2"] = np.sum(vessel_arr_dict["R_poiseuille"][np.where(vessel_arr_dict["branch_ids"] == aux_outlet_branch)])
         junction_dict[junction_name]["0D_length1"] = length
         junction_dict[junction_name]["0D_length1_base"] =  junction["lengths"][0]
-        junction_dict[junction_name]["0D_length_star"] = length/L_char
+        junction_dict[junction_name]["0D_length_star"] = (length - 0*junction_dict[junction_name]["0D_length1_base"])/L_char
         junction_dict[junction_name]["0D_length2"] = aux_length
         junction_dict[junction_name]["0D_length2_base"] =  junction["lengths"][1]
-        junction_dict[junction_name]["0D_length2_star"] = aux_length/L_char
+        junction_dict[junction_name]["0D_length2_star"] = (aux_length - 0*junction_dict[junction_name]["0D_length2_base"])/L_char
 
         
         primary_area = min(vessel_arr_dict["areas"][np.where(vessel_arr_dict["branch_ids"] == outlet_branch)])

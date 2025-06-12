@@ -10,7 +10,7 @@ import random
 import matplotlib.pyplot as plt
 plt.rcParams['font.family'] = 'serif'
 plt.rcParams['font.size'] = 16
-#plt.rc('text', usetex=True)
+plt.rc('text', usetex=True)
 colors = ["royalblue", "orangered", "seagreen", "peru", "blueviolet"]
 
 def save_dict(di_, filename_):

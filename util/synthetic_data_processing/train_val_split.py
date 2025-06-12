@@ -10,7 +10,7 @@ def generate_train_val_indices(anatomy, set_type, unsteady = True):
     seed = 0
     char_val_dict = load_dict(f"data/data_dicts/{anatomy}_{set_type}_synthetic_data_list_dict")
     num_geos = len(char_val_dict["A_char"])
-    train_ind, val_ind = get_random_ind(num_pts = num_geos, percent_train = 80, seed = seed)
+    train_ind, val_ind = get_random_ind(num_pts = num_geos, percent_train = 90, seed = seed)
 
     if not os.path.exists(f"data/split_indices"):
         os.mkdir(f"data/split_indices")

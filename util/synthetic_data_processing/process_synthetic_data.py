@@ -2,6 +2,7 @@ import sys
 sys.path.append("/Users/natalia/Desktop/cco_bifurcations")
 from util.tools.basic import *
 from util.synthetic_data_processing.extract_synthetic_data import *
+from util.synthetic_data_processing.extract_synthetic_data_unsteady import *
 from util.synthetic_data_processing.synthesize_synthetic_data import *
 # from util.synthetic_data_processing.assemble_graphs import *
 from util.synthetic_data_processing.train_val_split import *
@@ -15,11 +16,14 @@ unsteady = False
 if unsteady_text == "unsteady":
     unsteady = True
 print(f"Unsteady: {unsteady}")
-extract_steady_flow_data(anatomy = anatomy, set_type = set_type, require4 =False)
+if unsteady:
+    extract_unsteady_flow_data(anatomy = anatomy, set_type = set_type, require4 = True)
+else:
+    extract_steady_flow_data(anatomy = anatomy, set_type = set_type, require4 =False)
 print("Extracted simulation results.")
 
-#get_coefs(anatomy = anatomy, set_type = set_type, rm_low_r2 = True, unsteady = unsteady)
-print("Fitted dP(Q) coefficients.")
+# get_coefs(anatomy = anatomy, set_type = set_type, rm_low_r2 = True, unsteady = unsteady)
+# print("Fitted dP(Q) coefficients.")
 
 get_data_lists(anatomy, set_type = set_type, unsteady = unsteady)
 get_scaling_dict(anatomy, set_type = set_type, unsteady = unsteady)

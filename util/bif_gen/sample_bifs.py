@@ -8,23 +8,37 @@ plt.rcParams.update(plt.rcParamsDefault)
 plt.rcParams['font.family'] = 'serif'
 plt.rcParams['font.size'] = 16
 
-anatomy = "long_outlets"
-num_geos = 400
-sampler = qmc.LatinHypercube(d=4,seed = 0)
+anatomy = "tree_20"
+num_geos = 50
+sampler = qmc.LatinHypercube(d=6,seed = 0)
 samples = sampler.random(n=num_geos*10)
 
 samples_uniform = uniform(loc=0, scale=1).ppf(samples)
 samples_normal = norm(loc=0, scale=1).ppf(samples)
 
+scaling_dict = load_dict(f"data/scaling_dictionaries/tree_20_combined_scaling_dict_not_doubled")
+pdb.set_trace()
+tree_data_dict =    {"daughter1_angle": {},
+                    "daughter2_angle": {},
+                    "daughter1_area_ratio": {},
+                    "daughter2_area_ratio": {},
+                    "flow_split": {},
+                    "max_inlet_re": {},
+                    }
 
-tree_data_dict =    {"daughter1_angle": {"lowest": 0.0, "highest": np.pi, "mean": np.pi/4, "range": np.pi/2},
-                    "daughter2_angle": {"lowest": 0.0, "highest": np.pi, "mean": np.pi/4, "range": np.pi/2},
-                    "total_daughter_area_ratio": {"lowest": 0.7, "highest": 1.5, "mean": 1.1, "range": 0.8},
-                    "daughter1_area_ratio": {"lowest": 0.2, "highest": 1, "mean": 0.8, "range": 1.1}}
+for param in tree_data_dict.keys():
+    tree_data_dict[param]["lowest"] = scaling_dict[param][2]
+    tree_data_dict[param]["highest"] = scaling_dict[param][3]
+    tree_data_dict[param]["mean"] = scaling_dict[param][0]
+    tree_data_dict[param]["range"] = scaling_dict[param][3] - scaling_dict[param][2]
+
 CCO_sampled_params_dict =   {"daughter1_angle": [],
-                            "daughter2_angle": [],
-                            "total_daughter_area_ratio": [],
-                            "daughter1_area_ratio": []}
+                                "daughter2_angle": [],
+                                "daughter1_area_ratio": [],
+                                "daughter2_area_ratio": [],
+                                "flow_split": [],
+                                "max_inlet_re": [],
+                                }
 success_counter = 0
 i = 0
 while success_counter < num_geos:
@@ -34,7 +48,7 @@ while success_counter < num_geos:
                 CCO_sampled_params_dict[param].append(
                 tree_data_dict[param]["lowest"] + samples_uniform[i, param_ind] * tree_data_dict[param]["range"])
         d1ar = CCO_sampled_params_dict["daughter1_area_ratio"][-1]
-        d2ar = CCO_sampled_params_dict["total_daughter_area_ratio"][-1] - d1ar
+        d2ar = CCO_sampled_params_dict["daughter2_area_ratio"][-1]
         print(d1ar, d2ar)
         if d1ar < 1 and d2ar < 1 and d2ar > 0.2:
             area_consistency = True

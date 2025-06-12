@@ -15,7 +15,7 @@ def get_jax_arrays(anatomy, set_type, unsteady = True):
     char_val_dict = load_dict(f"data/data_dicts/{anatomy}_{set_type}_synthetic_data_list_dict")
     scaling_dict = load_dict(f"data/scaling_dictionaries/{anatomy}_{set_type}_scaling_dict")
     num_geos = len(char_val_dict["A_char"])
-    #pdb.set_trace()
+
     input_tens = jnp.concatenate((scale_jax(scaling_dict, jnp.asarray(char_val_dict["daughter1_area_ratio"], dtype=jnp.float32), "daughter1_area_ratio"),
                             scale_jax(scaling_dict, jnp.asarray(char_val_dict["daughter2_area_ratio"], dtype=jnp.float32), "daughter2_area_ratio"),
                             scale_jax(scaling_dict, jnp.asarray(char_val_dict["daughter1_area_ratio_inv2"], dtype=jnp.float32), "daughter1_area_ratio_inv2"),
@@ -23,17 +23,26 @@ def get_jax_arrays(anatomy, set_type, unsteady = True):
                             scale_jax(scaling_dict, jnp.asarray(char_val_dict["daughter1_angle"], dtype=jnp.float32), "daughter1_angle"),
                             scale_jax(scaling_dict, jnp.asarray(char_val_dict["daughter2_angle"], dtype=jnp.float32), "daughter2_angle"),
                             scale_jax(scaling_dict, jnp.asarray(char_val_dict["daughter1_length_star"], dtype=jnp.float32), "daughter1_length_star"),
+                            scale_jax(scaling_dict, jnp.asarray(char_val_dict["daughter2_length_star"], dtype=jnp.float32), "daughter2_length_star"),
                             scale_jax(scaling_dict, jnp.asarray(char_val_dict["daughter1_flow_ratio"], dtype=jnp.float32), "daughter1_flow_ratio"),
+                            scale_jax(scaling_dict, jnp.asarray(char_val_dict["daughter1_flow_ratio_sq"], dtype=jnp.float32), "daughter1_flow_ratio_sq"),
+
                             # scale_jax(scaling_dict, jnp.asarray(char_val_dict["daughter1_R_lin_star"], dtype=jnp.float32), "daughter1_R_lin_star"),
                             # scale_jax(scaling_dict, jnp.asarray(char_val_dict["daughter1_R_quad_star"], dtype=jnp.float32), "daughter1_R_quad_star"),
 
                                 ), axis = -1)
+    if unsteady:
+        output_tens = jnp.concatenate((
+                                scale_jax(scaling_dict, jnp.asarray(char_val_dict["daughter1_R_lin_star"], dtype=jnp.float32), "daughter1_R_lin_star"),
+                                scale_jax(scaling_dict, jnp.asarray(char_val_dict["daughter1_R_quad_star"], dtype=jnp.float32), "daughter1_R_quad_star"),
+                                scale_jax(scaling_dict, jnp.asarray(char_val_dict["daughter1_L_star"], dtype=jnp.float32), "daughter1_L_star"),
+                                ), axis = -1)
+    else:
+        output_tens = jnp.concatenate((
+                        scale_jax(scaling_dict, jnp.asarray(char_val_dict["daughter1_R_lin_star"], dtype=jnp.float32), "daughter1_R_lin_star"),
+                        scale_jax(scaling_dict, jnp.asarray(char_val_dict["daughter1_R_quad_star"], dtype=jnp.float32), "daughter1_R_quad_star"),
+                        ), axis = -1)
 
-    output_tens = jnp.concatenate((
-                            scale_jax(scaling_dict, jnp.asarray(char_val_dict["daughter1_R_lin_star"], dtype=jnp.float32), "daughter1_R_lin_star"),
-                            scale_jax(scaling_dict, jnp.asarray(char_val_dict["daughter1_R_quad_star"], dtype=jnp.float32), "daughter1_R_quad_star"),
-                            ), axis = -1)
-    pdb.set_trace()
     
     scaling_factors = jnp.concatenate((jnp.reshape(jnp.asarray(char_val_dict["A_char"], dtype=jnp.float32), (num_geos, 1)),
                                 jnp.reshape(jnp.asarray(char_val_dict["U_char"], dtype=jnp.float32), (num_geos, 1))), axis = -1)

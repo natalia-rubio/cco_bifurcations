@@ -2,6 +2,8 @@ import json
 import pdb
 import sys
 import os
+
+import pandas as pd
 sys.path.append("/Users/natalia/Desktop/cco_bifurcations")
 from util.tools.basic import *
 from util.tools.junction_proc import *
@@ -20,7 +22,7 @@ import matplotlib.pyplot as plt
 import io
 plt.rcParams["font.family"] = "Times New Roman"
 plt.rcParams['font.size'] = 10
-#plt.rc('text', usetex=True)
+plt.rcParams['text.usetex']=True
 colors = ["royalblue", "orangered", "seagreen", "peru", "blueviolet"]
 
 def get_recursive_resistance(junction_dict_master, junction_name):
@@ -118,6 +120,7 @@ def add_solution_values(junction_dict_master, tree_name, flow_mag, time_step):
         junction_dict[f"3D_branch1_outlet_resistance_fm_{flow_mag}_ts_{time_step}"] = junction_dict[f"3D_branch1_outlet_pressure_fm_{flow_mag}_ts_{time_step}"]/junction_dict[f"3D_branch1_outlet_flow_fm_{flow_mag}_ts_{time_step}"]
         junction_dict[f"3D_branch2_outlet_resistance_fm_{flow_mag}_ts_{time_step}"] = junction_dict[f"3D_branch2_outlet_pressure_fm_{flow_mag}_ts_{time_step}"]/junction_dict[f"3D_branch2_outlet_flow_fm_{flow_mag}_ts_{time_step}"]
 
+
     return
 
 def add_downstream_resistance_values(junction_dict_master):
@@ -161,6 +164,7 @@ def add_geometry_values(junction_dict_master, tree_name, flow_mag, time_step):
         junc_inlet_ind =    get_inds(arr = pt_id, vals = junc_inlet_pt)[0]
         junc_outlet_inds =  get_inds(arr = pt_id, vals = junc_outlet_pts)
         junction_dict["3D_junc_inlet_area"] = area[junc_inlet_ind]
+        junction_dict["3D_L_char"] = (junction_dict["3D_junc_inlet_area"] / np.pi)**0.5
         junction_dict["3D_junc_outlet1_area"] = area[junc_outlet_inds[0]]
         junction_dict["3D_junc_outlet2_area"] = area[junc_outlet_inds[1]]
         junction_dict["3D_junc_inlet_tangent"] = direction[junc_inlet_ind,:]
@@ -178,6 +182,7 @@ def add_geometry_values(junction_dict_master, tree_name, flow_mag, time_step):
         assert (np.linalg.norm(points[branch1_inlet_ind,:] - points[junc_outlet_inds[0],:]) < 1e-2), "Inlet point of branch 1 is not the same as outlet point of junction."
         junction_dict["3D_branch1_id"] = branch1_id
         junction_dict["3D_branch1_length"] = np.linalg.norm(points[branch1_outlet_ind, :] - points[branch1_inlet_ind, :])
+        junction_dict["3D_branch1_length_star"] = junction_dict["3D_branch1_length"] / junction_dict["3D_L_char"]
         junction_dict["3D_branch1_inlet_area"] = area[branch1_inlet_ind]
         junction_dict["3D_branch1_outlet_area"] = area[branch1_outlet_ind]
         junction_dict["3D_branch1_inlet_tangent"] = direction[branch1_inlet_ind,:]
@@ -192,6 +197,7 @@ def add_geometry_values(junction_dict_master, tree_name, flow_mag, time_step):
         assert (np.linalg.norm(points[branch2_inlet_ind, :] - points[junc_outlet_inds[1], :]) < 1e-2), "Inlet point of branch 1 is not the same as outlet point of junction."
         junction_dict["3D_branch2_id"] = branch2_id
         junction_dict["3D_branch2_length"] = np.linalg.norm(points[branch2_outlet_ind, :] - points[branch2_inlet_ind, :])
+        junction_dict["3D_branch2_length_star"] = junction_dict["3D_branch2_length"] / junction_dict["3D_L_char"]
         junction_dict["3D_branch2_inlet_area"] = area[branch2_inlet_ind]
         junction_dict["3D_branch2_outlet_area"] = area[branch2_outlet_ind]
         junction_dict["3D_branch2_inlet_tangent"] = direction[branch2_inlet_ind,:]
@@ -233,6 +239,7 @@ def add_3D_resistance(junction_dict_master, tree_name, flow_mag_list, time_step)
         
         junction_dict["3D_daughter1_flows"] = copy.copy(daughter1_flows)
         junction_dict["3D_daughter2_flows"] = copy.copy(daughter2_flows)
+        junction_dict["3D_inlet_flows"] = [daughter1_flow + daughter2_flow for daughter1_flow, daughter2_flow in zip(daughter1_flows, daughter2_flows)]
 
         junction_dict["3D_daughter1_dPs"] = copy.copy(daughter1_dPs)
         junction_dict["3D_daughter2_dPs"] = copy.copy(daughter2_dPs)
@@ -242,6 +249,7 @@ def add_3D_resistance(junction_dict_master, tree_name, flow_mag_list, time_step)
         
         Q_star1 = np.asarray(daughter1_flow_stars).reshape(-1,)
         Q_star2 = np.asarray(daughter2_flow_stars).reshape(-1,)
+        Q_star_inlet = Q_star1 + Q_star2
 
         daughter1_dP_stars = [daughter1_dP/(1.06 * U_char**2) for daughter1_dP in daughter1_dPs]
         daughter2_dP_stars = [daughter2_dP/(1.06 * U_char**2) for daughter2_dP in daughter2_dPs]
@@ -265,17 +273,17 @@ def add_3D_resistance(junction_dict_master, tree_name, flow_mag_list, time_step)
         A_mat = np.zeros((2*num_flows, num_coefs))
 
         # Daughter 1 flows
-        A_mat[0:num_flows,0] = Q1
-        A_mat[num_flows:2*num_flows,2] = Q2
-        A_mat_star[0:num_flows,0] = Q_star1
-        A_mat_star[num_flows:2*num_flows,2] = Q_star2
+        A_mat[0:num_flows,0] = Q_inlet
+        A_mat[num_flows:2*num_flows,2] = Q_inlet
+        A_mat_star[0:num_flows,0] = Q_star_inlet
+        A_mat_star[num_flows:2*num_flows,2] = Q_star_inlet
 
         quadratic_resistors = True
         if quadratic_resistors:
-            A_mat[0:num_flows,1] = np.square(Q1)
-            A_mat[num_flows:2*num_flows,3] = np.square(Q2)
-            A_mat_star[0:num_flows,1] = np.square(Q_star1)
-            A_mat_star[num_flows:2*num_flows,3] = np.square(Q_star2)
+            A_mat[0:num_flows,1] = np.square(Q_inlet)
+            A_mat[num_flows:2*num_flows,3] = np.square(Q_inlet)
+            A_mat_star[0:num_flows,1] = np.square(Q_star_inlet)
+            A_mat_star[num_flows:2*num_flows,3] = np.square(Q_star_inlet)
 
         # Solve
         coefs_star, residuals, t, q = np.linalg.lstsq(A_mat_star, dP_vec_star, rcond=None)
@@ -293,9 +301,7 @@ def add_3D_resistance(junction_dict_master, tree_name, flow_mag_list, time_step)
         coefs, residuals, t, q = np.linalg.lstsq(A_mat, dP_vec, rcond=None)
         #pdb.set_trace()
         residuals = dP_vec - A_mat @ coefs
-        print(f"Residuals: {np.linalg.norm(residuals/dP_vec)}")
-        # if np.linalg.norm(residuals/dP_vec) > 1:
-        #     raise ValueError(f"Residuals are too large: {np.linalg.norm(residuals/dP_vec)}")
+        # print(f"Residuals: {np.linalg.norm(residuals/dP_vec)}")
 
         R_lin1         = coefs[0]
         R_quad1        = coefs[1]
@@ -313,18 +319,38 @@ def add_3D_resistance(junction_dict_master, tree_name, flow_mag_list, time_step)
         assert abs(junction_dict["3D_daughter2_R_lin"] - junction_dict["3D_daughter2_R_lin_star"]*1.06*U_char/A_char) < 0.1; "Daughter 2 linear resistances do not match."
         assert abs(junction_dict["3D_daughter1_R_quad"] - junction_dict["3D_daughter1_R_quad_star"]*1.06/A_char**2) < 0.1; "Daughter 1 quadratic resistances do not match."
         assert abs(junction_dict["3D_daughter2_R_quad"] - junction_dict["3D_daughter2_R_quad_star"]*1.06/A_char**2) < 0.1; "Daughter 2 quadratic resistances do not match."
-   
 
+    return
+
+def add_3D_outlet_resistance(junction_dict_master, tree_name, flow_mag_list, time_step):
+
+    for junction_name, junction_dict in junction_dict_master.items():
+
+        junction_dict["3D_outlet1_boundary_resistances"] = []
+        if junction_dict["0D_aux_termination"] == "resistance":
+            for flow_mag in flow_mag_list:
+                junction_dict["3D_outlet1_boundary_resistances"].append(
+                    junction_dict[f"3D_branch1_outlet_pressure_fm_{flow_mag}_ts_{time_step}"] /
+                    junction_dict[f"3D_branch1_outlet_flow_fm_{flow_mag}_ts_{time_step}"])
+                
+        junction_dict["3D_outlet2_boundary_resistances"] = []        
+        if junction_dict["0D_aux_termination"] == "resistance":
+            for flow_mag in flow_mag_list:
+                junction_dict["3D_outlet2_boundary_resistances"].append(
+                    junction_dict[f"3D_branch2_outlet_pressure_fm_{flow_mag}_ts_{time_step}"] /
+                    junction_dict[f"3D_branch2_outlet_flow_fm_{flow_mag}_ts_{time_step}"])
+                
     return
 
 def add_0D_resistance(junction_dict_master, tree_name):
     for junction_name, junction_dict in junction_dict_master.items():
-        # anatomy = "ideal_fix_areas"; set_type = "random"; scaling_dict = load_dict(f"data/scaling_dictionaries/{anatomy}_{set_type}_scaling_dict")
-        # model_name = "ideal_fix_areas_ng_1768_nl_2_lw_40_ne_1000_bs_70_dr_0.9_model"
-        anatomy = "tree_20_res2"; set_type = "dict"; scaling_dict = load_dict(f"data/scaling_dictionaries/{anatomy}_{set_type}_scaling_dict")
-        #model_name ="tree_20_ng_342_nl_2_lw_40_ne_1000_bs_70_dr_0.9_model"  
-        #model_name = "rand_res_ng_2816_nl_2_lw_40_ne_1000_bs_70_dr_0.9_model"
-        model_name = "tree_20_res2_ng_342_nl_2_lw_40_ne_1000_bs_70_dr_0.9_model"
+
+        anatomy = "tree_20"; 
+        #set_type = "random" 
+        set_type = "combined" #"dict_res_fs_ext"; 
+        scaling_dict = load_dict(f"data/scaling_dictionaries/{anatomy}_{set_type}_scaling_dict")
+        #model_name = "tree_20_ng_304_nl_3_lw_400_ne_2500_bs_20_dr_0.95_model" #
+        model_name = "tree_20_ng_280_nl_3_lw_400_ne_2500_bs_20_dr_0.95_model"
         nn_model = dill_load(f"results/models/{anatomy}/{model_name}")
         
         A_char = junction_dict["0D_inlet_area"]; L_char = np.sqrt(A_char/np.pi)
@@ -341,16 +367,23 @@ def add_0D_resistance(junction_dict_master, tree_name):
         daughter2_angle = get_angle_diff(np.asarray(junction_dict["0D_inlet_tangent"]), np.asarray(junction_dict["0D_daughter2_tangent"])); daughter2_angle = check_out_of_dist(daughter2_angle, "daughter2_angle", scaling_dict)
         daughter1_length = junction_dict["0D_length1"]
         daughter1_length_star = daughter1_length/L_char; daughter1_length_star_trim = check_out_of_dist(daughter1_length_star, "daughter1_length_star", scaling_dict)
+        
         junction_dict["0D_length1_star"] = daughter1_length_star
         daughter2_length = junction_dict["0D_length2"]
         junction_dict["0D_length2_star"] = daughter2_length/L_char
         daughter2_length_star = daughter2_length/L_char; daughter2_length_star_trim = check_out_of_dist(daughter2_length_star, "daughter2_length_star", scaling_dict)
-        
+        print(f"Length star 1: {daughter1_length_star_trim} Length star 2: {daughter2_length_star_trim}")
+
         length_add1 = max([daughter1_length - L_char * scaling_dict["daughter1_length_star"][3], 0])
         junction_dict["0D_length_add1"] = length_add1
         length_add2 = max([daughter2_length - L_char * scaling_dict["daughter2_length_star"][3], 0])
         junction_dict["0D_length_add2"] = length_add2
+        #pdb.set_trace()
         junction_dict["max_length"] = scaling_dict["daughter1_length_star"][3] * L_char
+
+        daughter1_flow_split = junction_dict["0D_geo_flow_split"]/(1+ junction_dict["0D_geo_flow_split"])
+        daughter2_flow_split = 1 - daughter1_flow_split
+        #pdb.set_trace()
 
         assert scaling_dict["daughter1_length_star"][3] == scaling_dict["daughter2_length_star"][3]; "Length scaling factors do not match."
         res_add1 = length_add1 * 8 * np.pi * 0.04 / (junction_dict["0D_outlet1_area"]**2)
@@ -358,15 +391,18 @@ def add_0D_resistance(junction_dict_master, tree_name):
         res_add2 = length_add2 * 8 * np.pi * 0.04 / (junction_dict["0D_outlet2_area"]**2)
         junction_dict["0D_res_add2"] = res_add2
         # print(f"Length star 1: {daughter1_length_star} Length star 2: {daughter2_length_star}")
-
+        # FIX LAST INPUT ARG
         input_tens1 = jnp.asarray([scale_jax(scaling_dict, jnp.asarray(daughter1_area_ratio, dtype=jnp.float32), "daughter1_area_ratio"),
-                                scale_jax(scaling_dict, jnp.asarray(daughter2_area_ratio, dtype=jnp.float32), "daughter2_area_ratio"),
-                                scale_jax(scaling_dict, jnp.asarray(daughter1_area_ratio_inv2, dtype=jnp.float32), "daughter1_area_ratio_inv2"),
-                                scale_jax(scaling_dict, jnp.asarray(daughter2_area_ratio_inv2, dtype=jnp.float32), "daughter2_area_ratio_inv2"),
-                                scale_jax(scaling_dict, jnp.asarray(daughter1_angle, dtype=jnp.float32), "daughter1_angle"),
-                                scale_jax(scaling_dict, jnp.asarray(daughter2_angle, dtype=jnp.float32), "daughter2_angle"),
-                                scale_jax(scaling_dict, jnp.asarray(daughter1_length_star_trim, dtype=jnp.float32), "daughter1_length_star"),
-                                    ]).reshape(1,-1)
+                        scale_jax(scaling_dict, jnp.asarray(daughter2_area_ratio, dtype=jnp.float32), "daughter2_area_ratio"),
+                        scale_jax(scaling_dict, jnp.asarray(daughter1_area_ratio_inv2, dtype=jnp.float32), "daughter1_area_ratio_inv2"),
+                        scale_jax(scaling_dict, jnp.asarray(daughter2_area_ratio_inv2, dtype=jnp.float32), "daughter2_area_ratio_inv2"),
+                        scale_jax(scaling_dict, jnp.asarray(daughter1_angle, dtype=jnp.float32), "daughter1_angle"),
+                        scale_jax(scaling_dict, jnp.asarray(daughter2_angle, dtype=jnp.float32), "daughter2_angle"),
+                        scale_jax(scaling_dict, jnp.asarray(daughter1_length_star_trim, dtype=jnp.float32), "daughter1_length_star"),
+                        scale_jax(scaling_dict, jnp.asarray(daughter2_length_star_trim, dtype=jnp.float32), "daughter2_length_star"),
+                        scale_jax(scaling_dict, jnp.asarray(daughter1_flow_split, dtype=jnp.float32), "daughter1_flow_ratio"),
+                        scale_jax(scaling_dict, jnp.asarray(daughter1_flow_split**2, dtype=jnp.float32), "daughter1_flow_ratio_sq"),
+                            ]).reshape(1,-1)
         input_tens2 = jnp.asarray([scale_jax(scaling_dict, jnp.asarray(daughter2_area_ratio, dtype=jnp.float32), "daughter1_area_ratio"),
                         scale_jax(scaling_dict, jnp.asarray(daughter1_area_ratio, dtype=jnp.float32), "daughter2_area_ratio"),
                         scale_jax(scaling_dict, jnp.asarray(daughter2_area_ratio_inv2, dtype=jnp.float32), "daughter1_area_ratio_inv2"),
@@ -374,6 +410,9 @@ def add_0D_resistance(junction_dict_master, tree_name):
                         scale_jax(scaling_dict, jnp.asarray(daughter2_angle, dtype=jnp.float32), "daughter1_angle"),
                         scale_jax(scaling_dict, jnp.asarray(daughter1_angle, dtype=jnp.float32), "daughter2_angle"),
                         scale_jax(scaling_dict, jnp.asarray(daughter2_length_star_trim, dtype=jnp.float32), "daughter1_length_star"),
+                        scale_jax(scaling_dict, jnp.asarray(daughter1_length_star_trim, dtype=jnp.float32), "daughter2_length_star"),
+                        scale_jax(scaling_dict, jnp.asarray(daughter2_flow_split, dtype=jnp.float32), "daughter2_flow_ratio"),
+                        scale_jax(scaling_dict, jnp.asarray(daughter2_flow_split**2, dtype=jnp.float32), "daughter2_flow_ratio_sq"),
                             ]).reshape(1,-1)
         # print(f"Input tensor 2 {junction_name}: {input_tens2}")
 
@@ -402,13 +441,13 @@ def add_0D_resistance(junction_dict_master, tree_name):
         #pdb.set_trace()
     return
 
-def add_3D_isol_values(junction_dict_master, tree_name):
+def add_3D_isol_values(junction_dict_master, tree_name, isol_set_name):
     #isol_junc_dict_master = load_dict(f"data/data_dicts/{tree_name}_res2_dict_synthetic_data_dict")
-    isol_junc_dict_master = load_dict(f"data/data_dicts/{tree_name}_dict_flat_dim_synthetic_data_dict")
+    isol_junc_dict_master = load_dict(f"data/data_dicts/{tree_name}_{isol_set_name}_synthetic_data_dict")
     J_to_CCO_dict = {}
     for isol_junc_name in isol_junc_dict_master.keys():
         try:
-            geo_name = load_dict(f"data/synthetic_junctions/{tree_name}/dict_flat_dim/{isol_junc_name}/geo_params_dict")["geo_name"]
+            geo_name = load_dict(f"data/synthetic_junctions/{tree_name}/{isol_set_name}/{isol_junc_name}/geo_params_dict")["geo_name"]
             J_to_CCO_dict[geo_name] = isol_junc_name
         except:
             print(f"Junction {isol_junc_name} does not have a geo name.")
@@ -433,18 +472,16 @@ def add_3D_isol_values(junction_dict_master, tree_name):
                                 isol_junc_dict_master[isol_junc][offset_name]["daughter2_angle"]])
             diff_list.append(np.linalg.norm((j_geo - cco_geo)/j_geo))
         diff_list = np.asarray(diff_list)
-        #q
-        #pdb.set_trace()
-        #geo_params = load_dict(f"data/synthetic_junctions/{tree_name}/dict_res/")
+
         try:
-            junction_dict["isol_junc_name"] = J_to_CCO_dict[junction_name]# f"CCO_0{int(junction_name[1:]):02d}" #isol_junc_list[np.argmin(diff_list)]
+            junction_dict[f"isol_{isol_set_name}_junc_name"] = J_to_CCO_dict[junction_name]# f"CCO_0{int(junction_name[1:]):02d}" #isol_junc_list[np.argmin(diff_list)]
         except:
             continue
-        junction_dict["isol_junc_dict"] = isol_junc_dict_master[junction_dict["isol_junc_name"]]
+        junction_dict[f"isol_{isol_set_name}_junc_dict"] = isol_junc_dict_master[junction_dict[f"isol_{isol_set_name}_junc_name"]]
         
     # for junction_name, junction_dict in junction_dict_master.items():
         # Get the inlet and outlet areas
-        offset_dict = isol_junc_dict_master[junction_dict["isol_junc_name"]] # isol_junc_dict_master[f"CCO_{junction_dict["junction_id"]:03d}"]
+        offset_dict = isol_junc_dict_master[junction_dict[f"isol_{isol_set_name}_junc_name"]] # isol_junc_dict_master[f"CCO_{junction_dict["junction_id"]:03d}"]
         if len(list(offset_dict.keys())) == 0:
             if junction_name[0]=="J": 
                 print(f"Junction {junction_name} has no isolated geometry.");# 
@@ -465,84 +502,105 @@ def add_3D_isol_values(junction_dict_master, tree_name):
         best_offset2 = list(offset_dict.keys())[
             np.argmin(np.abs(np.array(length2_list) - junction_dict["0D_length2_star"]))]
 
-        junction_dict["isol_length1"] = offset_dict[best_offset1]["daughter1_length"]
-        junction_dict["isol_length2"] = offset_dict[best_offset2]["daughter2_length"]
+        junction_dict[f"isol_{isol_set_name}_length1"] = offset_dict[best_offset1]["daughter1_length"]
+        junction_dict[f"isol_{isol_set_name}_length2"] = offset_dict[best_offset2]["daughter2_length"]
 
-        junction_dict["isol_inlet_area"] = offset_dict[best_offset1]["A_char"]
-        junction_dict["isol_daughter1_area"] = offset_dict[best_offset1]["daughter1_area"]
-        junction_dict["isol_daughter2_area"] = offset_dict[best_offset2]["daughter2_area"]
+        junction_dict[f"isol_{isol_set_name}_inlet_area"] = offset_dict[best_offset1]["A_char"]
+        junction_dict[f"isol_{isol_set_name}_daughter1_area"] = offset_dict[best_offset1]["daughter1_area"]
+        junction_dict[f"isol_{isol_set_name}_daughter2_area"] = offset_dict[best_offset2]["daughter2_area"]
 
-        junction_dict["isol_daughter1_area_ratio"] = offset_dict[best_offset1]["daughter1_area_ratio"]
-        junction_dict["isol_daughter2_area_ratio"] = offset_dict[best_offset2]["daughter2_area_ratio"]
+        junction_dict[f"isol_{isol_set_name}_daughter1_area_ratio"] = offset_dict[best_offset1]["daughter1_area_ratio"]
+        junction_dict[f"isol_{isol_set_name}_daughter2_area_ratio"] = offset_dict[best_offset2]["daughter2_area_ratio"]
+        junction_dict[f"isol_{isol_set_name}_daughter1_angle"] = offset_dict[best_offset1]["daughter1_angle"]
+        junction_dict[f"isol_{isol_set_name}_daughter2_angle"] = offset_dict[best_offset2]["daughter2_angle"]
 
-        junction_dict["isol_daughter1_angle"] = offset_dict[best_offset1]["daughter1_angle"]
-        junction_dict["isol_daughter2_angle"] = offset_dict[best_offset2]["daughter2_angle"]
+        junction_dict[f"isol_{isol_set_name}_L_char"] = offset_dict[best_offset1]["L_char"]
+        junction_dict[f"isol_{isol_set_name}_daughter1_length"] = offset_dict[best_offset1]["daughter1_length"]
+        junction_dict[f"isol_{isol_set_name}_daughter2_length"] = offset_dict[best_offset2]["daughter2_length"]
+        
+        junction_dict[f"isol_{isol_set_name}_daughter1_length_star"] = offset_dict[best_offset1]["daughter1_length"]/offset_dict[best_offset1]["L_char"]
+        junction_dict[f"isol_{isol_set_name}_daughter1_length_add_star"] = max([junction_dict["0D_length1_star"]-junction_dict[f"isol_{isol_set_name}_daughter1_length_star"],0])
+        junction_dict[f"isol_{isol_set_name}_daughter1_length_add"] = junction_dict[f"isol_{isol_set_name}_daughter1_length_add_star"] * junction_dict["0D_L_char"]
+        if junction_dict[f"isol_{isol_set_name}_daughter1_length_add"] > 0:
+            print(f"Junction {junction_name} has daughter1 length add: {junction_dict[f'isol_{isol_set_name}_daughter1_length_add_star']}")
 
-        junction_dict["isol_L_char"] = offset_dict[best_offset1]["L_char"]
-        junction_dict["isol_daughter1_length"] = offset_dict[best_offset1]["daughter1_length"]
-        junction_dict["isol_daughter1_length_star"] = offset_dict[best_offset1]["daughter1_length"]/offset_dict[best_offset1]["L_char"]
-        junction_dict["isol_daughter1_length_add_star"] = max([junction_dict["0D_length1_star"]-junction_dict["isol_daughter1_length_star"],0])
-        junction_dict["isol_daughter1_length_add"] = junction_dict["isol_daughter1_length_add_star"] * junction_dict["0D_L_char"]
-        if junction_dict["isol_daughter1_length_add"] > 0:
-            print(f"Junction {junction_name} has daughter1 length add: {junction_dict['isol_daughter1_length_add_star']}")
-        junction_dict["isol_daughter2_length"] = offset_dict[best_offset2]["daughter2_length"]
-        junction_dict["isol_daughter2_length_star"] = offset_dict[best_offset2]["daughter2_length"]/offset_dict[best_offset2]["L_char"]
-        junction_dict["isol_daughter2_length_add_star"] = max([junction_dict["0D_length2_star"]-junction_dict["isol_daughter2_length_star"],0])
-        junction_dict["isol_daughter2_length_add"] = junction_dict["isol_daughter2_length_add_star"] * junction_dict["0D_L_char"]
-        if junction_dict["isol_daughter2_length_add"] > 0:
-            print(f"Junction {junction_name} has daughter2 length add: {junction_dict['isol_daughter2_length_add_star']}")
+        junction_dict[f"isol_{isol_set_name}_daughter2_length"] = offset_dict[best_offset2]["daughter2_length"]
+        junction_dict[f"isol_{isol_set_name}_daughter2_length_star"] = offset_dict[best_offset2]["daughter2_length"]/offset_dict[best_offset2]["L_char"]
+        junction_dict[f"isol_{isol_set_name}_daughter2_length_add_star"] = max([junction_dict["0D_length2_star"]-junction_dict[f"isol_{isol_set_name}_daughter2_length_star"],0])
+        junction_dict[f"isol_{isol_set_name}_daughter2_length_add"] = junction_dict[f"isol_{isol_set_name}_daughter2_length_add_star"] * junction_dict["0D_L_char"]
+        if junction_dict[f"isol_{isol_set_name}_daughter2_length_add"] > 0:
+            print(f"Junction {junction_name} has daughter2 length add: {junction_dict[f'isol_{isol_set_name}_daughter2_length_add_star']}")
 
-        junction_dict["isol_daughter1_flows"] = offset_dict[best_offset1]["daughter1_flow"]
-        junction_dict["isol_daughter2_flows"] = offset_dict[best_offset2]["daughter2_flow"]
-        junction_dict["isol_flow_splits"] = [junction_dict["isol_daughter1_flows"][i]/junction_dict["isol_daughter2_flows"][i] for i in range(len(junction_dict["isol_daughter1_flows"]))]
+        junction_dict[f"isol_{isol_set_name}_daughter1_flows"] = offset_dict[best_offset1]["daughter1_flow"]
+        junction_dict[f"isol_{isol_set_name}_daughter2_flows"] = offset_dict[best_offset2]["daughter2_flow"]
+        junction_dict[f"isol_{isol_set_name}_inlet_flows"] = [junction_dict[f"isol_{isol_set_name}_daughter1_flows"][i] + junction_dict[f"isol_{isol_set_name}_daughter2_flows"][i] for i in range(len(junction_dict[f"isol_{isol_set_name}_daughter1_flows"]))]
+        junction_dict[f"isol_{isol_set_name}_flow_splits"] = [junction_dict[f"isol_{isol_set_name}_daughter1_flows"][i]/junction_dict[f"isol_{isol_set_name}_daughter2_flows"][i] for i in range(len(junction_dict[f"isol_{isol_set_name}_daughter1_flows"]))]
         #pdb.set_trace()
 
-        junction_dict["isol_daughter1_flow_star"] = offset_dict[best_offset1]["daughter1_flow_star"]
-        junction_dict["isol_daughter2_flow_star"] = offset_dict[best_offset2]["daughter2_flow_star"]
+        # junction_dict[f"isol_{isol_set_name}_daughter1_flow_star"] = offset_dict[best_offset1]["daughter1_flow_star"]
+        junction_dict[f"isol_{isol_set_name}_daughter1_flow_star"] = offset_dict[best_offset2]["daughter1_flow_star"]
+        junction_dict[f"isol_{isol_set_name}_daughter2_flow_star"] = offset_dict[best_offset2]["daughter2_flow_star"]
 
-        junction_dict["isol_daughter1_dPs"] = offset_dict[best_offset1]["daughter1_dP"]
-        junction_dict["isol_daughter2_dPs"] = offset_dict[best_offset2]["daughter2_dP"]
+        junction_dict[f"isol_{isol_set_name}_daughter1_dPs"] = offset_dict[best_offset1]["daughter1_dP"]
+        junction_dict[f"isol_{isol_set_name}_daughter2_dPs"] = offset_dict[best_offset2]["daughter2_dP"]
 
-        junction_dict["isol_daughter1_dP_star"] = offset_dict[best_offset1]["daughter1_dP_star"]
-        junction_dict["isol_daughter2_dP_star"] = offset_dict[best_offset2]["daughter2_dP_star"]
+        junction_dict[f"isol_{isol_set_name}_daughter1_dP_star"] = offset_dict[best_offset1]["daughter1_dP_star"]
+        junction_dict[f"isol_{isol_set_name}_daughter2_dP_star"] = offset_dict[best_offset2]["daughter2_dP_star"]
 
-        junction_dict["isol_daughter1_flow_redim"] = [flow_star * junction_dict["3D_junc_inlet_area"] * 
-                                                      junction_dict["3D_U_char"] 
-                                                      for flow_star in junction_dict["isol_daughter1_flow_star"]]
-        
-        junction_dict["isol_daughter2_flow_redim"] = [flow_star * junction_dict["3D_junc_inlet_area"] *
+        # junction_dict[f"isol_{isol_set_name}_daughter1_flow_redim"] = [flow_star * junction_dict["3D_junc_inlet_area"] * 
+        #                                               junction_dict["3D_U_char"] 
+        #                                               for flow_star in junction_dict[f"isol_{isol_set_name}_daughter1_flow_star"]]
+        re_char = 4500
+        junction_dict[f"isol_{isol_set_name}_U_char"] = re_char * 0.04/(1.06 * 2*np.sqrt(junction_dict[f"isol_{isol_set_name}_inlet_area"]/np.pi))
+        junction_dict[f"isol_{isol_set_name}_inlet_velocity"] = [flow / junction_dict[f"isol_{isol_set_name}_inlet_area"] for flow in junction_dict[f"isol_{isol_set_name}_inlet_flows"]]
+        junction_dict[f"isol_{isol_set_name}_inlet_vel_star"] = [vel/junction_dict[f"isol_{isol_set_name}_U_char"] for vel in junction_dict[f"isol_{isol_set_name}_inlet_velocity"]]
+        junction_dict[f"isol_{isol_set_name}_redim_inlet_velocity"] = [vel_star*junction_dict["3D_U_char"] for vel_star in junction_dict[f"isol_{isol_set_name}_inlet_vel_star"]]
+        junction_dict[f"isol_{isol_set_name}_inlet_flow_redim"] = [vel * junction_dict["3D_junc_inlet_area"] for vel in junction_dict[f"isol_{isol_set_name}_redim_inlet_velocity"]]
+
+        junction_dict[f"isol_{isol_set_name}_daughter1_flow_redim"] = [flow_star * junction_dict["3D_junc_inlet_area"] *
                                                         junction_dict["3D_U_char"]
-                                                        for flow_star in junction_dict["isol_daughter2_flow_star"]]
-        junction_dict["isol_daughter1_dP_redim"] = [dP_star * 1.06 * junction_dict["3D_U_char"]**2
-                                                        for dP_star in junction_dict["isol_daughter1_dP_star"]]
-        junction_dict["isol_daughter2_dP_redim"] = [dP_star * 1.06 * junction_dict["3D_U_char"]**2
-                                                        for dP_star in junction_dict["isol_daughter2_dP_star"]]
+                                                        for flow_star in junction_dict[f"isol_{isol_set_name}_daughter1_flow_star"]]
+        junction_dict[f"isol_{isol_set_name}_daughter2_flow_redim"] = [flow_star * junction_dict["3D_junc_inlet_area"] *
+                                                        junction_dict["3D_U_char"]
+                                                        for flow_star in junction_dict[f"isol_{isol_set_name}_daughter2_flow_star"]]
+        junction_dict["3D_inlet_velocity"] = [flow / junction_dict["3D_junc_inlet_area"] for flow in junction_dict["3D_inlet_flows"]]
+        junction_dict[f"isol_{isol_set_name}_daughter1_dP_star"] = [junction_dict[f"isol_{isol_set_name}_daughter1_dPs"][i]/ (1.06 * junction_dict[f"isol_{isol_set_name}_U_char"]**2) for i in range(len(junction_dict[f"isol_{isol_set_name}_daughter1_dPs"]))]
+        junction_dict[f"isol_{isol_set_name}_daughter2_dP_star"] = [junction_dict[f"isol_{isol_set_name}_daughter2_dPs"][i]/ (1.06 * junction_dict[f"isol_{isol_set_name}_U_char"]**2) for i in range(len(junction_dict[f"isol_{isol_set_name}_daughter2_dPs"]))]
         
-        junction_dict["isol_daughter1_res_add"] = 8 * np.pi * 0.04 * junction_dict["isol_daughter1_length_add"]*junction_dict["3D_branch1_outlet_area"]**-2
-        junction_dict["isol_daughter2_res_add"] = 8 * np.pi * 0.04 * junction_dict["isol_daughter2_length_add"]*junction_dict["3D_branch2_outlet_area"]**-2
+        junction_dict[f"isol_{isol_set_name}_daughter1_dP_redim"] = [junction_dict[f"isol_{isol_set_name}_daughter1_dP_star"][i] * (1.06 * junction_dict["3D_U_char"]**2) for i in range(len(junction_dict[f"isol_{isol_set_name}_daughter1_dPs"]))]
+        junction_dict[f"isol_{isol_set_name}_daughter2_dP_redim"] = [junction_dict[f"isol_{isol_set_name}_daughter2_dP_star"][i] * (1.06 * junction_dict["3D_U_char"]**2) for i in range(len(junction_dict[f"isol_{isol_set_name}_daughter2_dPs"]))]
 
-        junction_dict["isol_daughter1_dP_redim_len_add"] = [junction_dict["isol_daughter1_dP_redim"][k] +
-                                                junction_dict["isol_daughter1_flow_redim"][k] * junction_dict["isol_daughter1_res_add"]
-                                                for k in range(len(junction_dict["isol_daughter1_flow_redim"]))]
+        #junction_dict[f"isol_{isol_set_name}_daughter1_dP_redim"] = #[dP_star * 1.06 * junction_dict["3D_U_char"]**2 for dP_star in junction_dict[f"isol_{isol_set_name}_daughter1_dP_star"]]
+        # junction_dict[f"isol_{isol_set_name}_daughter1_dP_redim"] = [dP_star * 1.06 * junction_dict["3D_U_char"]**2
+        #                                                 for dP_star in junction_dict[f"isol_{isol_set_name}_daughter1_dP_star"]]
+        # junction_dict[f"isol_{isol_set_name}_daughter2_dP_redim"] = [dP_star * 1.06 * junction_dict["3D_U_char"]**2
+        #                                                  for dP_star in junction_dict[f"isol_{isol_set_name}_daughter2_dP_star"]]
         
-        junction_dict["isol_daughter2_dP_redim_len_add"] = [junction_dict["isol_daughter2_dP_redim"][k] +
-                                                junction_dict["isol_daughter2_flow_redim"][k] * junction_dict["isol_daughter2_res_add"]
-                                                for k in range(len(junction_dict["isol_daughter2_flow_redim"]))]
-        
-        junction_dict["isol_daughter1_R_lin_star"] = offset_dict[best_offset1]["daughter1_R_lin_star"]
-        junction_dict["isol_daughter2_R_lin_star"] = offset_dict[best_offset2]["daughter2_R_lin_star"]
-        junction_dict["isol_daughter1_R_quad_star"] = offset_dict[best_offset1]["daughter1_R_quad_star"]
-        junction_dict["isol_daughter2_R_quad_star"] = offset_dict[best_offset2]["daughter2_R_quad_star"]
+        junction_dict[f"isol_{isol_set_name}_daughter1_res_add"] = 8 * np.pi * 0.04 * junction_dict[f"isol_{isol_set_name}_daughter1_length_add"]*junction_dict["3D_branch1_outlet_area"]**-2
+        junction_dict[f"isol_{isol_set_name}_daughter2_res_add"] = 8 * np.pi * 0.04 * junction_dict[f"isol_{isol_set_name}_daughter2_length_add"]*junction_dict["3D_branch2_outlet_area"]**-2
 
-        junction_dict["isol_daughter1_R_lin_redim_base"] = offset_dict[best_offset1]["daughter1_R_lin_star"]*1.06*junction_dict["3D_U_char"] /junction_dict["3D_junc_inlet_area"]
-        junction_dict["isol_daughter2_R_lin_redim_base"] = offset_dict[best_offset2]["daughter2_R_lin_star"]*1.06*junction_dict["3D_U_char"] /junction_dict["3D_junc_inlet_area"]
-        junction_dict["isol_daughter1_R_lin_redim"] = junction_dict["isol_daughter1_R_lin_redim_base"] + junction_dict["isol_daughter1_res_add"]
-        junction_dict["isol_daughter2_R_lin_redim"] = junction_dict["isol_daughter2_R_lin_redim_base"] + junction_dict["isol_daughter2_res_add"]
-        junction_dict["isol_daughter1_R_quad_redim"] = offset_dict[best_offset1]["daughter1_R_quad_star"]*1.06/junction_dict["3D_junc_inlet_area"]**2
-        junction_dict["isol_daughter2_R_quad_redim"] = offset_dict[best_offset2]["daughter2_R_quad_star"]*1.06/junction_dict["3D_junc_inlet_area"]**2
+        junction_dict[f"isol_{isol_set_name}_daughter1_dP_redim_len_add"] = [junction_dict[f"isol_{isol_set_name}_daughter1_dP_redim"][k] +
+                                                1*junction_dict[f"isol_{isol_set_name}_daughter1_flow_redim"][k] * junction_dict[f"isol_{isol_set_name}_daughter1_res_add"]
+                                                for k in range(len(junction_dict[f"isol_{isol_set_name}_daughter1_flow_redim"]))]
+        
+        junction_dict[f"isol_{isol_set_name}_daughter2_dP_redim_len_add"] = [junction_dict[f"isol_{isol_set_name}_daughter2_dP_redim"][k] +
+                                                1*junction_dict[f"isol_{isol_set_name}_daughter2_flow_redim"][k] * junction_dict[f"isol_{isol_set_name}_daughter2_res_add"]
+                                                for k in range(len(junction_dict[f"isol_{isol_set_name}_daughter2_flow_redim"]))]
+        
+        junction_dict[f"isol_{isol_set_name}_daughter1_R_lin_star"] = offset_dict[best_offset1]["daughter1_R_lin_star"]
+        junction_dict[f"isol_{isol_set_name}_daughter2_R_lin_star"] = offset_dict[best_offset2]["daughter2_R_lin_star"]
+        junction_dict[f"isol_{isol_set_name}_daughter1_R_quad_star"] = offset_dict[best_offset1]["daughter1_R_quad_star"]
+        junction_dict[f"isol_{isol_set_name}_daughter2_R_quad_star"] = offset_dict[best_offset2]["daughter2_R_quad_star"]
+
+        junction_dict[f"isol_{isol_set_name}_daughter1_R_lin_redim_base"] = offset_dict[best_offset1]["daughter1_R_lin_star"]*1.06*junction_dict["3D_U_char"] /junction_dict["3D_junc_inlet_area"]
+        junction_dict[f"isol_{isol_set_name}_daughter2_R_lin_redim_base"] = offset_dict[best_offset2]["daughter2_R_lin_star"]*1.06*junction_dict["3D_U_char"] /junction_dict["3D_junc_inlet_area"]
+        junction_dict[f"isol_{isol_set_name}_daughter1_R_lin_redim"] = junction_dict[f"isol_{isol_set_name}_daughter1_R_lin_redim_base"] + junction_dict[f"isol_{isol_set_name}_daughter1_res_add"]
+        junction_dict[f"isol_{isol_set_name}_daughter2_R_lin_redim"] = junction_dict[f"isol_{isol_set_name}_daughter2_R_lin_redim_base"] + junction_dict[f"isol_{isol_set_name}_daughter2_res_add"]
+        junction_dict[f"isol_{isol_set_name}_daughter1_R_quad_redim"] = offset_dict[best_offset1]["daughter1_R_quad_star"]*1.06/junction_dict["3D_junc_inlet_area"]**2
+        junction_dict[f"isol_{isol_set_name}_daughter2_R_quad_redim"] = offset_dict[best_offset2]["daughter2_R_quad_star"]*1.06/junction_dict["3D_junc_inlet_area"]**2
 
         
-        # if junction_dict["isol_junc_name"] == "CCO_002":
+        # if junction_dict[f"isol_{isol_set_name}_junc_name"] == "CCO_002":
         #     pdb
 
         
@@ -623,15 +681,40 @@ def check_steady_state_convergence(junction_dict_master, tree_name, flow_mag_lis
                
     return True
 
-def make_pdfs(junction_dict_master, tree_name, flow_mag_list, time_step):
+def plot_flow_splits(junction_dict_master, tree_name, flow_mag_list, time_step):
+    plt.rcParams['font.size'] = 14
+    plt.clf()
+    for junction_name, junction_dict in junction_dict_master.items():
+        id = junction_dict["junction_id"]
+        fs = junction_dict["0D_geo_flow_split"]
+        if id == 0:
+            plt.scatter(id, 100*fs/(fs+1), marker="o", color="red", label="Predicted")
+        else:
+            plt.scatter(id, 100*fs/(fs+1), marker="o", color="red")
+        for i, flow_mag in enumerate(flow_mag_list):
+            fs = junction_dict[f"3D_flow_split_flow_fm_{flow_mag}_ts_{time_step}"][0]
+            if i == 0 and id ==0:
+                plt.scatter(id, 100*fs/(fs+1), facecolors='none', edgecolors = "blue", label = "3D Sim")
+            else:
+                plt.scatter(id, 100*fs/(fs+1), facecolors='none', edgecolors = "blue")
+    plt.xlabel("Junction ID")
+    plt.ylabel("% Flow through Daughter 1")
+    plt.ylim(0, 100)
+    plt.legend()
+    plt.savefig(f"trees/reports/flow_splits_{tree_name}.pdf", bbox_inches='tight')
+    return
+
+def make_pdfs(junction_dict_master, tree_name, flow_mag_list, time_step, isol_set_list):
+    plt.rcParams['font.size'] = 10
     for junction_name, junction_dict in junction_dict_master.items():
         # Create a PDF report for each junction
+        isol_set_name = isol_set_list[0]  # Assuming you want to use the first isol set for the report
         class PDF(FPDF):
             
             def header(self):
                 self.set_font("Times", "B", 12)
                 try:
-                    self.cell(0, 10, f"{tree_name} - Junction {junction_name} - {junction_dict["isol_junc_name"]}", 0, 1, "C")
+                    self.cell(0, 10, f"{tree_name} - Junction {junction_name} - {junction_dict[f"isol_{isol_set_name}_junc_name"]}", 0, 1, "C")
                 except:
                     self.cell(0, 10, f"{tree_name} - Junction {junction_name}", 0, 1, "C")
 
@@ -669,7 +752,7 @@ def make_pdfs(junction_dict_master, tree_name, flow_mag_list, time_step):
                 self.cell(cw2, 4, "Daughter 1 Linear Resistance ND", border = 0, ln = 0, align ="R"); 
                 self.cell(cw1, 4, f"{junction_dict["3D_daughter1_R_lin_star"]:.3f}", border = 0, ln = 0, align ="R")
                 try:
-                    self.cell(cw1, 4, f"{junction_dict["isol_daughter1_R_lin_star"]:.3f}", border = 0, ln = 0, align ="R")
+                    self.cell(cw1, 4, f"{junction_dict[f"isol_{isol_set_name}_daughter1_R_lin_star"]:.3f}", border = 0, ln = 0, align ="R")
                 except:
                     self.cell(cw1, 4, f"", border = 0, ln = 0, align ="R")
                 self.cell(cw1, 4, f"{junction_dict["0D_daughter1_R_lin_star"]:.3f}", border = 0, ln = 1, align ="R")
@@ -677,7 +760,7 @@ def make_pdfs(junction_dict_master, tree_name, flow_mag_list, time_step):
                 self.cell(cw2, 4, "Daughter 1 Linear Resistance", border = 0, ln = 0, align ="R", fill=True); 
                 self.cell(cw1, 4, f"{junction_dict["3D_daughter1_R_lin"]:.3f}", border = 0, ln = 0, align ="R", fill=True)
                 try:
-                    self.cell(cw1, 4, f"{junction_dict["isol_daughter1_R_lin_redim"]:.3f}", border = 0, ln = 0, align ="R", fill=True)
+                    self.cell(cw1, 4, f"{junction_dict[f"isol_{isol_set_name}_daughter1_R_lin_redim"]:.3f}", border = 0, ln = 0, align ="R", fill=True)
                 except:
                     self.cell(cw1, 4, f"", border = 0, ln = 0, align ="R", fill=True)
                 self.cell(cw1, 4, f"{junction_dict["0D_daughter1_R_lin_final"]:.3f}", border = 0, ln = 1, align ="R", fill=True)
@@ -685,7 +768,7 @@ def make_pdfs(junction_dict_master, tree_name, flow_mag_list, time_step):
                 self.cell(cw2, 4, "Daughter 1 Linear Resistance (Base)", border = 0, ln = 0, align ="R")
                 self.cell(cw1, 4, f"", border = 0, ln = 0, align ="R")
                 try:
-                    self.cell(cw1, 4, f"{junction_dict["isol_daughter1_R_lin_redim_base"]:.3f}", border = 0, ln = 0, align ="R")
+                    self.cell(cw1, 4, f"{junction_dict[f"isol_{isol_set_name}_daughter1_R_lin_redim_base"]:.3f}", border = 0, ln = 0, align ="R")
                 except:
                     self.cell(cw1, 4, f"", border = 0, ln = 0, align ="R")
                 self.cell(cw1, 4, f"{junction_dict["0D_daughter1_R_lin"]:.3f}", border = 0, ln = 1, align ="R")
@@ -693,7 +776,7 @@ def make_pdfs(junction_dict_master, tree_name, flow_mag_list, time_step):
                 self.cell(cw2, 4, "Daughter 1 Added Resistance", border = 0, ln = 0, align ="R")
                 self.cell(cw1, 4, f"", border = 0, ln = 0, align ="R")
                 try:
-                    self.cell(cw1, 4, f"{junction_dict["isol_daughter1_res_add"]:.3f}", border = 0, ln = 0, align ="R")
+                    self.cell(cw1, 4, f"{junction_dict[f"isol_{isol_set_name}_daughter1_res_add"]:.3f}", border = 0, ln = 0, align ="R")
                 except:
                     self.cell(cw1, 4, f"", border = 0, ln = 0, align ="R")
                 self.cell(cw1, 4, f"{junction_dict["0D_res_add1"]:.3f}", border = 0, ln = 1, align ="R")
@@ -701,7 +784,7 @@ def make_pdfs(junction_dict_master, tree_name, flow_mag_list, time_step):
                 self.cell(cw2, 4, "Daughter 1 Added Length", border = 0, ln = 0, align ="R")
                 self.cell(cw1, 4, f"", border = 0, ln = 0, align ="R")
                 try:
-                    self.cell(cw1, 4, f"{junction_dict["isol_daughter1_length_add"]:.3f}", border = 0, ln = 0, align ="R")
+                    self.cell(cw1, 4, f"{junction_dict[f"isol_{isol_set_name}_daughter1_length_add"]:.3f}", border = 0, ln = 0, align ="R")
                 except:
                     self.cell(cw1, 4, f"", border = 0, ln = 0, align ="R")
                 self.cell(cw1, 4, f"{junction_dict["0D_length_add1"]:.3f}", border = 0, ln = 1, align ="R")
@@ -710,7 +793,7 @@ def make_pdfs(junction_dict_master, tree_name, flow_mag_list, time_step):
                 self.cell(cw2, 4, "Daughter 2 Linear Resistance ND", border = 0, ln = 0, align ="R"); 
                 self.cell(cw1, 4, f"{junction_dict["3D_daughter2_R_lin_star"]:.3f}", border = 0, ln = 0, align ="R")
                 try:
-                    self.cell(cw1, 4, f"{junction_dict["isol_daughter2_R_lin_star"]:.3f}", border = 0, ln = 0, align ="R")
+                    self.cell(cw1, 4, f"{junction_dict[f"isol_{isol_set_name}_daughter2_R_lin_star"]:.3f}", border = 0, ln = 0, align ="R")
                 except:
                     self.cell(cw1, 4, f"", border = 0, ln = 0, align ="R")
                 self.cell(cw1, 4, f"{junction_dict["0D_daughter2_R_lin_star"]:.3f}", border = 0, ln = 1, align ="R")
@@ -718,7 +801,7 @@ def make_pdfs(junction_dict_master, tree_name, flow_mag_list, time_step):
                 self.cell(cw2, 4, "Daughter 2 Linear Resistance", border = 0, ln = 0, align ="R", fill=True)
                 self.cell(cw1, 4, f"{junction_dict["3D_daughter2_R_lin"]:.3f}", border = 0, ln = 0, align ="R", fill=True)
                 try:
-                    self.cell(cw1, 4, f"{junction_dict["isol_daughter2_R_lin_redim"]:.3f}", border = 0, ln = 0, align ="R", fill=True)
+                    self.cell(cw1, 4, f"{junction_dict[f"isol_{isol_set_name}_daughter2_R_lin_redim"]:.3f}", border = 0, ln = 0, align ="R", fill=True)
                 except:
                     self.cell(cw1, 4, f"", border = 0, ln = 0, align ="R", fill=True)
                 self.cell(cw1, 4, f"{junction_dict["0D_daughter2_R_lin_final"]:.3f}", border = 0, ln = 1, align ="R", fill=True)
@@ -726,7 +809,7 @@ def make_pdfs(junction_dict_master, tree_name, flow_mag_list, time_step):
                 self.cell(cw2, 4, "Daughter 2 Linear Resistance (Base)", border = 0, ln = 0, align ="R")
                 self.cell(cw1, 4, f"", border = 0, ln = 0, align ="R")
                 try:
-                    self.cell(cw1, 4, f"{junction_dict["isol_daughter2_R_lin_redim_base"]:.3f}", border = 0, ln = 0, align ="R")
+                    self.cell(cw1, 4, f"{junction_dict[f"isol_{isol_set_name}_daughter2_R_lin_redim_base"]:.3f}", border = 0, ln = 0, align ="R")
                 except:
                     self.cell(cw1, 4, f"", border = 0, ln = 0, align ="R")
                 self.cell(cw1, 4, f"{junction_dict["0D_daughter2_R_lin"]:.3f}", border = 0, ln = 1, align ="R")
@@ -734,7 +817,7 @@ def make_pdfs(junction_dict_master, tree_name, flow_mag_list, time_step):
                 self.cell(cw2, 4, "Daughter 2 Added Resistance", border = 0, ln = 0, align ="R")
                 self.cell(cw1, 4, f"", border = 0, ln = 0, align ="R")
                 try:
-                    self.cell(cw1, 4, f"{junction_dict["isol_daughter2_res_add"]:.3f}", border = 0, ln = 0, align ="R")
+                    self.cell(cw1, 4, f"{junction_dict[f"isol_{isol_set_name}_daughter2_res_add"]:.3f}", border = 0, ln = 0, align ="R")
                 except:
                     self.cell(cw1, 4, f"", border = 0, ln = 0, align ="R")
                 self.cell(cw1, 4, f"{junction_dict["0D_res_add2"]:.3f}", border = 0, ln = 1, align ="R")
@@ -742,7 +825,7 @@ def make_pdfs(junction_dict_master, tree_name, flow_mag_list, time_step):
                 self.cell(cw2, 4, "Daughter 2 Added Length", border = 0, ln = 0, align ="R")
                 self.cell(cw1, 4, f"", border = 0, ln = 0, align ="R")
                 try:
-                    self.cell(cw1, 4, f"{junction_dict["isol_daughter2_length_add"]:.3f}", border = 0, ln = 0, align ="R")
+                    self.cell(cw1, 4, f"{junction_dict[f"isol_{isol_set_name}_daughter2_length_add"]:.3f}", border = 0, ln = 0, align ="R")
                 except:
                     self.cell(cw1, 4, f"", border = 0, ln = 0, align ="R")
                 self.cell(cw1, 4, f"{junction_dict["0D_length_add2"]:.3f}", border = 0, ln = 1, align ="R")
@@ -751,7 +834,7 @@ def make_pdfs(junction_dict_master, tree_name, flow_mag_list, time_step):
                 self.cell(cw2, 4, "Daughter 1 Quadratic Resistance ND", border = 0, ln = 0, align ="R"); 
                 self.cell(cw1, 4, f"{junction_dict["3D_daughter1_R_quad_star"]:.3f}", border = 0, ln = 0, align ="R")
                 try:
-                    self.cell(cw1, 4, f"{junction_dict["isol_daughter1_R_quad_star"]:.3f}", border = 0, ln = 0, align ="R")
+                    self.cell(cw1, 4, f"{junction_dict[f"isol_{isol_set_name}_daughter1_R_quad_star"]:.3f}", border = 0, ln = 0, align ="R")
                 except:
                     self.cell(cw1, 4, f"", border = 0, ln = 0, align ="R")
                 self.cell(cw1, 4, f"{junction_dict["0D_daughter1_R_quad_star"]:.3f}", border = 0, ln = 1, align ="R")
@@ -759,7 +842,7 @@ def make_pdfs(junction_dict_master, tree_name, flow_mag_list, time_step):
                 self.cell(cw2, 4, "Daughter 1 Quadratic Resistance", border = 0, ln = 0, align ="R", fill=True)
                 self.cell(cw1, 4, f"{junction_dict["3D_daughter1_R_quad"]:.3f}", border = 0, ln = 0, align ="R", fill=True)
                 try:
-                    self.cell(cw1, 4, f"{junction_dict["isol_daughter1_R_quad_redim"]:.3f}", border = 0, ln = 0, align ="R", fill=True)
+                    self.cell(cw1, 4, f"{junction_dict[f"isol_{isol_set_name}_daughter1_R_quad_redim"]:.3f}", border = 0, ln = 0, align ="R", fill=True)
                 except:
                     self.cell(cw1, 4, f"", border = 0, ln = 0, align ="R", fill=True)
                 self.cell(cw1, 4, f"{junction_dict["0D_daughter1_R_quad"]:.3f}", border = 0, ln = 1, align ="R", fill=True)
@@ -768,7 +851,7 @@ def make_pdfs(junction_dict_master, tree_name, flow_mag_list, time_step):
                 self.cell(cw2, 4, "Daughter 2 Quadratic Resistance ND", border = 0, ln = 0, align ="R"); 
                 self.cell(cw1, 4, f"{junction_dict["3D_daughter2_R_quad_star"]:.3f}", border = 0, ln = 0, align ="R")
                 try:
-                    self.cell(cw1, 4, f"{junction_dict["isol_daughter2_R_quad_star"]:.3f}", border = 0, ln = 0, align ="R")
+                    self.cell(cw1, 4, f"{junction_dict[f"isol_{isol_set_name}_daughter2_R_quad_star"]:.3f}", border = 0, ln = 0, align ="R")
                 except:
                     self.cell(cw1, 4, f"", border = 0, ln = 0, align ="R")
                 self.cell(cw1, 4, f"{junction_dict["0D_daughter2_R_quad_star"]:.3f}", border = 0, ln = 1, align ="R")
@@ -776,7 +859,7 @@ def make_pdfs(junction_dict_master, tree_name, flow_mag_list, time_step):
                 self.cell(cw2, 4, "Daughter 2 Quadratic Resistance", border = 0, ln = 0, align ="R", fill=True)
                 self.cell(cw1, 4, f"{junction_dict["3D_daughter2_R_quad"]:.3f}", border = 0, ln = 0, align ="R", fill=True)
                 try:
-                    self.cell(cw1, 4, f"{junction_dict["isol_daughter2_R_quad_redim"]:.3f}", border = 0, ln = 0, align ="R", fill=True)
+                    self.cell(cw1, 4, f"{junction_dict[f"isol_{isol_set_name}_daughter2_R_quad_redim"]:.3f}", border = 0, ln = 0, align ="R", fill=True)
                 except:
                     self.cell(cw1, 4, f"", border = 0, ln = 0, align ="R", fill=True)
                 self.cell(cw1, 4, f"{junction_dict["0D_daughter2_R_quad"]:.3f}", border = 0, ln = 1, align ="R", fill=True)
@@ -798,7 +881,7 @@ def make_pdfs(junction_dict_master, tree_name, flow_mag_list, time_step):
                 self.cell(cw2, 4, "Inlet Area", border = 0, ln = 0, align ="R"); 
                 self.cell(cw1, 4, f"{junction_dict["3D_junc_inlet_area"]:.3f}", border = 0, ln = 0, align ="R")
                 try:
-                    self.cell(cw1, 4, f"{junction_dict["isol_inlet_area"]:.3f}", border = 0, ln = 0, align ="R")
+                    self.cell(cw1, 4, f"{junction_dict[f"isol_{isol_set_name}_inlet_area"]:.3f}", border = 0, ln = 0, align ="R")
                 except:
                     self.cell(cw1, 4, f"", border = 0, ln = 0, align ="R", fill=False)
                 self.cell(cw1, 4, f"{junction_dict["0D_inlet_area"]:.3f}", border = 0, ln = 1, align ="R")
@@ -806,7 +889,7 @@ def make_pdfs(junction_dict_master, tree_name, flow_mag_list, time_step):
                 self.cell(cw2, 4, "Outlet 1 Area", border = 0, ln = 0, align ="R"); 
                 self.cell(cw1, 4, f"{junction_dict["3D_branch1_outlet_area"]:.3f}", border = 0, ln = 0, align ="R")
                 try:
-                    self.cell(cw1, 4, f"{junction_dict["isol_daughter1_area"]:.3f}", border = 0, ln = 0, align ="R")
+                    self.cell(cw1, 4, f"{junction_dict[f"isol_{isol_set_name}_daughter1_area"]:.3f}", border = 0, ln = 0, align ="R")
                 except:
                     self.cell(cw1, 4, f"", border = 0, ln = 0, align ="R", fill=False)
                 self.cell(cw1, 4, f"{junction_dict["0D_outlet1_area"]:.3f}", border = 0, ln = 1, align ="R")
@@ -814,7 +897,7 @@ def make_pdfs(junction_dict_master, tree_name, flow_mag_list, time_step):
                 self.cell(cw2, 4, "Outlet 1 Area ratio", border = 0, ln = 0, align ="R", fill=True)
                 self.cell(cw1, 4, f"{junction_dict["3D_branch1_outlet_area"]/junction_dict["3D_junc_inlet_area"]:.3f}", border = 0, ln = 0, align ="R", fill=True)
                 try:
-                    self.cell(cw1, 4, f"{junction_dict["isol_daughter1_area_ratio"]:.3f}", border = 0, ln = 0, align ="R", fill=True)
+                    self.cell(cw1, 4, f"{junction_dict[f"isol_{isol_set_name}_daughter1_area_ratio"]:.3f}", border = 0, ln = 0, align ="R", fill=True)
                 except:
                     self.cell(cw1, 4, f"", border = 0, ln = 0, align ="R", fill=True)
                 self.cell(cw1, 4, f"{junction_dict["0D_outlet1_area"]/junction_dict["0D_inlet_area"]:.3f}", border = 0, ln = 1, align ="R", fill=True)
@@ -827,7 +910,7 @@ def make_pdfs(junction_dict_master, tree_name, flow_mag_list, time_step):
                 self.cell(cw2, 4, "Outlet 2 Area", border = 0, ln = 0, align ="R"); 
                 self.cell(cw1, 4, f"{junction_dict["3D_branch2_outlet_area"]:.3f}", border = 0, ln = 0, align ="R")
                 try:
-                    self.cell(cw1, 4, f"{junction_dict["isol_daughter2_area"]:.3f}", border = 0, ln = 0, align ="R")
+                    self.cell(cw1, 4, f"{junction_dict[f"isol_{isol_set_name}_daughter2_area"]:.3f}", border = 0, ln = 0, align ="R")
                 except:
                     self.cell(cw1, 4, f"", border = 0, ln = 0, align ="R", fill=False)
                 self.cell(cw1, 4, f"{junction_dict["0D_outlet2_area"]:.3f}", border = 0, ln = 1, align ="R")
@@ -835,7 +918,7 @@ def make_pdfs(junction_dict_master, tree_name, flow_mag_list, time_step):
                 self.cell(cw2, 4, "Outlet 2 Area ratio", border = 0, ln = 0, align ="R", fill=True)
                 self.cell(cw1, 4, f"{junction_dict["3D_branch2_outlet_area"]/junction_dict["3D_junc_inlet_area"]:.3f}", border = 0, ln = 0, align ="R", fill=True)
                 try:
-                    self.cell(cw1, 4, f"{junction_dict["isol_daughter2_area_ratio"]:.3f}", border = 0, ln = 0, align ="R", fill=True)
+                    self.cell(cw1, 4, f"{junction_dict[f"isol_{isol_set_name}_daughter2_area_ratio"]:.3f}", border = 0, ln = 0, align ="R", fill=True)
                 except:
                     self.cell(cw1, 4, f"", border = 0, ln = 0, align ="R", fill=True)
                 self.cell(cw1, 4, f"{junction_dict["0D_outlet2_area"]/junction_dict["0D_inlet_area"]:.3f}", border = 0, ln = 1, align ="R", fill=True)
@@ -851,7 +934,7 @@ def make_pdfs(junction_dict_master, tree_name, flow_mag_list, time_step):
                 self.cell(cw2, 4, "Outlet 1 Angle", border = 0, ln = 0, align ="R", fill=True); 
                 self.cell(cw1, 4, f"{junction_dict["3D_junc_outlet1_angle"]*180/np.pi:.3f}", border = 0, ln = 0, align ="R", fill=True)
                 try:
-                    self.cell(cw1, 4, f"{junction_dict["isol_daughter1_angle"]*180/np.pi:.3f}", border = 0, ln = 0, align ="R", fill=True)
+                    self.cell(cw1, 4, f"{junction_dict[f"isol_{isol_set_name}_daughter1_angle"]*180/np.pi:.3f}", border = 0, ln = 0, align ="R", fill=True)
                 except:
                     self.cell(cw1, 4, f"", border = 0, ln = 0, align ="R", fill=True)
                 self.cell(cw1, 4, f"{junction_dict["0D_daughter1_angle"]*180/np.pi:.3f}", border = 0, ln = 1, align ="R", fill=True)
@@ -859,7 +942,7 @@ def make_pdfs(junction_dict_master, tree_name, flow_mag_list, time_step):
                 self.cell(cw2, 4, "Outlet 2 Angle", border = 0, ln = 0, align ="R", fill=True)
                 self.cell(cw1, 4, f"{junction_dict["3D_junc_outlet2_angle"]*180/np.pi:.3f}", border = 0, ln = 0, align ="R", fill=True)
                 try:
-                    self.cell(cw1, 4, f"{junction_dict["isol_daughter2_angle"]*180/np.pi:.3f}", border = 0, ln = 0, align ="R", fill=True)
+                    self.cell(cw1, 4, f"{junction_dict[f"isol_{isol_set_name}_daughter2_angle"]*180/np.pi:.3f}", border = 0, ln = 0, align ="R", fill=True)
                 except:
                     self.cell(cw1, 4, f"", border = 0, ln = 0, align ="R", fill=True)
                 self.cell(cw1, 4, f"{junction_dict["0D_daughter2_angle"]*180/np.pi:.3f}", border = 0, ln = 1, align ="R", fill=True)
@@ -868,15 +951,15 @@ def make_pdfs(junction_dict_master, tree_name, flow_mag_list, time_step):
                 self.cell(cw2, 4, "Outlet 1 Length", border = 0, ln = 0, align ="R"); 
                 self.cell(cw1, 4, f"{junction_dict["3D_branch1_length"]+junction_dict["0D_length1_base"]:.3f}", border = 0, ln = 0, align ="R")
                 try:
-                    self.cell(cw1, 4, f"{junction_dict["isol_daughter1_length"]:.3f}", border = 0, ln = 0, align ="R")
+                    self.cell(cw1, 4, f"{junction_dict[f"isol_{isol_set_name}_daughter1_length"]:.3f}", border = 0, ln = 0, align ="R")
                 except:
                     self.cell(cw1, 4, f"", border = 0, ln = 0, align ="R", fill=False)
                 self.cell(cw1, 4, f"{junction_dict["0D_length1"]:.3f}", border = 0, ln = 1, align ="R")
 
                 self.cell(cw2, 4, "Outlet 1 Length ND", border = 0, ln = 0, align ="R", fill=True); 
-                self.cell(cw1, 4, f" ", border = 0, ln = 0, align ="R", fill=True)
+                self.cell(cw1, 4, f"{junction_dict["3D_branch1_length_star"]:.3f} ", border = 0, ln = 0, align ="R", fill=True)
                 try:
-                    self.cell(cw1, 4, f"{junction_dict["isol_daughter1_length_star"]:.3f}", border = 0, ln = 0, align ="R", fill=True)
+                    self.cell(cw1, 4, f"{junction_dict[f"isol_{isol_set_name}_daughter1_length_star"]:.3f}", border = 0, ln = 0, align ="R", fill=True)
                 except:
                     self.cell(cw1, 4, f"", border = 0, ln = 0, align ="R", fill=True)
                 self.cell(cw1, 4, f"{junction_dict["0D_length1_star"]:.3f}", border = 0, ln = 1, align ="R", fill=True)
@@ -884,15 +967,15 @@ def make_pdfs(junction_dict_master, tree_name, flow_mag_list, time_step):
                 self.cell(cw2, 4, "Outlet 2 Length", border = 0, ln = 0, align ="R")
                 self.cell(cw1, 4, f"{junction_dict["3D_branch2_length"]+junction_dict["0D_length2_base"]:.3f}", border = 0, ln = 0, align ="R")
                 try:
-                    self.cell(cw1, 4, f"{junction_dict["isol_daughter2_length"]:.3f}", border = 0, ln = 0, align ="R")
+                    self.cell(cw1, 4, f"{junction_dict[f"isol_{isol_set_name}_daughter2_length"]:.3f}", border = 0, ln = 0, align ="R")
                 except:
                     self.cell(cw1, 4, f"", border = 0, ln = 0, align ="R", fill=False)
                 self.cell(cw1, 4, f"{junction_dict["0D_length2"]:.3f}", border = 0, ln = 1, align ="R")
 
                 self.cell(cw2, 4, "Outlet 2 Length ND", border = 0, ln = 0, align ="R", fill=True); 
-                self.cell(cw1, 4, f" ", border = 0, ln = 0, align ="R", fill=True)
+                self.cell(cw1, 4, f"{junction_dict["3D_branch2_length_star"]:.3f}", border = 0, ln = 0, align ="R", fill=True)
                 try:
-                    self.cell(cw1, 4, f"{junction_dict["isol_daughter2_length_star"]:.3f}", border = 0, ln = 0, align ="R", fill=True)
+                    self.cell(cw1, 4, f"{junction_dict[f"isol_{isol_set_name}_daughter2_length_star"]:.3f}", border = 0, ln = 0, align ="R", fill=True)
                 except:
                     self.cell(cw1, 4, f"", border = 0, ln = 0, align ="R", fill=True)
                 self.cell(cw1, 4, f"{junction_dict["0D_length2_star"]:.3f}", border = 0, ln = 1, align ="R", fill=True)
@@ -907,8 +990,9 @@ def make_pdfs(junction_dict_master, tree_name, flow_mag_list, time_step):
                     self.cell(cw2, 4, "Flow Split (Outlet 1/Outlet 2)", border = 0, ln = 0, align ="R"); 
                     self.cell(cw1, 4, f"{junction_dict[f"3D_flow_split_flow_fm_{flow_mag}_ts_{time_step}"][0]:.3f}", border = 0, ln = 0, align ="R")
                     try:
-                        if i < len(junction_dict["isol_flow_splits"]):
-                            self.cell(cw1, 4, f"{junction_dict["isol_flow_splits"][i]:.3f}", border = 0, ln = 0, align ="R")
+                        if i < len(junction_dict[f"isol_{isol_set_name}_flow_splits"]):
+                            
+                            self.cell(cw1, 4, f"{junction_dict[f"isol_{isol_set_name}_flow_splits"][i]:.3f}", border = 0, ln = 0, align ="R")
                         else:
                             self.cell(cw1, 4, f"", border = 0, ln = 0, align ="R")
                     except:
@@ -921,51 +1005,79 @@ def make_pdfs(junction_dict_master, tree_name, flow_mag_list, time_step):
         fname = f"{junction_name}_plot.png"
         fig, axs = plt.subplots(1,2, sharey=False, figsize=(10,3))
         m_size = 80
-        axs[0].scatter(junction_dict["3D_daughter1_flows"], [dP/1333 for dP in junction_dict["3D_daughter1_dPs"]], marker = "*", s = m_size, label="3D Tree Sim", color="g")
-        axs[0].plot(junction_dict["3D_daughter1_flows"], 
+
+        axs[0].scatter(junction_dict["3D_inlet_flows"], [dP/1333 for dP in junction_dict["3D_daughter1_dPs"]], marker = "*", s = m_size, label="3D Tree Sim", color="g")
+        axs[0].plot(junction_dict["3D_inlet_flows"], 
                     [junction_dict["3D_daughter1_R_lin"] * Q /1333 +
                     junction_dict["3D_daughter1_R_quad"] * Q**2 /1333 
-                    for Q in junction_dict["3D_daughter1_flows"]], label="3D Tree Fit", color="g")
-        # axs[0].plot(junction_dict["3D_daughter1_flows"],
-        #             [junction_dict["0D_daughter1_R_lin"] * Q /1333 +
-        #                 junction_dict["0D_daughter1_R_quad"] * Q**2 /1333
-        #                 for Q in junction_dict["3D_daughter1_flows"]], label="NN Pred", color="r")
-        if "isol_daughter1_flow_redim" in junction_dict.keys():
-            axs[0].plot(junction_dict["3D_daughter1_flows"],
-                        [junction_dict["isol_daughter1_R_lin_redim"] * Q /1333 +
-                            junction_dict["isol_daughter1_R_quad_redim"] * Q**2 /1333
-                            for Q in junction_dict["3D_daughter1_flows"]], label="3D Isol. Fit", color="blue")
-    
-            axs[0].scatter(junction_dict["isol_daughter1_flow_redim"],
-                    [dP/1333 for dP in junction_dict["isol_daughter1_dP_redim_len_add"]], marker = "*", s = m_size, label="3D Isol. Sim", color="blue")
-        else:
-            print(f"Junction {junction_name} has no isolated geometry")
+                    for Q in junction_dict["3D_inlet_flows"]], color="g") #, label="3D Tree Fit", color="g")
+        axs[0].plot(junction_dict["3D_inlet_flows"],
+                    [junction_dict["0D_R_poiseuille_outlet1"] * Q /1333
+                        for Q in junction_dict["3D_daughter1_flows"]], "--", label="Poiseuille", color="slategrey")    
+
+        axs[0].plot(junction_dict["3D_inlet_flows"],
+                    [junction_dict["0D_daughter1_R_lin_final"] * Q /1333 +
+                        junction_dict["0D_daughter1_R_quad"] * Q**2 /1333
+                        for Q in junction_dict["3D_inlet_flows"]], label="NN Pred", color="deeppink")
+        isol_colors = [ 'darkblue',"cornflowerblue"]
+        for j, isol_set_name in enumerate(isol_set_list):
+            set_name = copy.copy(isol_set_list[j])
+            try:
+                print(f"isol_{isol_set_name}_flow_splits: {junction_dict[f'isol_{isol_set_name}_flow_splits']}")
+            except:
+                print(f"isol_{isol_set_name}_flow_splits not found in junction_dict")
+                continue
+            #pdb.set_trace()
+            if f"isol_{isol_set_name}_daughter1_flow_redim" in junction_dict.keys():
+                axs[0].plot(junction_dict[f"isol_{isol_set_name}_inlet_flow_redim"],
+                            [junction_dict[f"isol_{isol_set_name}_daughter1_R_lin_redim"] * Q /1333 +
+                                junction_dict[f"isol_{isol_set_name}_daughter1_R_quad_redim"] * Q**2 /1333
+                                for Q in junction_dict[f"isol_{isol_set_name}_inlet_flow_redim"]], color=isol_colors[j])
+        
+                axs[0].scatter(junction_dict[f"isol_{isol_set_name}_inlet_flow_redim"],
+                        [dP/1333 for dP in junction_dict[f"isol_{isol_set_name}_daughter1_dP_redim_len_add"]], marker = ".", s = m_size, label=isol_set_name, color=isol_colors[j])
+                print(f"Junction {junction_name} has no isolated geometry")
+
+        set_name = copy.copy(isol_set_list[0])
             
-        axs[0].set_xlabel("Flow (cm^3/s)")
+        axs[0].set_xlabel("Inlet Flow (cm$^3$/s)")
         axs[0].set_ylabel("Pressure Drop (mmHg)")
         axs[0].legend()
         axs[0].set_title(f"Daughter 1")
 
-        axs[1].scatter(junction_dict["3D_daughter2_flows"], [dP/1333 for dP in junction_dict["3D_daughter2_dPs"]], marker = "*", s = m_size, label="3D Tree Sim", color="g")
-        axs[1].plot(junction_dict["3D_daughter2_flows"], 
+        axs[1].scatter(junction_dict["3D_inlet_flows"], [dP/1333 for dP in junction_dict["3D_daughter2_dPs"]], marker = "*", s = m_size, label="3D Tree Sim", color="g")
+        axs[1].plot(junction_dict["3D_inlet_flows"], 
                     [junction_dict["3D_daughter2_R_lin"] * Q /1333 +
-                    junction_dict["3D_daughter2_R_quad"] * Q**2 /1333
-                    for Q in junction_dict["3D_daughter2_flows"]], label="3D Tree Fit", color="g")
-        # axs[1].plot(junction_dict["3D_daughter2_flows"],
-        #             [junction_dict["0D_daughter2_R_lin"] * Q/1333 +
-        #                 junction_dict["0D_daughter2_R_quad"] * Q**2 /1333
-        #                 for Q in junction_dict["3D_daughter2_flows"]], label="NN Pred", color="r")
+                    junction_dict["3D_daughter2_R_quad"] * Q**2 /1333 
+                    for Q in junction_dict["3D_inlet_flows"]], color="g") #, label="3D Tree Fit", color="g")
+        axs[1].plot(junction_dict["3D_inlet_flows"],
+                    [junction_dict["0D_R_poiseuille_outlet2"] * Q /1333
+                        for Q in junction_dict["3D_daughter2_flows"]], "--", label="Poiseuille", color="slategrey")
+        axs[1].plot(junction_dict["3D_inlet_flows"],
+            [junction_dict["0D_daughter2_R_lin_final"] * Q /1333 +
+                junction_dict["0D_daughter2_R_quad"] * Q**2 /1333
+                for Q in junction_dict["3D_inlet_flows"]], label="NN Pred", color="deeppink")
+        
+        for j, isol_set_name in enumerate(isol_set_list):
+            set_name = copy.copy(isol_set_list[j])
+            print(f"isol_set_name: {isol_set_name}")
+            if f"isol_{isol_set_name}_daughter2_flow_redim" in junction_dict.keys():
+                axs[1].plot(junction_dict[f"isol_{isol_set_name}_inlet_flow_redim"],
+                            [junction_dict[f"isol_{isol_set_name}_daughter2_R_lin_redim"] * Q /1333 +
+                                junction_dict[f"isol_{isol_set_name}_daughter2_R_quad_redim"] * Q**2 /1333
+                                for Q in junction_dict[f"isol_{isol_set_name}_inlet_flow_redim"]],  color=isol_colors[j])
+        
+                axs[1].scatter(junction_dict[f"isol_{isol_set_name}_inlet_flow_redim"],
+                        [dP/1333 for dP in junction_dict[f"isol_{isol_set_name}_daughter2_dP_redim_len_add"]], marker = ".", s = m_size, label=isol_set_name, color=isol_colors[j])
+                # axs[1].scatter(junction_dict["isol_inlet_flows"],
+                #         [dP/1333 for dP in junction_dict["isol_daughter2_dPs"]], marker = "*", s = m_size, label="3D Isol. Sim", color="orange")
+                #pdb.set_trace()
+            else:
+                print(f"Junction {junction_name} has no isolated geometry")
+        set_name = copy.copy(isol_set_list[0])
 
         
-        if "isol_daughter2_flow_redim" in junction_dict.keys():
-            axs[1].plot(junction_dict["3D_daughter2_flows"],
-                [junction_dict["isol_daughter2_R_lin_redim"] * Q /1333 +
-                junction_dict["isol_daughter2_R_quad_redim"] * Q**2 /1333
-                for Q in junction_dict["3D_daughter2_flows"]], label="3D Isol. Fit", color="blue")
-            axs[1].scatter(junction_dict["isol_daughter2_flow_redim"],
-                    [dP/1333 for dP in junction_dict["isol_daughter2_dP_redim_len_add"]], marker = "*", s = m_size, label="3D Isol. Sim", color="blue")
-        
-        axs[1].set_xlabel("Flow (cm^3/s)")
+        axs[1].set_xlabel("Inlet Flow (cm$^3$/s)")
         axs[1].set_ylabel("Pressure Drop (mmHg)")
         axs[1].legend()
         axs[1].set_title(f"Daughter 2")
@@ -975,8 +1087,6 @@ def make_pdfs(junction_dict_master, tree_name, flow_mag_list, time_step):
         pdf = PDF()
 
         pdf.add_page()
-        # pdf.chapter_title("Author")
-        # pdf.chapter_body("Author")
         pdf.add_plot(fname)
 
         pdf.chapter_title("Resistances:")
@@ -992,9 +1102,8 @@ def make_pdfs(junction_dict_master, tree_name, flow_mag_list, time_step):
 
         if os.path.exists(fname):
             os.remove(fname)
-        # if junction_dict["isol_junc_name"] == "CCO_002":
+
+        # if junction_name == "J2":
         #     pdb.set_trace()
         print(f"PDF saved to {report_loc}")
-        if junction_name == "J1":
-            
-            pdb.set_trace()
+

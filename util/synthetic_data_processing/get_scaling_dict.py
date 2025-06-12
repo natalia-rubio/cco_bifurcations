@@ -1,7 +1,7 @@
 import sys
 from util.tools.basic import *
 from collections import defaultdict
-plt.rcParams.update(plt.rcParamsDefault)
+#plt.rcParams.update(plt.rcParamsDefault)
 def get_name_end( unsteady = False, use_steady_ab = True):
     name_end = ""
     if unsteady and use_steady_ab:
@@ -34,7 +34,10 @@ def get_data_lists(anatomy, set_type, unsteady = False):
     for geo in CCO_data_dict.keys():
         for offset in CCO_data_dict[geo].keys():
             for value in CCO_data_dict[geo][offset].keys():
-                data_list_dict[value].append(CCO_data_dict[geo][offset][value])
+                try:
+                    data_list_dict[value].append(CCO_data_dict[geo][offset][value])
+                except:
+                    pdb.set_trace()
 
     values = list(data_list_dict.keys())
     #pdb.set_trace()
@@ -52,18 +55,20 @@ def get_data_lists(anatomy, set_type, unsteady = False):
         if not value in daughter1_values and not value in daughter2_values:
             print(f"Doubling {value}")
             data_list_dict[value] += data_list_dict[value]
-
-        # data_list_dict[value] = np.asarray(data_list_dict[value])
+        print(value)
+        try:
+            data_list_dict[value] = np.asarray(data_list_dict[value])
+        except:
+            print(f"Could not convert {value} to numpy array, skipping")
+            continue
     save_dict(data_list_dict, f"data/data_dicts/{anatomy}_{set_type}_synthetic_data_list_dict")
     return
 
-def get_scaling_dict(anatomy, set_type, unsteady = False):
+def get_scaling_dict(anatomy, set_type, doubled = True, unsteady = False):
 
     data_list_dict = load_dict(f"data/data_dicts/{anatomy}_{set_type}_synthetic_data_list_dict")
     scaling_dict = {}
     to_normalize = list(data_list_dict.keys())
-    if unsteady:
-        to_normalize.append("coef_L")
 
     if not os.path.exists(f"results/synthetic_data_trends"):
         os.mkdir(f"results/synthetic_data_trends")
@@ -82,7 +87,7 @@ def get_scaling_dict(anatomy, set_type, unsteady = False):
                         "daughter1_P_dyn", "daughter2_P_dyn", "inlet_P_dyn",
                       "daughter1_velocity", "daughter2_velocity", "inlet_velocity", 
                       "daughter1_energy", "daughter2_energy", "inlet_energy", 
-                      "inlet_flow", "daughter1_flow", "daughter2_flow","daughter1_Re", "daughter2_Re", "inlet_Re",]
+                      "inlet_flow", "daughter1_flow", "daughter2_flow","daughter1_Re", "daughter2_Re", "inlet_Re","flow", "pressure", "dp1","dp2","times",]
     
     for value in to_normalize:
         if value in values_to_skip:
@@ -111,5 +116,8 @@ def get_scaling_dict(anatomy, set_type, unsteady = False):
 
     if not os.path.exists(f"data/scaling_dictionaries"):
         os.mkdir(f"data/scaling_dictionaries")
-    save_dict(scaling_dict, f"data/scaling_dictionaries/{anatomy}_{set_type}_scaling_dict")
+    if not doubled:
+        save_dict(scaling_dict, f"data/scaling_dictionaries/{anatomy}_{set_type}_scaling_dict_not_doubled")
+    else:
+        save_dict(scaling_dict, f"data/scaling_dictionaries/{anatomy}_{set_type}_scaling_dict")
     return

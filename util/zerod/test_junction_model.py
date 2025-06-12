@@ -20,6 +20,9 @@ if not os.path.exists(f"trees/zerod_input/standard/{tree_name}/solver_0d.json"):
     os.makedirs(f"trees/zerod_input/standard/{tree_name}")
     os.system(f"python3 util/zerod/get_inp_standard.py {tree_name} {inflow}")
 
+# Correct BCs
+os.system(f"python3 util/zerod/correct_BCs.py {tree_name}")
+
 # If special junction handling is needed, create and run the modified 0D file
 if junction_mode != "standard":
 
