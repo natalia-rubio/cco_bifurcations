@@ -60,9 +60,11 @@ def convert_csv_to_branch_result(
     return out
 
 def project_to_centerline(tree_name, junction_mode):
+    tree_name_split = tree_name.split("_")
+    tree_name_base = "_".join(tree_name_split[0:2])
 
-    centerline_handler = CenterlineHandler.from_file("trees/geo_files/" + tree_name + "/centerlines/centerlines.vtp")
-    input_file = f"trees/zerod_input/standard/{tree_name}/solver_0d.json"
+    centerline_handler = CenterlineHandler.from_file(f"trees/geo_files/{tree_name_base}/{tree_name_base}_original/centerlines/centerlines.vtp")
+    input_file = f"trees/zerod_input/standard/{tree_name_base}/{tree_name}/solver_0d.json"
     zerod_handler = SvZeroDSolverInputHandler.from_file(input_file)
     casadi = False
     #print(f"Input file: {input_file}")
@@ -78,9 +80,9 @@ def project_to_centerline(tree_name, junction_mode):
     
     else:
         if casadi:
-            results_df = pd.read_csv(f"trees/zerod_output/{junction_mode}/{tree_name}/sol_casadi.csv")
+            results_df = pd.read_csv(f"trees/zerod_output/{junction_mode}/{tree_name_base}/{tree_name}/sol_casadi.csv")
         else:
-            results_df = pd.read_csv(f"trees/zerod_output/{junction_mode}/{tree_name}/results.csv")
+            results_df = pd.read_csv(f"trees/zerod_output/{junction_mode}/{tree_name_base}/{tree_name}/results.csv")
     print(results_df)
     branch_results = convert_csv_to_branch_result(results_df, zerod_handler)
     arrays = rec_dd()
@@ -195,9 +197,9 @@ def project_to_centerline(tree_name, junction_mode):
         out_array = numpy_to_vtk(a)
         out_array.SetName(f)
         centerline_handler.data.GetPointData().AddArray(out_array)
-    if not os.path.exists(f"trees/zerod_output_cent/{junction_mode}/{tree_name}"):
-        os.makedirs(f"trees/zerod_output_cent/{junction_mode}/{tree_name}")
-    centerline_handler.to_file(f"trees/zerod_output_cent/{junction_mode}/{tree_name}/centerline_sol.vtp")
+    if not os.path.exists(f"trees/zerod_output_cent/{junction_mode}/{tree_name_base}/{tree_name}"):
+        os.makedirs(f"trees/zerod_output_cent/{junction_mode}/{tree_name_base}/{tree_name}")
+    centerline_handler.to_file(f"trees/zerod_output_cent/{junction_mode}/{tree_name_base}/{tree_name}/centerline_sol.vtp")
     print(f"Centerline projection for {tree_name} in {junction_mode} mode completed.")
     return
 

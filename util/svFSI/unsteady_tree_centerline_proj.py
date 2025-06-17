@@ -1,4 +1,5 @@
 import os
+import sys
 import vtk
 from tqdm import tqdm
 from util.get_bc_integrals import get_res_names
@@ -54,17 +55,19 @@ def get_integral(inp_3d, origin, normal):
 
     return Integration(inp)
 
+tree_name = sys.argv[1]  # e.g., "tree_20_flow_unsteady"
+num_procs = sys.argv[2]  # e.g., "96-procs"
 
-input_file_names = os.listdir("/scratch/users/nrubio/synthetic_junctions/CCO/tree_20_flow_unsteady/96-procs")
+input_file_names = os.listdir(f"/scratch/users/nrubio/synthetic_junctions/CCO/{tree_name}_flow_unsteady/{num_procs}-procs")
 input_file_names.sort()
 times = [name.split('_')[-1].split('.')[0] for name in input_file_names if name.endswith('.vtu')]
 # pdb.set_trace()
-res_names_1d = ["pressure_{time}" for time in times] + ["velocity_{time}" for time in times]
+res_names_1d = [f"pressure_{time}" for time in times] + [f"velocity_{time}" for time in times]
 
-fpath_out = f"/scratch/users/nrubio/synthetic_junctions/CCO/tree_20_flow_unsteady/unsteady_soln.vtp"
+fpath_out = f"/scratch/users/nrubio/synthetic_junctions/CCO/{tree_name}_flow_unsteady/unsteady_soln.vtp"
 
-fpath_1d = "/scratch/users/nrubio/synthetic_junctions/CCO/tree_20_flow_unsteady/centerlines/centerlines.vtp"  # Assuming the first file is the 1D centerline
-fpath_3d = f"/scratch/users/nrubio/synthetic_junctions/CCO/tree_20_flow_unsteady/96-procs/tree_20_unsteady_result_{times[0]}.vtu"
+fpath_1d = f"/scratch/users/nrubio/synthetic_junctions/CCO/{tree_name}_flow_unsteady/centerlines/centerlines.vtp"  # Assuming the first file is the 1D centerline
+fpath_3d = f"/scratch/users/nrubio/synthetic_junctions/CCO/{tree_name}_flow_unsteady/{num_procs}-procs/{tree_name}_unsteady_result_{times[0]}.vtu"
 reader_1d = read_geo(fpath_1d).GetOutput()
 reader_3d = read_geo(fpath_3d).GetOutput()# get all result array names
 res_names_3d = get_res_names(reader_3d, ['Pressure', 'Velocity'])# get point and normals from centerline
@@ -87,7 +90,7 @@ only_caps = False # if True, only integrate at cap points, otherwise integrate a
 
 for i in tqdm(range(reader_1d.GetNumberOfPoints())):
     # check if point is cap
-    if i%20 != 0:
+    if i%100 != 0:
         continue # only process every 10th point for performance
     reader_1d.GetPointCells(i, ids)
     if ids.GetNumberOfIds() == 1:
@@ -105,7 +108,7 @@ for i in tqdm(range(reader_1d.GetNumberOfPoints())):
         if (int(time_str)%20 != 0):
             continue
         try:
-            fpath_3d = f"/scratch/users/nrubio/synthetic_junctions/CCO/tree_20_flow_unsteady/96-procs/tree_20_unsteady_result_{time_str}.vtu"
+            fpath_3d = f"/scratch/users/nrubio/synthetic_junctions/CCO/{tree_name}_flow_unsteady/{num_procs}-procs/{tree_name}_unsteady_result_{time_str}.vtu"
             reader_3d = read_geo(fpath_3d).GetOutput()
             integral = get_integral(reader_3d, points[i], normals[i])
             reader_1d.GetPointData().GetArray(f'pressure_{time_str}').SetValue(i, integral.evaluate("Pressure"))
@@ -115,7 +118,7 @@ for i in tqdm(range(reader_1d.GetNumberOfPoints())):
             continue # integrate all output arrays
 
     try:
-        fpath_3d = f"/scratch/users/nrubio/synthetic_junctions/CCO/tree_20_flow_unsteady/96-procs/tree_20_unsteady_result_{times[0]}.vtu"
+        fpath_3d = f"/scratch/users/nrubio/synthetic_junctions/CCO/{tree_name}_flow_unsteady/{num_procs}-procs/{tree_name}_unsteady_result_{times[0]}.vtu"
         reader_3d = read_geo(fpath_3d).GetOutput()
         integral = get_integral(reader_3d, points[i], normals[i])
         reader_1d.GetPointData().GetArray('area').SetValue(i, integral.area())

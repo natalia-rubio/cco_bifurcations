@@ -346,11 +346,11 @@ def add_0D_resistance(junction_dict_master, tree_name):
     for junction_name, junction_dict in junction_dict_master.items():
 
         anatomy = "tree_20"; 
-        #set_type = "random" 
-        set_type = "combined" #"dict_res_fs_ext"; 
+        set_type = "random" 
+        #set_type = "combined" #"dict_res_fs_ext"; 
         scaling_dict = load_dict(f"data/scaling_dictionaries/{anatomy}_{set_type}_scaling_dict")
-        #model_name = "tree_20_ng_304_nl_3_lw_400_ne_2500_bs_20_dr_0.95_model" #
-        model_name = "tree_20_ng_280_nl_3_lw_400_ne_2500_bs_20_dr_0.95_model"
+        #model_name = "tree_20_ng_720_nl_2_lw_70_ne_1000_bs_20_dr_0.95_model" #
+        model_name = "tree_20_ng_400_nl_2_lw_100_ne_1000_bs_20_dr_0.95_model"
         nn_model = dill_load(f"results/models/{anatomy}/{model_name}")
         
         A_char = junction_dict["0D_inlet_area"]; L_char = np.sqrt(A_char/np.pi)
@@ -1095,7 +1095,7 @@ def make_pdfs(junction_dict_master, tree_name, flow_mag_list, time_step, isol_se
         pdf.chapter_title("Geometric Data")
         pdf.add_geometry_table(junction_dict)
 
-        report_loc = f"trees/reports/{tree_name}/{junction_name}/{junction_name}_report.pdf"
+        report_loc = f"trees/reports/{tree_name}/{junction_name}_report.pdf"
         if not os.path.exists(os.path.dirname(report_loc)):
             os.makedirs(os.path.dirname(report_loc))
         pdf.output(report_loc)

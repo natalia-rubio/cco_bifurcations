@@ -3,20 +3,20 @@ import os
 import glob
 import numpy as np
 
-def write_svfsiplus_xml(parent_file_dir, geo_name, sim_dir, n_tsteps=800, dt=0.001, flow_mag = 100, mesh_complete='mesh-complete'):
+def write_svfsiplus_xml(parent_file_dir, geo_name, sim_dir_sher, sim_dir_sher_orig, num_nodes = 4, n_tsteps=800, dt=0.001, flow_mag = 100, mesh_complete='mesh-complete'):
     '''
     write an svFSIplus.xml file from a simulation directory which contains a mesh surfaces directory
     '''
     # make the new directory
 
     # set mesh complete diretory
-    file_dir_old = os.path.join(parent_file_dir, geo_name)
-    file_dir = os.path.join(parent_file_dir, geo_name) + f"_flow_{flow_mag}"
+    file_dir_old = os.path.join(parent_file_dir, geo_name) + f"/{geo_name}_original"
+    file_dir = os.path.join(parent_file_dir, geo_name) + f"/{geo_name}_flow_{flow_mag}"
     os.makedirs(file_dir, exist_ok=True)
     os.system(f"cp -r {file_dir_old}/* {file_dir}/")
 
-    mesh_complete_local = os.path.join(file_dir,'mesh-complete')
-    mesh_complete_sher = os.path.join(sim_dir,'mesh-complete')
+    mesh_complete_local = os.path.join(file_dir_old,'mesh-complete')
+    mesh_complete_sher = os.path.join(sim_dir_sher_orig,'mesh-complete')
     inlet_cap = "cap_" + os.listdir(mesh_complete_local + "/inlet_cap")[0]+".vtp"
     caps = os.listdir(mesh_complete_local + "/mesh-surfaces")
     outlet_caps = []
@@ -143,7 +143,7 @@ def write_svfsiplus_xml(parent_file_dir, geo_name, sim_dir, n_tsteps=800, dt=0.0
     time_dep = ET.SubElement(add_bc, "Time_dependence")
     time_dep.text = "Unsteady"
     fpath_temp_vals = ET.SubElement(add_bc, "Temporal_values_file_path")
-    fpath_temp_vals.text = sim_dir + f"inflow_svFSI_flow_{flow_mag}.flow"
+    fpath_temp_vals.text = sim_dir_sher + f"inflow_svFSI_flow_{flow_mag}.flow"
     profile = ET.SubElement(add_bc, "Profile")
     profile.text = "Flat"
 
@@ -169,43 +169,27 @@ def write_svfsiplus_xml(parent_file_dir, geo_name, sim_dir, n_tsteps=800, dt=0.0
     # Create the XML tree
     tree = ET.ElementTree(svfsifile)
     ET.indent(tree.getroot())
-    # def prettify(elem):
-    #     """Return a pretty-printed XML string for the Element."""
-    #     rough_string = ET.tostring(elem, 'utf-8')
-    #     reparsed = xml.dom.minidom.parseString(rough_string)
-    #     return reparsed.toprettyxml(indent="  ")
-    
-    # pretty_xml_str = prettify(svfsifile)
-    # print(pretty_xml_str)
+
     # Write the XML to a file
     with open(os.path.join(file_dir, "svFSIplus.xml"), "wb") as file:
         tree.write(file, encoding="utf-8", xml_declaration=True)
+    
+    if geo_name  == "tree_20":   
+        inlet_rad = 0.28
+    elif geo_name == "tree_5":
+        inlet_rad = 0.279
+    elif geo_name == "tree_3":
+        inlet_rad = 0.248
+    elif geo_name == "tree_10":
+        inlet_rad = 0.23
 
     if flow_mag == "unsteady":
         num_time_steps = n_tsteps
         flow = f"{int(num_time_steps)}    16\n"
-        flow_amp = 2 * 0.04*5500/(1.06*0.28*2)
+        flow_amp = 2 * 0.04*5500/(1.06*inlet_rad*2)
         t = np.linspace(start = 0, stop = 4*np.pi, num = num_time_steps)
         q = (flow_amp/2) * (np.cos(t)-1)
         for i in range(t.size):
-            flow = flow + "%1.5f    %1.3f\n" %(i*dt, q[i])
-        f = open(file_dir + f"/inflow_svFSI_flow_{flow_mag}.flow", "w")
-        f.write(flow)
-        f.close()
-    else:
-        num_time_steps = n_tsteps
-        flow = f"{num_time_steps}    16\n"
-        t = np.linspace(start = 0, stop = num_time_steps, num = num_time_steps)
-        q = t*0
-        for i in range(t.size):
-            if i < 0.1 * t.size:
-                q_fac = i/(0.1 * t.size)
-            else:
-                q_fac = 1
-
-            #q[i] = q_fac * -2 * 0.04*5500/(1.06*0.28*2) #-1*0.5*200 #*3.14*1.0476766883**2#-1 * 85 * 2 / 3.4215284204218883
-            q[i] = 0.01* flow_mag * q_fac * -2 * 0.04*5500/(1.06*0.28*2)  #q_fac * -2 * 0.04*5500/(1.06*1.5*2) tree_dec
-
             flow = flow + "%1.5f    %1.3f\n" %(i*dt, q[i])
         f = open(file_dir + f"/inflow_svFSI_flow_{flow_mag}.flow", "w")
         f.write(flow)
@@ -218,20 +202,20 @@ def write_svfsiplus_xml(parent_file_dir, geo_name, sim_dir, n_tsteps=800, dt=0.0
 #SBATCH --error=/scratch/users/nrubio/job_scripts/{geo_name}_{flow_mag}.e%j\n\
 #SBATCH --time=06:00:00\n\
 #SBATCH --mem=50000\n\
-#SBATCH --nodes=4\n\
+#SBATCH --nodes={num_nodes}\n\
 #SBATCH --tasks-per-node=24\n\
 \n\
 export UCX_TLS=ib\n\
 export PMIX_MCA_gds=hash\n\
 export OMPI_MCA_btl_tcp_if_include=ib0\n\
-export F1='/scratch/users/nrubio/synthetic_junctions/CCO/{geo_name}_flow_{flow_mag}'\n\
+export F1='/scratch/users/nrubio/synthetic_junctions/CCO/{geo_name}/{geo_name}_flow_{flow_mag}'\n\
 export IMAGE_PATH='/home/users/nrubio/SV_scripts/solver_latest.sif'\n\
 \n\
 # Load Modules\n\
 module purge\n\
 module load openmpi\n\
 # Name of the executable you want to run\n\
-mpirun --mca mpi_cuda_support 0 -n 96 singularity run $IMAGE_PATH /build-trilinos/svFSIplus-build/bin/svfsiplus $F1/svFSIplus.xml"
+mpirun --mca mpi_cuda_support 0 -n {int(num_nodes * 24)} singularity run $IMAGE_PATH /build-trilinos/svFSIplus-build/bin/svfsiplus $F1/svFSIplus.xml"
     f = open(file_dir + f"/svFSI_{geo_name}_flow_{flow_mag}.sh", "w")
     f.write(shell_script)
     f.close()
@@ -239,13 +223,14 @@ mpirun --mca mpi_cuda_support 0 -n 96 singularity run $IMAGE_PATH /build-trilino
 
     # file_dir = "/Users/natalia/Desktop/cco_bifurcations/trees/geo_files/tree_80/"
 
-# sim_dir = "/scratch/users/nrubio/synthetic_junctions/CCO/test/simulation_data35/"
+# sim_dir_sher = "/scratch/users/nrubio/synthetic_junctions/CCO/test/simulation_data35/"
 # file_dir = "/Users/natalia/Desktop/cco_bifurcations/trees/geo_files/tree_80/"
 
 parent_file_dir = "/Users/natalia/Desktop/cco_bifurcations/trees/geo_files/"
-geo_name = "tree_20"
+geo_name = "tree_5"
 
 flow_mag = "unsteady"
-sim_dir = f"/scratch/users/nrubio/synthetic_junctions/CCO/tree_20_flow_{flow_mag}/"
-write_svfsiplus_xml(parent_file_dir, geo_name, sim_dir, flow_mag = flow_mag)
+sim_dir_sher = f"/scratch/users/nrubio/synthetic_junctions/CCO/{geo_name}/{geo_name}_flow_{flow_mag}/"
+sim_dir_sher_orig = f"/scratch/users/nrubio/synthetic_junctions/CCO/{geo_name}/{geo_name}_original"
+write_svfsiplus_xml(parent_file_dir, geo_name, sim_dir_sher, sim_dir_sher_orig, num_nodes = 2, flow_mag = flow_mag)
 

@@ -37,8 +37,8 @@ def extract_flow_behavior_unsteady(geo_results_dir, offset):
         times = np.asarray(soln_dict["times"])
 
         # time derivatives
-        
-        dt = 2*0.4/800
+        # pdb.set_trace()
+        dt = (times[1][0] - times[0][0]) * 2*0.4/800
         dflow_dt = np.zeros_like(flow)
         dflow_dt[1:-1,:] = (flow[2:,:] - flow[:-2,:])/(2*dt) # central difference
 
@@ -135,12 +135,13 @@ def extract_flow_behavior_unsteady(geo_results_dir, offset):
         print("Solved for resistances.")
 
     # Check consistency of non-dimensionalization
-    assert abs(offset_dict["daughter1_R_lin"]   - offset_dict["daughter1_R_lin_star"]*1.06*U_char/A_char)   < 0.1; "Daughter 1 linear resistances do not match."
-    assert abs(offset_dict["daughter2_R_lin"]   - offset_dict["daughter2_R_lin_star"]*1.06*U_char/A_char)   < 0.1; "Daughter 2 linear resistances do not match."
-    assert abs(offset_dict["daughter1_L"]       - offset_dict["daughter1_L_star"]*1.06*L_char/A_char)       < 0.1; "Daughter 1 inductances do not match."
-    assert abs(offset_dict["daughter1_R_quad"]  - offset_dict["daughter1_R_quad_star"]*1.06/A_char**2)      < 0.1; "Daughter 1 quadratic resistances do not match."
-    assert abs(offset_dict["daughter2_R_quad"]  - offset_dict["daughter2_R_quad_star"]*1.06/A_char**2)      < 0.1; "Daughter 2 quadratic resistances do not match."
-    assert abs(offset_dict["daughter2_L"]       - offset_dict["daughter2_L_star"]*1.06*L_char/A_char)       < 0.1; "Daughter 2 inductances do not match."
+    tol = 0.02
+    assert abs(offset_dict["daughter1_R_lin"]   - offset_dict["daughter1_R_lin_star"]*1.06*U_char/A_char)   < tol; "Daughter 1 linear resistances do not match."
+    assert abs(offset_dict["daughter2_R_lin"]   - offset_dict["daughter2_R_lin_star"]*1.06*U_char/A_char)   < tol; "Daughter 2 linear resistances do not match."
+    assert abs(offset_dict["daughter1_L"]       - offset_dict["daughter1_L_star"]*1.06*L_char/A_char)       < tol; "Daughter 1 inductances do not match."
+    assert abs(offset_dict["daughter1_R_quad"]  - offset_dict["daughter1_R_quad_star"]*1.06/A_char**2)      < tol; "Daughter 1 quadratic resistances do not match."
+    assert abs(offset_dict["daughter2_R_quad"]  - offset_dict["daughter2_R_quad_star"]*1.06/A_char**2)      < tol; "Daughter 2 quadratic resistances do not match."
+    assert abs(offset_dict["daughter2_L"]       - offset_dict["daughter2_L_star"]*1.06*L_char/A_char)       < tol; "Daughter 2 inductances do not match."
 
 
     if verbose:
@@ -226,7 +227,7 @@ def extract_unsteady_flow_data(anatomy, set_type, require4):
             #     continue
             geo_results_dir = f"data/synthetic_junctions_reduced_results/{anatomy}/{set_type}/{geo}"
             geo_dict = {}
-            for offset in range(1,10):
+            for offset in range(5,10):
                 try:
                     offset_dict = extract_flow_behavior_unsteady(geo_results_dir, offset)
                     if offset_dict is None:

@@ -23,7 +23,7 @@ model_params = params.ModelParameters()\n\
 model_params.name = '{tree_dict['tree_name']}'\n\
 model_params.inlet_face_names = ['{tree_dict['inlet_cap']}']\n\
 model_params.outlet_face_names = {tree_dict['outlet_cap_list']}\n\
-model_params.centerlines_file_name = 'trees/geo_files/{tree_dict['tree_name']}/centerlines/centerlines.vtp'\n\
+model_params.centerlines_file_name = 'trees/geo_files/{tree_dict['tree_name_base']}/{tree_dict['tree_name']}/centerlines/centerlines.vtp'\n\
 \n\
 ## Fluid properties.\n\
 fluid_props = params.FluidProperties()\n\
@@ -45,7 +45,7 @@ solution_params.time_step = {tree_dict['dt']}\n\
 solution_params.num_time_steps = {tree_dict['num_time_steps']}\n\
 \n\
 ## Write a 1D solver input file.\n\
-output_dir = str('trees/zerod_input/standard/' + '{tree_dict['tree_name']}')\n\
+output_dir = str('trees/zerod_input/standard/' + '{tree_dict['tree_name_base']}/{tree_dict['tree_name']}')\n\
 if not os.path.exists(output_dir):\n\
       os.makedirs(output_dir)\n\
 rom_simulation.write_input_file(model_order=0, model=model_params, mesh=mesh_params, fluid=fluid_props, material=material, boundary_conditions=bcs, solution=solution_params, directory=output_dir)"
@@ -71,10 +71,11 @@ rom_simulation.write_input_file(model_order=0, model=model_params, mesh=mesh_par
 if __name__ == "__main__":
    tree_name = sys.argv[1]
    inflow = sys.argv[2]
+   tree_name_split = tree_name.split("_")
+   tree_name_base = "_".join(tree_name_split[0:2])
 
-
-   inlet_cap = "cap_" + os.listdir(f'trees/geo_files/{tree_name}/mesh-complete/inlet_cap')[0]+".vtp"
-   caps = os.listdir(f"trees/geo_files/{tree_name}/mesh-complete/mesh-surfaces")
+   inlet_cap = "cap_" + os.listdir(f'trees/geo_files/{tree_name_base}/{tree_name}/mesh-complete/inlet_cap')[0]+".vtp"
+   caps = os.listdir(f"trees/geo_files/{tree_name_base}/{tree_name}/mesh-complete/mesh-surfaces")
    outlet_caps = []
    for cap in caps:
       if cap==inlet_cap:
@@ -83,6 +84,7 @@ if __name__ == "__main__":
 
 
    tree_dict = {"tree_name": tree_name, 
+               "tree_name_base": tree_name_base,
                "inlet_cap": inlet_cap, 
                "outlet_cap_list": outlet_caps,
                "num_time_steps": 10,
@@ -91,4 +93,4 @@ if __name__ == "__main__":
 
    write_standard0d_input_generator_file(tree_dict)
    os.system(f"/Applications/SimVascular.app/Contents/Resources/simvascular --python -- trees/standard0d_input_file_generators/{tree_name}_standard0d_input_file_generator.py")
-   os.system(f"sed -i -e 's/internal_junction/NORMAL_JUNCTION/g' trees/zerod_input/standard/{tree_name}/solver_0d.json")
+   os.system(f"sed -i -e 's/internal_junction/NORMAL_JUNCTION/g' trees/zerod_input/standard/{tree_name_base}/{tree_name}/solver_0d.json")

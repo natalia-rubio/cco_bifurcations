@@ -1,3 +1,4 @@
+from ctypes.wintypes import PDWORD
 import json
 import pdb
 import sys
@@ -32,11 +33,11 @@ def get_R_values_bif(inlet_area,
                      daughter2_flow_split):
     verbose = False
     anatomy = "tree_20"
-    #set_type = "random"#
-    set_type = "combined" #"dict_res_fs_ext" 
+    set_type = "random"#
+    #set_type = "combined" #"dict_res_fs_ext" 
     scaling_dict = load_dict(f"data/scaling_dictionaries/{anatomy}_{set_type}_scaling_dict")
     #model_name = "tree_20_ng_720_nl_3_lw_400_ne_2500_bs_20_dr_0.95_model"
-    model_name = "tree_20_ng_280_nl_3_lw_400_ne_2500_bs_20_dr_0.95_model"
+    model_name = "tree_20_ng_400_nl_2_lw_100_ne_1000_bs_20_dr_0.95_model"
     nn_model = dill_load(f"results/models/{anatomy}/{model_name}")
 
 
@@ -89,18 +90,22 @@ def get_R_values_bif(inlet_area,
 
     R_lin_star_pred1 = float(inv_scale_jax(scaling_dict, coefs_pred1[0][0], "daughter1_R_lin_star")[0][0]); R_lin_star_pred1 = check_out_of_dist(R_lin_star_pred1, "daughter1_R_lin_star", scaling_dict)
     R_quad_star_pred1 = float(inv_scale_jax(scaling_dict, coefs_pred1[0][1], "daughter1_R_quad_star")[0][0]); R_quad_star_pred1 = check_out_of_dist(R_quad_star_pred1, "daughter1_R_quad_star", scaling_dict)
+    L_star_pred1 = float(inv_scale_jax(scaling_dict, coefs_pred1[0][2], "daughter1_L_star")[0][0]); L_star_pred1 = check_out_of_dist(L_star_pred1, "daughter1_L_star", scaling_dict)
     
     R_lin_star_pred2 = float(inv_scale_jax(scaling_dict, coefs_pred2[0][0], "daughter2_R_lin_star")[0][0]); R_lin_star_pred2 = check_out_of_dist(R_lin_star_pred2, "daughter2_R_lin_star", scaling_dict)
     R_quad_star_pred2 = float(inv_scale_jax(scaling_dict, coefs_pred2[0][1], "daughter2_R_quad_star")[0][0]); R_quad_star_pred2 = check_out_of_dist(R_quad_star_pred2, "daughter2_R_quad_star", scaling_dict)
+    L_star_pred2 = float(inv_scale_jax(scaling_dict, coefs_pred2[0][2], "daughter2_L_star")[0][0]); L_star_pred2 = check_out_of_dist(L_star_pred2, "daughter2_L_star", scaling_dict)
 
 
     daughter1_R_lin = float((1.06 * jnp.square(U_char) * R_lin_star_pred1 /  (A_char * U_char)))
     daughter1_R_lin_final = float((1.06 * jnp.square(U_char) * R_lin_star_pred1 /  (A_char * U_char)))+ res_add1
     daughter1_R_quad = float(1.06 * jnp.square(U_char) * R_quad_star_pred1 / jnp.square(A_char * U_char))
+    daughter1_L = float(L_star_pred1) *1.06*L_char/A_char
 
     daughter2_R_lin = float((1.06 * jnp.square(U_char) * R_lin_star_pred2 /  (A_char * U_char)))
     daughter2_R_lin_final = float((1.06 * jnp.square(U_char) * R_lin_star_pred2 /  (A_char * U_char)))+ res_add2
     daughter2_R_quad = float(1.06 * jnp.square(U_char) * R_quad_star_pred2 / jnp.square(A_char * U_char))
+    daughter2_L = float(L_star_pred2) *1.06*L_char/A_char
 
 
     R_dict = {"inlet_R_lin": 0,
@@ -108,7 +113,9 @@ def get_R_values_bif(inlet_area,
               "daughter2_R_lin": daughter2_R_lin_final,
               "inlet_R_quad": 0,
               "daughter1_R_quad": daughter1_R_quad,
-              "daughter2_R_quad": daughter2_R_quad,}
+              "daughter2_R_quad": daughter2_R_quad,
+              "daughter1_L": daughter1_L,
+              "daughter2_L": daughter2_L,}
 
     return R_dict
 
@@ -151,10 +158,14 @@ if __name__ == "__main__":
                                     daughter2_flow_ratio)
         #pdb.set_trace()
         input_file["junctions"][i]["junction_type"] = "BloodVesselJunction"
-        input_file["junctions"][i]["junction_values"] = {"R_poiseuille": [R_dict["daughter1_R_lin"]/daughter1_flow_ratio, R_dict["daughter2_R_lin"]/daughter2_flow_ratio], 
+        #pdb.set_trace()
+        input_file["junctions"][i]["junction_values"] = {"R_poiseuille": [R_dict["daughter1_R_lin"]/daughter1_flow_ratio, 
+                                                                          R_dict["daughter2_R_lin"]/daughter2_flow_ratio], 
                                                                     "stenosis_coefficient": [0, 0],
-                                                                    "pressure_recovery_coefficient": [R_dict["daughter1_R_quad"]/(daughter1_flow_ratio**2), R_dict["daughter2_R_quad"]/(daughter2_flow_ratio**2)],
-                                                                    "L": [0,0],
+                                                                    "pressure_recovery_coefficient": [R_dict["daughter1_R_quad"]/(daughter1_flow_ratio**2), 
+                                                                                                      R_dict["daughter2_R_quad"]/(daughter2_flow_ratio**2)],
+                                                                    "L": [R_dict["daughter1_L"]/daughter1_flow_ratio, 
+                                                                          R_dict["daughter2_L"]/daughter2_flow_ratio],
                                                                     "flow_split": [daughter1_flow_ratio, daughter2_flow_ratio],}
 
         # input_file["junctions"][i]["junction_values"] = {"R_poiseuille": [junction_dict["3D_daughter1_R_lin"]/daughter1_flow_ratio, junction_dict["3D_daughter2_R_lin"]/daughter2_flow_ratio], 
