@@ -15,7 +15,7 @@ from util.tree.centerline_proj import extract_results
 from util.tools.basic import *
 from util.tools.junction_proc import get_angle_diff
 from util.neural_net.nn_util import scale_jax, inv_scale_jax, dill_load 
-from util.zerod.standard_to_RR import check_out_of_dist
+#from util.zerod.standard_to_RR import check_out_of_dist
 
 from fpdf import FPDF
 import matplotlib.pyplot as plt
@@ -24,6 +24,15 @@ plt.rcParams["font.family"] = "Times New Roman"
 plt.rcParams['font.size'] = 10
 plt.rcParams['text.usetex']=True
 colors = ["royalblue", "orangered", "seagreen", "peru", "blueviolet"]
+
+def check_out_of_dist(param, param_name, scaling_dict):
+    if param < scaling_dict[param_name][2]:
+        print(f"{param_name} smaller than training set minimum: {param}, {scaling_dict[param_name][2]}")
+        param = scaling_dict[param_name][2]
+    if param > scaling_dict[param_name][3]:
+        print(f"{param_name} larger than training set maximum: {param}, {scaling_dict[param_name][3]}")
+        param = scaling_dict[param_name][3]
+    return param
 
 def get_recursive_resistance(junction_dict_master, junction_name):
     
@@ -53,18 +62,23 @@ def get_recursive_resistance(junction_dict_master, junction_name):
     return junction_resistance #, downstream_aux_resistance
 
 def add_solution_values(junction_dict_master, tree_name, flow_mag, time_step):
-    fpath_out = f"trees/threed_output_cent/{tree_name}_flow_{flow_mag}/centerline_sol_{time_step}.vtp"
+    
+    tree_name_split = tree_name.split("_")
+    tree_name_base = "_".join(tree_name_split[0:2])
+    flow_mag = tree_name_split[-1]
+
+    fpath_out = f"trees/threed_output_cent/{tree_name_base}/{tree_name}/centerline_sol_{time_step}.vtp"
     # Project the 3D solution onto the centerline if not already done
-    if not os.path.exists(f"trees/threed_output_cent/{tree_name}_flow_{flow_mag}/centerline_sol_{time_step}.vtp"):
-        fpath_1d = f"trees/geo_files/{tree_name}/centerlines/centerlines.vtp"
-        fpath_3d = f"trees/threed_results/{tree_name}_flow_{flow_mag}/{tree_name}_flow_{flow_mag}_result_{time_step}.vtu"
-        if not os.path.exists(f"trees/threed_output_cent/{tree_name}_flow_{flow_mag}"):
-            os.makedirs(f"trees/threed_output_cent/{tree_name}_flow_{flow_mag}")
+    if not os.path.exists(fpath_out):
+        fpath_1d = f"trees/geo_files/{tree_name_base}/{tree_name_base}_original/centerlines/centerlines.vtp"
+        fpath_3d = f"trees/threed_results/{tree_name_base}/{tree_name}/{tree_name}_result_{time_step}.vtu"
+        if not os.path.exists(f"trees/threed_output_cent/{tree_name_base}/{tree_name}"):
+            os.makedirs(f"trees/threed_output_cent/{tree_name}")
         extract_results(fpath_1d, fpath_3d, fpath_out, only_caps=False, num_time_steps = 50)
 
     # Load the solution data
     pt_id, num_pts, branch_id, junction_id, area, angle1, angle2, angle3, path, direction, pressure_in_time, flow_in_time, times, time_interval= \
-    load_vmr_model_data(f"centerline_sol_{time_step}.vtp", f"trees/threed_output_cent/{tree_name}_flow_{flow_mag}")
+    load_vmr_model_data(f"centerline_sol_{time_step}.vtp", f"trees/threed_output_cent/{tree_name_base}/{tree_name}")
     reader_1d = read_geo(fpath_out).GetOutput(); points = v2n(reader_1d.GetPoints().GetData())
 
     # Fit a curve to the flow and pressure solutions, get extra timesteps and derivatives, as necessary
@@ -135,29 +149,33 @@ def add_downstream_resistance_values(junction_dict_master):
 
 def add_geometry_values(junction_dict_master, tree_name, flow_mag, time_step):
 
+    tree_name_split = tree_name.split("_")
+    tree_name_base = "_".join(tree_name_split[0:2])
+    flow_mag = tree_name_split[-1]
+
     # Project the 3D solution onto the centerline if not already done
-    fpath_out = f"trees/threed_output_cent/{tree_name}_flow_{flow_mag}/centerline_sol_{time_step}.vtp"
-    if not os.path.exists(f"trees/threed_output_cent/{tree_name}_flow_{flow_mag}/centerline_sol_{time_step}.vtp"):
-        fpath_1d = f"trees/geo_files/{tree_name}/centerlines/centerlines.vtp"
-        fpath_3d = f"trees/threed_results/{tree_name}_flow_{flow_mag}/{tree_name}_{flow_mag}_result_{time_step}.vtu"
-        if not os.path.exists(f"trees/threed_output_cent/{tree_name}_flow_{flow_mag}"):
-            os.makedirs(f"trees/threed_output_cent/{tree_name}_flow_{flow_mag}")
+    fpath_out = f"trees/threed_output_cent/{tree_name_base}/{tree_name}/centerline_sol_{time_step}.vtp"
+    if not os.path.exists(fpath_out):
+        fpath_1d = f"trees/geo_files/{tree_name_base}/{tree_name_base}_original/centerlines/centerlines.vtp"
+        fpath_3d = f"trees/threed_results/{tree_name_base}/{tree_name}_flow_{flow_mag}/{tree_name}_{flow_mag}_result_{time_step}.vtu"
+        if not os.path.exists(f"trees/threed_output_cent/{tree_name_base}/{tree_name}_flow_{flow_mag}"):
+            os.makedirs(f"trees/threed_output_cent/{tree_name_base}/{tree_name}_flow_{flow_mag}")
         extract_results(fpath_1d, fpath_3d, fpath_out, only_caps=False, num_time_steps = 50)
 
     # Load the solution data
     pt_id, num_pts, branch_id, junction_id, area, angle1, angle2, angle3, path, direction, pressure_in_time, flow_in_time, times, time_interval= \
-    load_vmr_model_data(f"centerline_sol_{time_step}.vtp", f"trees/threed_output_cent/{tree_name}_flow_{flow_mag}")
+    load_vmr_model_data(f"centerline_sol_{time_step}.vtp", f"trees/threed_output_cent/{tree_name_base}/{tree_name}")
     reader_1d = read_geo(fpath_out).GetOutput(); points = v2n(reader_1d.GetPoints().GetData())
-
+    
     # Fit a curve to the flow and pressure solutions, get extra timesteps and derivatives, as necessary
     pressure_in_time_aug, pressure_in_time_aug_der, pressure_in_time_aug_der2,\
     flow_in_time_aug, flow_in_time_aug_der, flow_in_time_aug_der2, num_time_steps_model = process_soln(flow_in_time, pressure_in_time, times)
-
+    
     # Find the endpoints of the junctions
     junction_dict_3D, offsets, branch_id_dict = identify_junctions_offset(junction_id, branch_id, pt_id, path, offset=0)
     # Find the inlet and outlet points of the branches
     branch_dict_3D = identify_branches_offset(branch_id, pt_id, path, offset=0)
-
+    
     for junction_name, junction_dict in junction_dict_master.items():
         # Decide which points are inlets and outlets, and find the indices of relevant points, from their pt_ids
         junc_inlet_pt, junc_outlet_pts = classify_branches_backflow_allowed(flow_in_time_aug.T, junc_pts = junction_dict_3D[junction_dict["junction_id"]], pt_arr = pt_id)
@@ -202,7 +220,7 @@ def add_geometry_values(junction_dict_master, tree_name, flow_mag, time_step):
         junction_dict["3D_branch2_outlet_area"] = area[branch2_outlet_ind]
         junction_dict["3D_branch2_inlet_tangent"] = direction[branch2_inlet_ind,:]
         junction_dict["3D_branch2_outlet_tangent"] = direction[branch2_outlet_ind,:]
-
+    
     return
 
 def add_3D_resistance(junction_dict_master, tree_name, flow_mag_list, time_step):
@@ -350,7 +368,7 @@ def add_0D_resistance(junction_dict_master, tree_name):
         #set_type = "combined" #"dict_res_fs_ext"; 
         scaling_dict = load_dict(f"data/scaling_dictionaries/{anatomy}_{set_type}_scaling_dict")
         #model_name = "tree_20_ng_720_nl_2_lw_70_ne_1000_bs_20_dr_0.95_model" #
-        model_name = "tree_20_ng_400_nl_2_lw_100_ne_1000_bs_20_dr_0.95_model"
+        model_name ="tree_20_ng_498_nl_1_lw_30_ne_2000_bs_20_dr_0.95_model"#"tree_20_ng_400_nl_2_lw_60_ne_2000_bs_20_dr_0.95_model" # "tree_20_ng_400_nl_2_lw_100_ne_1000_bs_20_dr_0.95_model"
         nn_model = dill_load(f"results/models/{anatomy}/{model_name}")
         
         A_char = junction_dict["0D_inlet_area"]; L_char = np.sqrt(A_char/np.pi)
@@ -361,10 +379,17 @@ def add_0D_resistance(junction_dict_master, tree_name):
         
         daughter1_area_ratio = junction_dict["0D_outlet1_area"]/A_char; daughter1_area_ratio = check_out_of_dist(daughter1_area_ratio, "daughter1_area_ratio", scaling_dict)
         daughter2_area_ratio = junction_dict["0D_outlet2_area"]/A_char; daughter2_area_ratio = check_out_of_dist(daughter2_area_ratio, "daughter2_area_ratio", scaling_dict)
+        total_daughter_area_ratio = daughter1_area_ratio + daughter2_area_ratio; total_daughter_area_ratio = check_out_of_dist(total_daughter_area_ratio, "total_daughter_area_ratio", scaling_dict)
         daughter1_area_ratio_inv2 = (junction_dict["0D_outlet1_area"]/A_char)**-2;  daughter1_area_ratio_inv2 = check_out_of_dist(daughter1_area_ratio_inv2, "daughter1_area_ratio_inv2", scaling_dict)
         daughter2_area_ratio_inv2 = (junction_dict["0D_outlet2_area"]/A_char)**-2;  daughter2_area_ratio_inv2 = check_out_of_dist(daughter2_area_ratio_inv2, "daughter2_area_ratio_inv2", scaling_dict)
-        daughter1_angle = get_angle_diff(np.asarray(junction_dict["0D_inlet_tangent"]), np.asarray(junction_dict["0D_daughter1_tangent"])); daughter1_angle = check_out_of_dist(daughter1_angle, "daughter1_angle", scaling_dict)
-        daughter2_angle = get_angle_diff(np.asarray(junction_dict["0D_inlet_tangent"]), np.asarray(junction_dict["0D_daughter2_tangent"])); daughter2_angle = check_out_of_dist(daughter2_angle, "daughter2_angle", scaling_dict)
+        total_area_ratio_inv2 = 1/(total_daughter_area_ratio**2); total_area_ratio_inv2 = check_out_of_dist(total_area_ratio_inv2, "total_area_ratio_inv2", scaling_dict)
+        daughter1_angle = get_angle_diff(np.asarray(junction_dict["0D_inlet_tangent"]), np.asarray(junction_dict["0D_daughter1_tangent"])); 
+        daughter1_angle = np.cos(daughter1_angle)
+        daughter1_angle = check_out_of_dist(daughter1_angle, "daughter1_angle", scaling_dict)
+        
+        daughter2_angle = get_angle_diff(np.asarray(junction_dict["0D_inlet_tangent"]), np.asarray(junction_dict["0D_daughter2_tangent"])); 
+        daughter2_angle = np.cos(daughter2_angle)
+        daughter2_angle = check_out_of_dist(daughter2_angle, "daughter2_angle", scaling_dict)
         daughter1_length = junction_dict["0D_length1"]
         daughter1_length_star = daughter1_length/L_char; daughter1_length_star_trim = check_out_of_dist(daughter1_length_star, "daughter1_length_star", scaling_dict)
         
@@ -394,8 +419,10 @@ def add_0D_resistance(junction_dict_master, tree_name):
         # FIX LAST INPUT ARG
         input_tens1 = jnp.asarray([scale_jax(scaling_dict, jnp.asarray(daughter1_area_ratio, dtype=jnp.float32), "daughter1_area_ratio"),
                         scale_jax(scaling_dict, jnp.asarray(daughter2_area_ratio, dtype=jnp.float32), "daughter2_area_ratio"),
+                        scale_jax(scaling_dict, jnp.asarray(total_daughter_area_ratio, dtype=jnp.float32), "total_daughter_area_ratio"),
                         scale_jax(scaling_dict, jnp.asarray(daughter1_area_ratio_inv2, dtype=jnp.float32), "daughter1_area_ratio_inv2"),
                         scale_jax(scaling_dict, jnp.asarray(daughter2_area_ratio_inv2, dtype=jnp.float32), "daughter2_area_ratio_inv2"),
+                        scale_jax(scaling_dict, jnp.asarray(total_area_ratio_inv2, dtype=jnp.float32), "total_area_ratio_inv2"),
                         scale_jax(scaling_dict, jnp.asarray(daughter1_angle, dtype=jnp.float32), "daughter1_angle"),
                         scale_jax(scaling_dict, jnp.asarray(daughter2_angle, dtype=jnp.float32), "daughter2_angle"),
                         scale_jax(scaling_dict, jnp.asarray(daughter1_length_star_trim, dtype=jnp.float32), "daughter1_length_star"),
@@ -405,8 +432,10 @@ def add_0D_resistance(junction_dict_master, tree_name):
                             ]).reshape(1,-1)
         input_tens2 = jnp.asarray([scale_jax(scaling_dict, jnp.asarray(daughter2_area_ratio, dtype=jnp.float32), "daughter1_area_ratio"),
                         scale_jax(scaling_dict, jnp.asarray(daughter1_area_ratio, dtype=jnp.float32), "daughter2_area_ratio"),
+                        scale_jax(scaling_dict, jnp.asarray(total_daughter_area_ratio, dtype=jnp.float32), "total_daughter_area_ratio"),
                         scale_jax(scaling_dict, jnp.asarray(daughter2_area_ratio_inv2, dtype=jnp.float32), "daughter1_area_ratio_inv2"),
                         scale_jax(scaling_dict, jnp.asarray(daughter1_area_ratio_inv2, dtype=jnp.float32), "daughter2_area_ratio_inv2"),
+                        scale_jax(scaling_dict, jnp.asarray(total_area_ratio_inv2, dtype=jnp.float32), "total_area_ratio_inv2"),
                         scale_jax(scaling_dict, jnp.asarray(daughter2_angle, dtype=jnp.float32), "daughter1_angle"),
                         scale_jax(scaling_dict, jnp.asarray(daughter1_angle, dtype=jnp.float32), "daughter2_angle"),
                         scale_jax(scaling_dict, jnp.asarray(daughter2_length_star_trim, dtype=jnp.float32), "daughter1_length_star"),
@@ -705,6 +734,8 @@ def plot_flow_splits(junction_dict_master, tree_name, flow_mag_list, time_step):
     return
 
 def make_pdfs(junction_dict_master, tree_name, flow_mag_list, time_step, isol_set_list):
+
+    
     plt.rcParams['font.size'] = 10
     for junction_name, junction_dict in junction_dict_master.items():
         # Create a PDF report for each junction
@@ -988,17 +1019,18 @@ def make_pdfs(junction_dict_master, tree_name, flow_mag_list, time_step, isol_se
                 self.ln()
                 for i, flow_mag in enumerate(flow_mag_list):
                     self.cell(cw2, 4, "Flow Split (Outlet 1/Outlet 2)", border = 0, ln = 0, align ="R"); 
-                    self.cell(cw1, 4, f"{junction_dict[f"3D_flow_split_flow_fm_{flow_mag}_ts_{time_step}"][0]:.3f}", border = 0, ln = 0, align ="R")
+                    self.cell(cw1, 4, f"{junction_dict[f"3D_flow_split_flow_fm_{flow_mag}_ts_{time_step}"][0]/(1+junction_dict[f"3D_flow_split_flow_fm_{flow_mag}_ts_{time_step}"][0]):.3f}", border = 0, ln = 0, align ="R")
                     try:
                         if i < len(junction_dict[f"isol_{isol_set_name}_flow_splits"]):
                             
-                            self.cell(cw1, 4, f"{junction_dict[f"isol_{isol_set_name}_flow_splits"][i]:.3f}", border = 0, ln = 0, align ="R")
+                            self.cell(cw1, 4, f"{junction_dict[f"isol_{isol_set_name}_flow_splits"][i]/(1+junction_dict[f"isol_{isol_set_name}_flow_splits"][i]):.3f}", border = 0, ln = 0, align ="R")
                         else:
                             self.cell(cw1, 4, f"", border = 0, ln = 0, align ="R")
                     except:
+                        
                         continue
 
-                    self.cell(cw1, 4, f"{junction_dict["0D_geo_flow_split"]:.3f}", border = 0, ln = 1, align ="R")
+                    self.cell(cw1, 4, f"{junction_dict["0D_geo_flow_split"]/(junction_dict["0D_geo_flow_split"]+1):.3f}", border = 0, ln = 1, align ="R")
                 
 
         # Create a plot and save to a temporary file
@@ -1107,3 +1139,31 @@ def make_pdfs(junction_dict_master, tree_name, flow_mag_list, time_step, isol_se
         #     pdb.set_trace()
         print(f"PDF saved to {report_loc}")
 
+def get_statistics(junction_dict_master, tree_name, flow_mag_list, time_step, isol_set_list):
+    param_dict = {"daughter1_angle": [],
+                "daughter2_angle": [],
+                "daughter1_area_ratio": [],
+                "daughter2_area_ratio": [],
+                "flow_split": [],
+                "max_inlet_re": [],
+                }
+    for junction_name, junction_dict in junction_dict_master.items():
+        param_dict["daughter1_area_ratio"].append(junction_dict["3D_branch1_outlet_area"]/junction_dict["3D_junc_inlet_area"])
+        param_dict["daughter2_area_ratio"].append(junction_dict["3D_branch2_outlet_area"]/junction_dict["3D_junc_inlet_area"])
+        param_dict["daughter1_angle"].append(junction_dict["3D_junc_outlet1_angle"]*180/np.pi)
+        param_dict["daughter2_angle"].append(junction_dict["3D_junc_outlet2_angle"]*180/np.pi)
+        param_dict["flow_split"].append(junction_dict[f"3D_flow_split_flow_fm_{flow_mag_list[0]}_ts_{time_step}"][0]/(1+junction_dict[f"3D_flow_split_flow_fm_{flow_mag_list[0]}_ts_{time_step}"][0]))
+
+    stats_dict = {}
+    for key, values in param_dict.items():
+        if len(values) == 0:
+            continue
+        stats_dict[key] = {
+            "mean": np.mean(values),
+            "std": np.std(values),
+            "min": np.min(values),
+            "max": np.max(values),
+            "median": np.median(values)
+        }
+    save_dict(stats_dict, f"trees/reports/{tree_name}/junction_statistics")
+    pdb.set_trace()

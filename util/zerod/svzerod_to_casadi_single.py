@@ -10,18 +10,17 @@ import sys
 # Solve a zerod vascular flow with CasADi
 
 # Load in svZeroDSolver input file
-def solve_casadi(tree_name, junction_mode, sol_prev = None, coef_factor = 1.0):
+def solve_casadi_single(tree_name, junction_mode, sol_prev = None, coef_factor = 1.0):
     
-    with open(f'trees/zerod_input/{junction_mode}/{tree_name}/solver_0d.json') as json_file:
+    tree_name_split = tree_name.split("_")
+    tree_name_base = "_".join(tree_name_split[0:2])
+    flow_mag = tree_name_split[-1]
+
+    with open(f'trees/zerod_input/{junction_mode}/{tree_name_base}/{tree_name}/solver_0d.json') as json_file:
         input_file = json.load(json_file)
     num_vessels = len(input_file["vessels"])
-    print(f"Number of vessels: {num_vessels}")
     num_junctions = len(input_file["junctions"])
-    print(f"Number of junctions: {num_junctions}")
     num_BCs = len(input_file["boundary_conditions"])
-    print(f"Number of boundary conditions: {num_BCs}")
-    print(f"Number of unknowns: {num_vessels*8}")
-    print("\n ---------------- \n")
 
     vessel_constraint_counter = 0
     junction_constraint_counter = 0
@@ -74,20 +73,28 @@ def solve_casadi(tree_name, junction_mode, sol_prev = None, coef_factor = 1.0):
         vessel_dict[vessel["vessel_id"]]["v_ind"] = i
         vessel_dict[vessel["vessel_id"]]["v_name"] = vessel["vessel_name"]
 
-        R_lin = vessel["zero_d_element_values"]["R_poiseuille"]*0
-        R_sten = vessel["zero_d_element_values"]["stenosis_coefficient"]*0
+        R_lin = vessel["zero_d_element_values"]["R_poiseuille"]
+        R_sten = vessel["zero_d_element_values"]["stenosis_coefficient"]
         if "pressure_recovery_coefficient" in vessel["zero_d_element_values"].keys():
-            R_quad = vessel["zero_d_element_values"]["pressure_recovery_coefficient"]*0
+            R_quad = vessel["zero_d_element_values"]["pressure_recovery_coefficient"]
         else:
             R_quad = 0
         C = vessel["zero_d_element_values"]["C"]*0
         L = vessel["zero_d_element_values"]["L"]*0
 
-        objective += (
-            P_in[i] +
-            - P_out[i] +
-            - (R_lin + R_sten * (10**-2 + Q_in[i]**2)**0.5 + R_quad * Q_in[i]) * Q_in[i] + # abs removed
-            - L * Q_out_dt[i]  
+        if "branch0" in vessel["vessel_name"]:
+            #print(f"Branch 0 vessel {vessel['vessel_name']} found, adding vessel equation to objective")
+            
+            objective += (
+                P_in[i] +
+                - P_out[i] +
+                - (R_lin + R_sten * (10**-2 + Q_in[i]**2)**0.5 + R_quad * Q_in[i]) * Q_in[i] + # abs removed
+                - L * Q_out_dt[i]  
+                )**2
+        else:
+            objective += (
+                P_out[i] +
+                - P_in[i] 
             )**2
         vessel_constraint_counter += 1
         
@@ -116,9 +123,7 @@ def solve_casadi(tree_name, junction_mode, sol_prev = None, coef_factor = 1.0):
                 inflow = input_file["boundary_conditions"][0]["bc_values"]["Q"][-1]
                 opti.subject_to(Q_in[i] == inflow)
                 BC_constraint_counter += 1
-        # if vessel["vessel_name"] == "branch32_seg0":
-        #     pdb.set_trace()
-                
+
     for i, junction in enumerate(input_file["junctions"]):
         j_name = junction["junction_name"]
         inlet_vessel_id = junction["inlet_vessels"][0]
@@ -126,27 +131,27 @@ def solve_casadi(tree_name, junction_mode, sol_prev = None, coef_factor = 1.0):
         outlet_vessel_inds = [vessel_dict[outlet_vessel]["v_ind"] for outlet_vessel in junction["outlet_vessels"]]
 
         #Q_sum[i] = Q_out[inlet_vessel_ind]
-
         for j, outlet_vessel_ind in enumerate(outlet_vessel_inds):
 
             if junction["junction_type"] == "BloodVesselJunction":
 
-                R_lin = junction["junction_values"]["R_poiseuille"][j] * coef_factor
-                R_sten = junction["junction_values"]["stenosis_coefficient"][j] * coef_factor
+                R_lin = junction["junction_values"]["R_poiseuille"][j] 
+                R_sten = junction["junction_values"]["stenosis_coefficient"][j] 
                 if "pressure_recovery_coefficient" in junction["junction_values"].keys():
-                    R_quad = junction["junction_values"]["pressure_recovery_coefficient"][j] * coef_factor
+                    R_quad = junction["junction_values"]["pressure_recovery_coefficient"][j]
                 else:
                     R_quad = 0
                 L = junction["junction_values"]["L"][j] * coef_factor
                 C = 0
-
+                #pdb.set_trace()
                 # Junction pressure equation residual (to minimize)
                 objective += ((
                     P_out[inlet_vessel_ind] + # THIS IS THE INLET PRESSURE
                     - P_in[outlet_vessel_ind] +
                     - (R_lin + R_sten * (10**-2 + Q_in[outlet_vessel_ind]**2)**0.5 + R_quad * Q_in[outlet_vessel_ind]) * Q_in[outlet_vessel_ind] + # abs removed
-                    - L * Q_in_dt[outlet_vessel_ind])/(1333 * 20)
+                    - L * Q_in_dt[outlet_vessel_ind])/(1333*20)
                 )**2
+
                 junction_constraint_counter += 1
                 
                 enforce_pressure_loss = False
@@ -158,7 +163,7 @@ def solve_casadi(tree_name, junction_mode, sol_prev = None, coef_factor = 1.0):
                 enforce_flow_splits = True
                 if enforce_flow_splits:
                     # objective += (
-                    #     100 * (Q_in[outlet_vessel_ind] - junction["junction_values"]["flow_split"][j] *  Q_out[inlet_vessel_ind])
+                    #     (Q_in[outlet_vessel_ind] - junction["junction_values"]["flow_split"][j] *  Q_out[inlet_vessel_ind])**2
                     # )
                     opti.subject_to(
                         Q_in[outlet_vessel_ind] - junction["junction_values"]["flow_split"][j] *  Q_out[inlet_vessel_ind] == 0
@@ -172,7 +177,6 @@ def solve_casadi(tree_name, junction_mode, sol_prev = None, coef_factor = 1.0):
             
             opti.set_value(outflow_extractors[outlet_vessel_ind, i], -1)
 
-            enforce_flow_splits = True
 
         # Conservation of mass
         opti.set_value(inflow_extractors[inlet_vessel_ind, i], 1)
@@ -194,20 +198,22 @@ def solve_casadi(tree_name, junction_mode, sol_prev = None, coef_factor = 1.0):
         opti.subject_to(casadi.vec(Q_in)  >= 0)
         opti.subject_to(casadi.vec(Q_out) >= 0)
 
-    print(f"Number of vessel constraints: {vessel_constraint_counter}")
-    print(f"Number of junction constraints: {junction_constraint_counter}")
-    print(f"Number of boundary condition constraints: {BC_constraint_counter}")
-    print(f"Number of steady state constraints: {SS_constraint_counter}")
-    print(f"Total number of constraints: {vessel_constraint_counter + junction_constraint_counter + BC_constraint_counter + SS_constraint_counter}")
+    # print(f"Number of vessel constraints: {vessel_constraint_counter}")
+    # print(f"Number of junction constraints: {junction_constraint_counter}")
+    # print(f"Number of boundary condition constraints: {BC_constraint_counter}")
+    # print(f"Number of steady state constraints: {SS_constraint_counter}")
+    # print(f"Total number of constraints: {vessel_constraint_counter + junction_constraint_counter + BC_constraint_counter + SS_constraint_counter}")
     # Solve NLP with IPOPT
     opti.minimize(objective) # Dummy objective
-    opti.solver('ipopt')
-    #pdb.set_trace()
+    opts = {'ipopt.print_level': 0, 'print_time': 0, 'ipopt.sb': 'yes'}
+    #opts = {}
+    opti.solver('ipopt', opts)
+
     try:
         sol = opti.solve()
     except:
         opti.debug.value(objective)
-        print("Objective value: ", opti.debug.value(objective))
+        # print("Objective value: ", opti.debug.value(objective))
         opti.debug.value(Q_in)
         sol = opti.debug
 
@@ -222,14 +228,15 @@ def solve_casadi(tree_name, junction_mode, sol_prev = None, coef_factor = 1.0):
                         sol.value(Q_out)[vessel_dict[vessel]["v_ind"]],
                         sol.value(P_in)[vessel_dict[vessel]["v_ind"]],
                         sol.value(P_out)[vessel_dict[vessel]["v_ind"]]]
-    if not os.path.exists(f'trees/zerod_output/{junction_mode}/{tree_name}'):
-        os.makedirs(f'trees/zerod_output/{junction_mode}/{tree_name}')
-    df.to_csv(f'trees/zerod_output/{junction_mode}/{tree_name}/sol_casadi.csv', index=False)
+    if not os.path.exists(f'trees/zerod_output/{junction_mode}/{tree_name_base}/{tree_name}'):
+        os.makedirs(f'trees/zerod_output/{junction_mode}/{tree_name_base}/{tree_name}')
+    df.to_csv(f'trees/zerod_output/{junction_mode}/{tree_name_base}/{tree_name}/sol_casadi.csv', index=False)
     return (sol)
 
-tree_name = sys.argv[1]
-junction_mode = sys.argv[2]
+
 
 if __name__ == "__main__":
     #num_iters = 10
-    sol = solve_casadi(tree_name, junction_mode, sol_prev = None, coef_factor=1)
+    tree_name = sys.argv[1]
+    junction_mode = sys.argv[2]
+    sol = solve_casadi_single(tree_name, junction_mode, sol_prev = None, coef_factor=1)

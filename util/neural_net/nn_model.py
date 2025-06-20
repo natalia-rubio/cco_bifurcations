@@ -20,8 +20,8 @@ class NeuralNet():
         self.scaling_dict   = load_dict(f"data/scaling_dictionaries/{self.anatomy}_{self.set_type}_scaling_dict")
         
         self.pred_mode      = network_params["pred_mode"]
-        #model_name = "tree_20_ng_280_nl_3_lw_400_ne_3000_bs_20_dr_0.95_model"
-        #nn_model = dill_load(f"results/models/{network_params["anatomy"]}/{model_name}")
+        model_name = "tree_20_ng_560_nl_2_lw_60_ne_2000_bs_20_dr_0.95_model"
+        nn_model = dill_load(f"results/models/{network_params["anatomy"]}/{model_name}")
         self.weights        =  init_weights(network_params) # 
         #self.weights = nn_model.weights# jnp.asarray([1.005]) #
         self.num_input_features = network_params["num_input_features"]

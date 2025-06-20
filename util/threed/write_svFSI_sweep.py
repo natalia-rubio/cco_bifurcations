@@ -243,7 +243,7 @@ mpirun --mca mpi_cuda_support 0 -n {int(num_nodes * 24)} singularity run $IMAGE_
 # file_dir = "/Users/natalia/Desktop/cco_bifurcations/trees/geo_files/tree_80/"
 
 parent_file_dir = "/Users/natalia/Desktop/cco_bifurcations/trees/geo_files/"
-geo_name = "tree_5"
+geo_name = "tree_10"
 
 sim_dir_sher_orig = f"/scratch/users/nrubio/synthetic_junctions/CCO/{geo_name}/{geo_name}_original"
 for flow_mag in [25, 50, 100, 150, 200]:

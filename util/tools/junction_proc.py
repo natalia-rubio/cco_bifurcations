@@ -347,7 +347,7 @@ def process_soln(flow_in_time, pressure_in_time, times):
     aug_factor = 1
     times = np.asarray(times)
     time_sort = np.argsort(times); times = times[time_sort] # sort timestep array
-    print(times)
+    #print(times)
     pressure_in_time = pressure_in_time#[time_sort, :] # sort pressure_in_time array
     flow_in_time = flow_in_time#[time_sort, :] # sort flow_in_time_index array
     #pressure_in_time_aug, pressure_in_time_aug_der, pressure_in_time_aug_der2 = augment_time(pressure_in_time, times, aug_factor)

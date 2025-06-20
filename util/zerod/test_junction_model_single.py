@@ -1,13 +1,24 @@
 import os
 import sys
 import pdb
-inflow_dict = {"tree_20": 84,
+import time
+sys.path.append("/Users/natalia/Desktop/cco_bifurcations")
+from util.tree.centerline_proj import extract_results
+from util.fidelity_comparison.compare_to_3d_inlet import compare_to_3d_inlet
+from util.zerod.standard_to_RR import transform_standard_to_RR
+from util.zerod.svzerod_to_casadi_single import solve_casadi_single
+from util.zerod.correct_BCs import correct_BCs
+
+inflow_dict = { "tree_20": 84,
                 "tree_20_flow_100": 84,
                 "tree_20_flow_50": 42,
                 "tree_20_flow_150": 126,
-               "tree_80": 339,
-               "tree_dec1": 646,
-               "tree_dec":483.4}
+                "tree_20_flow_25": 21,
+                "tree_3_flow_25": 40,
+                "tree_3_flow_50": 80,
+                "tree_3_flow_100": 160,
+                "tree_3_flow_150": 240,
+                }
 
 
 
@@ -17,8 +28,21 @@ def test_junction_model_single(tree_name, junction_mode):
     """
     if junction_mode not in ["standard", "RR", "TP"]:
         raise ValueError("Invalid junction mode. Choose from 'standard', 'RR', or 'TP'.")
+    
     tree_name_split = tree_name.split("_")
     tree_name_base = "_".join(tree_name_split[0:2])
+    flow_mag = tree_name_split[-1]
+
+        # If a 3D file doesn't exist, create it
+    time_step = 700
+    if not os.path.exists(f"trees/threed_output_cent/{tree_name_base}/{tree_name}/centerline_sol_{time_step}.vtp"):
+        fpath_out = f"trees/threed_output_cent/{tree_name_base}/{tree_name}/centerline_sol_{time_step}.vtp"
+        fpath_3d  = f"trees/threed_results/{tree_name_base}/{tree_name}/{tree_name_base}_{flow_mag}_result_{time_step}.vtu"
+        fpath_1d  = f"trees/geo_files/{tree_name_base}/{tree_name_base}_original/centerlines/centerlines.vtp"
+        if not os.path.exists(fpath_3d):    print(f"3D results for {tree_name} not found at {fpath_3d}. Exiting.")
+        else:
+            os.makedirs(f"trees/threed_output_cent/{tree_name_base}/{tree_name}", exist_ok=True)
+            extract_results(fpath_1d, fpath_3d, fpath_out, only_caps=False, num_time_steps = 50)
 
 
     inflow = inflow_dict[tree_name]
@@ -30,31 +54,22 @@ def test_junction_model_single(tree_name, junction_mode):
         os.system(f"python3 util/zerod/get_inp_standard.py {tree_name} {inflow}")
 
     # Correct BCs
-    # os.system(f"python3 util/zerod/correct_BCs.py {tree_name}")
+    # correct_BCs(tree_name)
 
-    # # If special junction handling is needed, create and run the modified 0D file
-    # if junction_mode != "standard":
-
-    #     if junction_mode == "RR":
-    #         os.system(f"python3 util/zerod/standard_to_RR.py {tree_name}")
-    #     elif junction_mode == "TP":
-    #         os.system(f"python3 util/zerod/standard_to_TP.py {tree_name}")
-    #     else:
-    #         print("Invalid junction mode. Exiting.")
+    # If special junction handling is needed, create and run the modified 0D file
+    if junction_mode == "RR":
+        transform_standard_to_RR(tree_name)
+        solve_casadi_single(tree_name, junction_mode)
         
-    #     # Solve the 0D equations with CasADi
-    #     os.system(f"python3 util/zerod/svzerod_to_casadi_single.py {tree_name} {junction_mode}")
 
     # Project the 0D results to the 3D centerline
     os.system(f"python3 util/centerline_projection/project_0d_to_3d.py {tree_name} {junction_mode}")
 
-    # # Compare the 0D and 3D results
-    # print("Centerline errors:")
-    # os.system(f"python3 util/fidelity_comparison/compare_to_3d.py {junction_mode} {tree_name}")
-    # print("Inlet errors:")
-    # os.system(f"python3 util/fidelity_comparison/compare_to_3d_inlet.py {junction_mode} {tree_name}")
 
-    return
+    # Compare the 0D and 3D results
+    error_dict = compare_to_3d_inlet(junction_mode, tree_name)
+
+    return error_dict
 
 if __name__ == "__main__":
     tree_name = sys.argv[1]

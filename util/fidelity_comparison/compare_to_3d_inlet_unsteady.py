@@ -28,9 +28,14 @@ def compare_to_3d_inlet_unsteady(junction_mode = "standard",
                   tree_name = "tree_20_unsteady",
                   time_step = "700"):
 
-    reader_0d = read_geo(f"trees/zerod_output_cent/standard/{tree_name}/centerline_sol.vtp").GetOutput()
-    reader_rr = read_geo(f"trees/zerod_output_cent/RR/{tree_name}/centerline_sol.vtp").GetOutput()
-    reader_3d = read_geo(f"trees/threed_output_cent/{tree_name}/centerline_sol_unsteady.vtp").GetOutput()
+    
+    tree_name_split = tree_name.split("_")[0:2]
+    tree_name_base = "_".join(tree_name_split)
+
+    reader_0d = read_geo(f"trees/zerod_output_cent/standard/{tree_name_base}/{tree_name}/centerline_sol.vtp").GetOutput()
+    reader_rr = read_geo(f"trees/zerod_output_cent/RR/{tree_name_base}/{tree_name}/centerline_sol.vtp").GetOutput()
+    pdb.set_trace()
+    reader_3d = read_geo(f"trees/threed_output_cent/{tree_name_base}/{tree_name}/centerline_sol_unsteady.vtp").GetOutput()
     #was 300
 
     arrays_0d = get_all_arrays(reader_0d)
@@ -98,12 +103,12 @@ def compare_to_3d_inlet_unsteady(junction_mode = "standard",
     pressure_0d = arrays_0d["pressure"][arrays_3d["GlobalNodeId"] == 10]
     pressure_3d = arrays_3d["Pressure"][arrays_3d["GlobalNodeId"] == 10]
 
-    flow_error_0d_rel = (flow_0d-flow_3d)/flow_3d
-    flow_error_0d_tot = (flow_0d-flow_3d)
+    # flow_error_0d_rel = (flow_0d-flow_3d)/flow_3d
+    # flow_error_0d_tot = (flow_0d-flow_3d)
     # flow_error_0d_rel[arrays_3d["BifurcationId"] >= 0] = 0
     # flow_error_0d_tot[arrays_3d["BifurcationId"] >= 0] = 0
-    print(f"Flow error      (Relative):     {flow_error_0d_rel}")
-    print(f"Flow error      (Total):        {flow_error_0d_tot}")
+    # print(f"Flow error      (Relative):     {flow_error_0d_rel}")
+    # print(f"Flow error      (Total):        {flow_error_0d_tot}")
    
     pressure_error_0d_rel = (pressure_0d - pressure_3d)/pressure_3d
     pressure_error_0d_tot = (pressure_0d - pressure_3d)/1333

@@ -63,7 +63,7 @@ def project_to_centerline(tree_name, junction_mode):
     tree_name_split = tree_name.split("_")[0:2]
     tree_name_base = "_".join(tree_name_split)
     centerline_handler = CenterlineHandler.from_file(f"trees/geo_files/{tree_name_base}/{tree_name_base}_original/centerlines/centerlines.vtp")
-    input_file = f"trees/zerod_input/standard/{tree_name}/solver_0d.json"
+    input_file = f"trees/zerod_input/standard/{tree_name_base}/{tree_name}/solver_0d.json"
     zerod_handler = SvZeroDSolverInputHandler.from_file(input_file)
     casadi = False
     #print(f"Input file: {input_file}")
@@ -76,15 +76,18 @@ def project_to_centerline(tree_name, junction_mode):
         zerod_solver.run()
         results_df = zerod_solver.get_full_result()
         #pdb.set_trace()
+        print(f"Saving results to trees/zerod_output/{junction_mode}/{tree_name_base}/{tree_name}/results.csv")
         results_df.to_csv(f"trees/zerod_output/{junction_mode}/{tree_name_base}/{tree_name}/results.csv")
     # 
     
     else:
         if casadi:
+            print(f"loading results from trees/zerod_output/{junction_mode}/{tree_name_base}/{tree_name}/sol_casadi.csv")
             results_df = pd.read_csv(f"trees/zerod_output/{junction_mode}/{tree_name_base}/{tree_name}/sol_casadi.csv")
         else:
+            print(f"loading results from trees/zerod_output/{junction_mode}/{tree_name_base}/{tree_name}/results.csv")
             results_df = pd.read_csv(f"trees/zerod_output/{junction_mode}/{tree_name_base}/{tree_name}/results.csv")
-    print(results_df)
+    #print(results_df)
     branch_results = convert_csv_to_branch_result(results_df, zerod_handler)
     arrays = rec_dd()
 
@@ -203,7 +206,7 @@ def project_to_centerline(tree_name, junction_mode):
         for f, a in arrays.items():
             out_array = numpy_to_vtk(a[:,i+num_time_steps])
             out_array.SetName(f+ "_" + time_str)
-            print(f"Adding array {f+ '_' + time_str} with shape {a[:,i].shape} to centerline.")
+            #print(f"Adding array {f+ '_' + time_str} with shape {a[:,i].shape} to centerline.")
             centerline_handler.data.GetPointData().AddArray(out_array)
     if not os.path.exists(f"trees/zerod_output_cent/{junction_mode}/{tree_name_base}/{tree_name}"):
         os.makedirs(f"trees/zerod_output_cent/{junction_mode}/{tree_name_base}/{tree_name}")

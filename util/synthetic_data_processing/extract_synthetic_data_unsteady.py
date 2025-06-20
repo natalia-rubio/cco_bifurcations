@@ -1,5 +1,8 @@
+import re
 import sys
 import os
+
+from pyparsing import line
 sys.path.append("/Users/natalia/Desktop/cco_bifurcations")
 from util.tools.basic import *
 from fpdf import FPDF
@@ -42,6 +45,11 @@ def extract_flow_behavior_unsteady(geo_results_dir, offset):
         dflow_dt = np.zeros_like(flow)
         dflow_dt[1:-1,:] = (flow[2:,:] - flow[:-2,:])/(2*dt) # central difference
 
+        flow = flow[1:-1,:] # remove first and last time step
+        pressure = pressure[1:-1,:] # remove first and last time step
+        times = times[1:-1,:] # remove first and last time step
+        dflow_dt = dflow_dt[1:-1,:] # remove first and last time step
+
         tangents = np.asarray(soln_dict["tangents"])
         lengths = np.asarray(soln_dict["lengths"]).reshape((-1, 2))
         
@@ -60,6 +68,7 @@ def extract_flow_behavior_unsteady(geo_results_dir, offset):
 
     flow_ratio1 = np.median(flow[:,1]/flow[:,0])
     flow_ratio2 = np.median(flow[:,2]/flow[:,0])
+
 
     flow_star = flow/(U_char * A_char)
     dflow_dt_star = dflow_dt/(U_char * A_char/t_char)
@@ -116,6 +125,9 @@ def extract_flow_behavior_unsteady(geo_results_dir, offset):
     coefs, residuals, t, q = np.linalg.lstsq(A_mat, dP_vec, rcond=None)
     residuals = (dP_vec - A_mat @ coefs) / dP_vec
     print(f"Residuals: {np.mean(residuals)}")
+    if np.abs(np.mean(residuals)) > 0.1:
+        print(f"Residuals are too high: {np.mean(residuals)}.")
+        return None
 
     R_lin1         = coefs[0]
     R_quad1        = coefs[1]
@@ -148,6 +160,7 @@ def extract_flow_behavior_unsteady(geo_results_dir, offset):
         print("Passed non-dimensionalization consistency check.")
 
     offset_dict["flow"] = flow
+    offset_dict["dflow_dt"] = dflow_dt
     offset_dict["pressure"] = pressure
     offset_dict["dp1"] = pressure[:,0] - pressure[:,1]
     offset_dict["dp2"] = pressure[:,0] - pressure[:,2]
@@ -169,8 +182,8 @@ def extract_flow_behavior_unsteady(geo_results_dir, offset):
     offset_dict["daughter1_length"] = lengths[0,0]
     offset_dict["daughter2_length"] = lengths[0,1]
 
-    offset_dict["daughter1_angle"] = get_angle_diff(tangents[0,:,1], tangents[0,:,0])[0]
-    offset_dict["daughter2_angle"] = get_angle_diff(tangents[0,:,2], tangents[0,:,0])[0]
+    offset_dict["daughter1_angle"] = np.cos(get_angle_diff(tangents[0,:,1], tangents[0,:,0])[0])
+    offset_dict["daughter2_angle"] = np.cos(get_angle_diff(tangents[0,:,2], tangents[0,:,0])[0])
 
     offset_dict["daughter1_area_ratio"] = areas[0,1]/A_char
     offset_dict["daughter2_area_ratio"] = areas[0,2]/A_char
@@ -182,6 +195,7 @@ def extract_flow_behavior_unsteady(geo_results_dir, offset):
 
     offset_dict["daughter1_area_ratio_inv2"] = (A_char/areas[0,1])**2
     offset_dict["daughter2_area_ratio_inv2"] = (A_char/areas[0,2])**2
+    offset_dict["total_area_ratio_inv2"] = (A_char/(areas[0,1] + areas[0,2]))**2
     print(f"Extracted flow behavior for offset {offset} in geometry {geo_results_dir}.")
     return offset_dict
 
@@ -193,20 +207,58 @@ def plot_geo(geo_dict, anatomy, set_type, geo):
 
     for offset_name, offset_dict in geo_dict.items():
         colors = ['b', 'g', 'y', 'r',"orange", "c", "m", "k"]
-        fig, ax1 = plt.subplots()
+        
+        fig, axs = plt.subplots(2,1)
+        fig.set_size_inches(6, 8)
+        ax1 = axs[0]
         offset_list = []; hp_list = []
         offset = int(offset_name.split("_")[1])
-        #pdb.set_trace()
+        
+        
+        times_arr = np.asarray(offset_dict["times"])
+        flow_arr = np.asarray(offset_dict["flow"])[:,0]
+        dflow_dt_arr = np.asarray(offset_dict["dflow_dt"])[:,0]
+        dp1_arr = flow_arr * offset_dict["daughter1_R_lin"] + \
+                    offset_dict["daughter1_R_quad"] * np.square(flow_arr) + \
+                    offset_dict["daughter1_L"] * dflow_dt_arr
+        dp2_arr = flow_arr * offset_dict["daughter2_R_lin"] + \
+                    offset_dict["daughter2_R_quad"] * np.square(flow_arr) \
+                    + offset_dict["daughter2_L"] *dflow_dt_arr
+        
         
         ax2 = ax1.twinx()
         ax2.plot(offset_dict["times"], offset_dict["flow"][:,0], "--", color = "black", label = "Inlet Flow")
         ax1.plot(offset_dict["times"], offset_dict["dp1"]/1333, color = "cornflowerblue", label = "Outlet 1 $\Delta P$")
+        ax1.plot(times_arr, dp1_arr/1333, color = "cornflowerblue", linestyle = "--")
         ax1.plot(offset_dict["times"], offset_dict["dp2"]/1333, color = "deeppink",  label = "Outlet 2 $\Delta P$")
+        ax1.plot(times_arr, dp2_arr/1333, color = "deeppink", linestyle = "--")
         ax1.set_xlabel("Time (s)")
         ax1.set_ylabel("$\Delta P$ (mmHg)")
         ax2.set_ylabel("Inlet Flow (cm$ ^3$/s)")
         ax1.legend()
-        fig.savefig(f"data/synthetic_junctions_reduced_results/{anatomy}/{set_type}/{geo}/unsteady_plot_{offset_name}.pdf")
+
+        dp_steady1 = dp1_arr - offset_dict["daughter1_L"] * dflow_dt_arr
+        dp_steady_calc = flow_arr * offset_dict["daughter1_R_lin"] + \
+                        offset_dict["daughter1_R_quad"] * np.square(flow_arr)
+        dp_steady2 = dp2_arr - offset_dict["daughter2_L"] * dflow_dt_arr
+        dp_steady_calc2 = flow_arr * offset_dict["daughter2_R_lin"] + \
+                        offset_dict["daughter2_R_quad"] * np.square(flow_arr)
+        ax3 = axs[1]
+
+        ax3.plot(flow_arr, dp_steady1/1333, color = "cornflowerblue", label = "Outlet 1 Steady $\Delta P$")
+        ax3.plot(flow_arr, dp_steady_calc/1333, color = "cornflowerblue", linestyle = "--", linewidth = 3, alpha = 0.5)
+        ax3.plot(flow_arr, dp_steady2/1333, color = "deeppink", label = "Outlet 2 Steady $\Delta P$")
+        ax3.plot(flow_arr, dp_steady_calc2/1333, color = "deeppink", linestyle = "--", linewidth = 3, alpha = 0.5)
+        ax3.set_xlabel("Inlet Flow (cm$ ^3$/s)")
+        ax3.set_ylabel("$\Delta P$ (mmHg)")
+        ax3.legend()
+        
+        fig.savefig(f"data/synthetic_junctions_reduced_results/{anatomy}/{set_type}/{geo}/unsteady_plot_{offset_name}.pdf", bbox_inches='tight')
+        
+        if offset_dict["daughter1_R_quad_star"] < 0 or offset_dict["daughter2_R_quad_star"] < 0:
+            print(f"Negative linear resistance for {geo} at offset {offset_name}.")
+            pdb.set_trace()
+        
     return
 
 def extract_unsteady_flow_data(anatomy, set_type, require4):

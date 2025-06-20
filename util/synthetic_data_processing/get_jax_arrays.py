@@ -18,8 +18,10 @@ def get_jax_arrays(anatomy, set_type, unsteady = True):
 
     input_tens = jnp.concatenate((scale_jax(scaling_dict, jnp.asarray(char_val_dict["daughter1_area_ratio"], dtype=jnp.float32), "daughter1_area_ratio"),
                             scale_jax(scaling_dict, jnp.asarray(char_val_dict["daughter2_area_ratio"], dtype=jnp.float32), "daughter2_area_ratio"),
+                            #scale_jax(scaling_dict, jnp.asarray(char_val_dict["total_daughter_area_ratio"], dtype=jnp.float32), "total_daughter_area_ratio"),
                             scale_jax(scaling_dict, jnp.asarray(char_val_dict["daughter1_area_ratio_inv2"], dtype=jnp.float32), "daughter1_area_ratio_inv2"),
                             scale_jax(scaling_dict, jnp.asarray(char_val_dict["daughter2_area_ratio_inv2"], dtype=jnp.float32), "daughter2_area_ratio_inv2"),
+                            #scale_jax(scaling_dict, jnp.asarray(char_val_dict["total_area_ratio_inv2"], dtype=jnp.float32), "total_area_ratio_inv2"),
                             scale_jax(scaling_dict, jnp.asarray(char_val_dict["daughter1_angle"], dtype=jnp.float32), "daughter1_angle"),
                             scale_jax(scaling_dict, jnp.asarray(char_val_dict["daughter2_angle"], dtype=jnp.float32), "daughter2_angle"),
                             scale_jax(scaling_dict, jnp.asarray(char_val_dict["daughter1_length_star"], dtype=jnp.float32), "daughter1_length_star"),

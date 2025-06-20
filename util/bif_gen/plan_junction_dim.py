@@ -18,10 +18,10 @@ def plan_junction(geo_params):
     L_char_3D = np.sqrt(geo_params["inlet_area_3D"]/np.pi)
     branch_dict = {"branch1": {"branch_radii": [(geo_params["inlet_area"]/3.14)**0.5, 
                                                 (geo_params["daughter1_area_ratio"]*geo_params["inlet_area"]/3.14)**0.5,], 
-                               "angles": [90, 90 + geo_params["daughter1_angle"]*180/np.pi], 
+                               "angles": [90, 90 + geo_params["daughter1_angle"]], 
                                "connection_branch":None, "connection_seg":None},
                 "branch2": {"branch_radii": [((geo_params["total_daughter_area_ratio"] - geo_params["daughter1_area_ratio"])*geo_params["inlet_area"]/3.14)**0.5,],
-                            "angles": [90 - geo_params["daughter2_angle"]*180/np.pi,], 
+                            "angles": [90 - geo_params["daughter2_angle"]], 
                             "connection_branch":"branch1", "connection_seg":0},
                 }
 

@@ -17,7 +17,9 @@ if __name__ == "__main__":
     
     tree_name = sys.argv[1]
     junction_type = sys.argv[2]
-    input_file_standard = f'trees/zerod_input/{junction_type}/{tree_name}/solver_0d.json'
+    tree_name_split = tree_name.split("_")
+    tree_name_base = "_".join(tree_name_split[0:2])
+    input_file_standard = f'trees/zerod_input/{junction_type}/{tree_name_base}/{tree_name}/solver_0d.json'
     with open(input_file_standard) as json_file:
         input_file = json.load(json_file)
 
@@ -49,10 +51,10 @@ if __name__ == "__main__":
     tree_name_split[-1] = "unsteady"
     tree_name = "_".join(tree_name_split)
 
-    if not os.path.exists(f'trees/zerod_input/{junction_type}/{tree_name}'):
-        os.makedirs(f'trees/zerod_input/{junction_type}/{tree_name}')
-    if not os.path.exists(f'trees/zerod_output/{junction_type}/{tree_name}'):
-        os.makedirs(f'trees/zerod_output/{junction_type}/{tree_name}')
-    with open(f'trees/zerod_input/{junction_type}/{tree_name}/solver_0d.json', 'w') as fp:
+    if not os.path.exists(f'trees/zerod_input/{junction_type}/{tree_name_base}/{tree_name}'):
+        os.makedirs(f'trees/zerod_input/{junction_type}/{tree_name_base}/{tree_name}')
+    if not os.path.exists(f'trees/zerod_output/{junction_type}/{tree_name_base}/{tree_name}'):
+        os.makedirs(f'trees/zerod_output/{junction_type}/{tree_name_base}/{tree_name}')
+    with open(f'trees/zerod_input/{junction_type}/{tree_name_base}/{tree_name}/solver_0d.json', 'w') as fp:
         json.dump(input_file, indent = 4, fp = fp)
-    print(f"RRI 0D input file saved to trees/zerod_input/{junction_type}/{tree_name}/solver_0d.json")
+    print(f"RRI 0D input file saved to trees/zerod_input/{junction_type}/{tree_name_base}/{tree_name}/solver_0d.json")

@@ -89,12 +89,28 @@ def solve_casadi_unsteady(time_step = 0, sol_prev = None, input_file = None, res
         C = vessel["zero_d_element_values"]["C"]*0
         L = vessel["zero_d_element_values"]["L"]*0
 
-        objective += (
-            P_in[i] +
-            - P_out[i] +
-            - (R_lin + R_sten * (10**-2 + Q_in[i]**2)**0.5 + R_quad * Q_in[i]) * Q_in[i] + # abs removed
-            - L * Q_out_dt[i]  
+        if "branch0" in vessel["vessel_name"]:
+            #print(f"Branch 0 vessel {vessel['vessel_name']} found, adding vessel equation to objective")
+            
+            objective += (
+                P_in[i] +
+                - P_out[i] +
+                - (R_lin + R_sten * (10**-2 + Q_in[i]**2)**0.5 + R_quad * Q_in[i]) * Q_in[i] + # abs removed
+                - L * Q_out_dt[i]  
+                )**2
+        else:
+            objective += (
+                P_out[i] +
+                - P_in[i] 
             )**2
+
+        # objective += (
+        #     P_in[i] +
+        #     - P_out[i] +
+        #     - (R_lin + R_sten * (10**-2 + Q_in[i]**2)**0.5 + R_quad * Q_in[i]) * Q_in[i] + # abs removed
+        #     - L * Q_out_dt[i]  
+        #     )**2
+            
         vessel_constraint_counter += 1
         
         # Conservation of mass (to satisfy exactly)
@@ -143,6 +159,8 @@ def solve_casadi_unsteady(time_step = 0, sol_prev = None, input_file = None, res
                     R_quad = 0
                 L = junction["junction_values"]["L"][j] * coef_factor
                 C = 0
+                #pdb.set_trace()
+                #print("Inductance: ", L)
 
                 # Junction pressure equation residual (to minimize)
                 objective += ((
@@ -244,13 +262,18 @@ def solve_casadi_unsteady(time_step = 0, sol_prev = None, input_file = None, res
                 "P_out_dt": sol.value(P_out_dt)}
     return (sol_dict)
 
-tree_name = sys.argv[1]
-junction_mode = sys.argv[2]
+
 
 if __name__ == "__main__":
     #num_iters = 10
-    with open(f'trees/zerod_input/{junction_mode}/{tree_name}/solver_0d.json') as json_file:
+    tree_name = sys.argv[1]
+    junction_mode = sys.argv[2]
+
+    tree_name_split = tree_name.split("_")
+    tree_name_base = "_".join(tree_name_split[0:2])
+    with open(f'trees/zerod_input/{junction_mode}/{tree_name_base}/{tree_name}/solver_0d.json') as json_file:
         input_file = json.load(json_file)
+    
     df = pd.DataFrame(columns=['name', 'time','flow_in', 'flow_out', 'pressure_in', 'pressure_out'])
     num_time_steps = len(input_file["boundary_conditions"][0]["bc_values"]["t"])
     for time_step in range(num_time_steps):
@@ -259,7 +282,7 @@ if __name__ == "__main__":
             sol_prev = None
         
         sol_prev = solve_casadi_unsteady(time_step = time_step, sol_prev = sol_prev, input_file= input_file, result_df = df)
-    pdb.set_trace()
+    
     df.sort_values(by=['name', 'time'], inplace=True)
     tree_name_split = tree_name.split("_")
     tree_name_split[-1] = "unsteady"

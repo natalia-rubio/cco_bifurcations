@@ -14,27 +14,27 @@ def launch_training(network_params, optimizer_params, training_params):
 if __name__ == "__main__":
     anatomy = sys.argv[1]
     num_geos = int(sys.argv[2])
-    set_type = "random"
+    set_type = "combined"
 
     split_ind_dict = load_dict(f"data/split_indices/{anatomy}/{set_type}/train_val_ind_{anatomy}_num_geos_{num_geos}")
 
     network_params = {"num_input_features": 10,
                       "num_layers": 2,
-                      "layer_width": 100,
-                      "num_output_features": 3,
+                      "layer_width": 80,
+                      "num_output_features": 2,
                       "anatomy": anatomy,
                       "set_type": set_type,
                       "num_geos": num_geos,
                       "pred_mode": "m1"}
     
-    training_params = {"num_epochs": 1000, 
-                       "batch_size": 20,
+    training_params = {"num_epochs": 2000, 
+                       "batch_size": 10,
                        "train_inds": split_ind_dict["train_ind"],
                        "val_inds": split_ind_dict["val_ind"]}
     
     optimizer_params = {#"step_size": 0.0002,
                         "init" : 0.0001,
-                        "transition_steps": 3000,
+                        "transition_steps": 2000,
                         "decay_rate" : 0.95}
     
     launch_training(network_params, optimizer_params, training_params)

@@ -11,14 +11,16 @@ from util.neural_net.nn_model import NeuralNet, predict
 #from util.tree.extract_true_junctions_helpers import *
 
 def get_input_file_junction_dict_master(tree_name):
+    tree_name_split = tree_name.split("_")
+    tree_name_base = "_".join(tree_name_split[0:2])
     
     try:
-        input_file_standard = f'trees/zerod_input/original_BCs/{tree_name}/solver_0d.json'
+        input_file_standard = f'trees/zerod_input/original_BCs/{tree_name_base}/{tree_name}/solver_0d.json'
 
         with open(input_file_standard) as json_file:
             input_file = json.load(json_file)
     except:
-        input_file_standard = f'trees/zerod_input/standard/{tree_name}/solver_0d.json'
+        input_file_standard = f'trees/zerod_input/standard/{tree_name_base}/{tree_name}/solver_0d.json'
 
         with open(input_file_standard) as json_file:
             input_file = json.load(json_file)
@@ -80,7 +82,7 @@ def get_input_file_junction_dict_master(tree_name):
         # Initialize the dictionary for the junction
         junction_name = junction["junction_name"]
         junction_id = int(junction_name[1:])
-        print(f"Processing junction {junction_name}")
+        #print(f"Processing junction {junction_name}")
         junction_dict[junction_name] = {}
         junction_dict[junction_name]["junction_id"] = junction_id
 

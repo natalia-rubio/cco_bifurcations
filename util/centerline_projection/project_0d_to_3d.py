@@ -76,6 +76,8 @@ def project_to_centerline(tree_name, junction_mode):
         zerod_solver = pysvzerod.Solver(input_file)
         zerod_solver.run()
         results_df = zerod_solver.get_full_result()
+        os.makedirs(f"trees/zerod_output/{junction_mode}/{tree_name_base}/{tree_name}", exist_ok=True)
+        results_df.to_csv(f"trees/zerod_output/{junction_mode}/{tree_name_base}/{tree_name}/results.csv")
     # 
     
     else:
@@ -83,7 +85,7 @@ def project_to_centerline(tree_name, junction_mode):
             results_df = pd.read_csv(f"trees/zerod_output/{junction_mode}/{tree_name_base}/{tree_name}/sol_casadi.csv")
         else:
             results_df = pd.read_csv(f"trees/zerod_output/{junction_mode}/{tree_name_base}/{tree_name}/results.csv")
-    print(results_df)
+    
     branch_results = convert_csv_to_branch_result(results_df, zerod_handler)
     arrays = rec_dd()
 
@@ -200,7 +202,7 @@ def project_to_centerline(tree_name, junction_mode):
     if not os.path.exists(f"trees/zerod_output_cent/{junction_mode}/{tree_name_base}/{tree_name}"):
         os.makedirs(f"trees/zerod_output_cent/{junction_mode}/{tree_name_base}/{tree_name}")
     centerline_handler.to_file(f"trees/zerod_output_cent/{junction_mode}/{tree_name_base}/{tree_name}/centerline_sol.vtp")
-    print(f"Centerline projection for {tree_name} in {junction_mode} mode completed.")
+    #print(f"Centerline projection for {tree_name} in {junction_mode} mode completed.")
     return
 
 tree_name = sys.argv[1]

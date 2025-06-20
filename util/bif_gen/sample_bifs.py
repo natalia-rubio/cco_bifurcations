@@ -9,35 +9,21 @@ plt.rcParams['font.family'] = 'serif'
 plt.rcParams['font.size'] = 16
 
 anatomy = "tree_20"
-num_geos = 50
+num_geos = 60
 sampler = qmc.LatinHypercube(d=6,seed = 0)
 samples = sampler.random(n=num_geos*10)
 
 samples_uniform = uniform(loc=0, scale=1).ppf(samples)
 samples_normal = norm(loc=0, scale=1).ppf(samples)
 
-scaling_dict = load_dict(f"data/scaling_dictionaries/tree_20_combined_scaling_dict_not_doubled")
-pdb.set_trace()
-tree_data_dict =    {"daughter1_angle": {},
-                    "daughter2_angle": {},
-                    "daughter1_area_ratio": {},
-                    "daughter2_area_ratio": {},
-                    "flow_split": {},
-                    "max_inlet_re": {},
-                    }
+stats_dict = load_dict(f"trees/reports/tree_20/junction_statistics")
 
-for param in tree_data_dict.keys():
-    tree_data_dict[param]["lowest"] = scaling_dict[param][2]
-    tree_data_dict[param]["highest"] = scaling_dict[param][3]
-    tree_data_dict[param]["mean"] = scaling_dict[param][0]
-    tree_data_dict[param]["range"] = scaling_dict[param][3] - scaling_dict[param][2]
 
 CCO_sampled_params_dict =   {"daughter1_angle": [],
                                 "daughter2_angle": [],
                                 "daughter1_area_ratio": [],
                                 "daughter2_area_ratio": [],
                                 "flow_split": [],
-                                "max_inlet_re": [],
                                 }
 success_counter = 0
 i = 0
@@ -46,7 +32,8 @@ while success_counter < num_geos:
     while not area_consistency:
         for param_ind, param in enumerate(CCO_sampled_params_dict.keys()):
                 CCO_sampled_params_dict[param].append(
-                tree_data_dict[param]["lowest"] + samples_uniform[i, param_ind] * tree_data_dict[param]["range"])
+                stats_dict[param]["min"]*0.8 + samples_uniform[i, param_ind] * 1.2*(stats_dict[param]["max"] - stats_dict[param]["min"]))
+
         d1ar = CCO_sampled_params_dict["daughter1_area_ratio"][-1]
         d2ar = CCO_sampled_params_dict["daughter2_area_ratio"][-1]
         print(d1ar, d2ar)
@@ -67,14 +54,15 @@ if not os.path.exists("results/sampled_geo"):
     os.mkdir("results/sampled_geo")
 
 num_bins = 50
+pdb.set_trace()
 
 for param in CCO_sampled_params_dict.keys():
     plt.clf()
-    bins = np.linspace(tree_data_dict[param]["lowest"]*0.6, tree_data_dict[param]["lowest"]+tree_data_dict[param]["range"]*1.4, num_bins)
+    bins = np.linspace(stats_dict[param]["min"]*0.7, stats_dict[param]["max"]*1.3, num_bins)
     plt.hist(CCO_sampled_params_dict[param], bins, color="lightskyblue")
-    plt.vlines(tree_data_dict[param]["lowest"], 0, 100, colors='black', linestyles='dashed', label = "lowest")
-    plt.vlines(tree_data_dict[param]["lowest"]+tree_data_dict[param]["range"], 0, 100, colors='black', linestyles='dashed', label = "highest")
-    plt.vlines(tree_data_dict[param]["mean"], 0, 100, colors='red', linestyles='dashed', label = "mean")
+    plt.vlines(stats_dict[param]["min"], 0, 100, colors='black', linestyles='dashed', label = "min")
+    plt.vlines(stats_dict[param]["max"], 0, 100, colors='black', linestyles='dashed', label = "highest")
+    plt.vlines(stats_dict[param]["mean"], 0, 100, colors='red', linestyles='dashed', label = "mean")
     plt.ylim(0, 4*num_geos/num_bins)
     plt.xlabel(param)
     plt.title(f"{param} distribution")

@@ -23,7 +23,7 @@ model_params = params.ModelParameters()\n\
 model_params.name = '{tree_dict['tree_name']}'\n\
 model_params.inlet_face_names = ['{tree_dict['inlet_cap']}']\n\
 model_params.outlet_face_names = {tree_dict['outlet_cap_list']}\n\
-model_params.centerlines_file_name = 'trees/geo_files/{tree_dict['tree_name_base']}/{tree_dict['tree_name']}/centerlines/centerlines.vtp'\n\
+model_params.centerlines_file_name = 'trees/geo_files/{tree_dict['tree_name_base']}/{tree_dict['tree_name_base']}_original/centerlines/centerlines.vtp'\n\
 \n\
 ## Fluid properties.\n\
 fluid_props = params.FluidProperties()\n\
@@ -74,8 +74,8 @@ if __name__ == "__main__":
    tree_name_split = tree_name.split("_")
    tree_name_base = "_".join(tree_name_split[0:2])
 
-   inlet_cap = "cap_" + os.listdir(f'trees/geo_files/{tree_name_base}/{tree_name}/mesh-complete/inlet_cap')[0]+".vtp"
-   caps = os.listdir(f"trees/geo_files/{tree_name_base}/{tree_name}/mesh-complete/mesh-surfaces")
+   inlet_cap = "cap_" + os.listdir(f'trees/geo_files/{tree_name_base}/{tree_name_base}_original/mesh-complete/inlet_cap')[0]+".vtp"
+   caps = os.listdir(f"trees/geo_files/{tree_name_base}/{tree_name_base}_original/mesh-complete/mesh-surfaces")
    outlet_caps = []
    for cap in caps:
       if cap==inlet_cap:
