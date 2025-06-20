@@ -182,8 +182,8 @@ def extract_flow_behavior_unsteady(geo_results_dir, offset):
     offset_dict["daughter1_length"] = lengths[0,0]
     offset_dict["daughter2_length"] = lengths[0,1]
 
-    offset_dict["daughter1_angle"] = np.cos(get_angle_diff(tangents[0,:,1], tangents[0,:,0])[0])
-    offset_dict["daughter2_angle"] = np.cos(get_angle_diff(tangents[0,:,2], tangents[0,:,0])[0])
+    offset_dict["daughter1_angle"] = get_angle_diff(tangents[0,:,1], tangents[0,:,0])[0]
+    offset_dict["daughter2_angle"] = get_angle_diff(tangents[0,:,2], tangents[0,:,0])[0]
 
     offset_dict["daughter1_area_ratio"] = areas[0,1]/A_char
     offset_dict["daughter2_area_ratio"] = areas[0,2]/A_char

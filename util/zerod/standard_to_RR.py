@@ -56,8 +56,8 @@ def get_R_values_bif(inlet_area,
     daughter1_area_ratio_inv2 = (outlet1_area/A_char)**-2;  daughter1_area_ratio_inv2 = check_out_of_dist(daughter1_area_ratio_inv2, "daughter1_area_ratio_inv2", scaling_dict)
     daughter2_area_ratio_inv2 = (outlet2_area/A_char)**-2;  daughter2_area_ratio_inv2 = check_out_of_dist(daughter2_area_ratio_inv2, "daughter2_area_ratio_inv2", scaling_dict)
     total_area_ratio_inv2 = ((outlet1_area + outlet2_area)/A_char)**2; total_area_ratio_inv2 = check_out_of_dist(total_area_ratio_inv2, "total_area_ratio_inv2", scaling_dict)
-    daughter1_angle = check_out_of_dist(np.cos(daughter1_angle), "daughter1_angle", scaling_dict)
-    daughter2_angle = check_out_of_dist(np.cos(daughter2_angle), "daughter2_angle", scaling_dict)
+    daughter1_angle = check_out_of_dist(daughter1_angle, "daughter1_angle", scaling_dict)
+    daughter2_angle = check_out_of_dist(daughter2_angle, "daughter2_angle", scaling_dict)
 
     daughter1_length_star = length1/L_char; daughter1_length_star = check_out_of_dist(daughter1_length_star, "daughter1_length_star", scaling_dict)
     length_add1 = max([length1 - L_char * scaling_dict["daughter1_length_star"][3], 0])
