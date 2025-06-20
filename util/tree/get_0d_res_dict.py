@@ -52,12 +52,17 @@ def get_input_file_junction_dict_master(tree_name):
         vessel_ids.append( vessel["vessel_id"])
         lengths.append(vessel["vessel_length"])
         R_poiseuille.append(vessel["zero_d_element_values"]["R_poiseuille"])
-        areas.append(np.sqrt(0.04*8*np.pi*vessel["vessel_length"] / vessel["zero_d_element_values"]["R_poiseuille"]))
+        
+        if vessel["zero_d_element_values"]["R_poiseuille"] == 0:
+            area = 0
+        else:
+            area = np.sqrt(0.04*8*np.pi*vessel["vessel_length"] / vessel["zero_d_element_values"]["R_poiseuille"])
+        areas.append(area)
         vessel_dict[vessel["vessel_id"]] = {"branch_id": branch_id,
                                                 "seg_id": seg_id,
                                                 "vessel_id": vessel["vessel_id"],
                                                 "length": vessel["vessel_length"],
-                                                "area": np.sqrt(0.04*8*np.pi*vessel["vessel_length"] / vessel["zero_d_element_values"]["R_poiseuille"]),
+                                                "area": area,
                                                 "R_poiseuille": vessel["zero_d_element_values"]["R_poiseuille"],}
         if "boundary_conditions" in vessel.keys(): 
             vessel_dict[vessel["vessel_id"]]["boundary_conditions"] =  vessel["boundary_conditions"]

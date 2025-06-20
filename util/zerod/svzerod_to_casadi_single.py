@@ -144,7 +144,7 @@ def solve_casadi_single(tree_name, junction_mode, sol_prev = None, coef_factor =
                 L = junction["junction_values"]["L"][j] * coef_factor
                 C = 0
                 #pdb.set_trace()
-                # Junction pressure equation residual (to minimize)
+                #Junction pressure equation residual (to minimize)
                 objective += ((
                     P_out[inlet_vessel_ind] + # THIS IS THE INLET PRESSURE
                     - P_in[outlet_vessel_ind] +
@@ -163,7 +163,7 @@ def solve_casadi_single(tree_name, junction_mode, sol_prev = None, coef_factor =
                 enforce_flow_splits = True
                 if enforce_flow_splits:
                     # objective += (
-                    #     (Q_in[outlet_vessel_ind] - junction["junction_values"]["flow_split"][j] *  Q_out[inlet_vessel_ind])**2
+                    #     (Q_in[outlet_vessel_ind] - junction["junction_values"]["flow_split"][j] *  Q_out[inlet_vessel_ind])**6
                     # )
                     opti.subject_to(
                         Q_in[outlet_vessel_ind] - junction["junction_values"]["flow_split"][j] *  Q_out[inlet_vessel_ind] == 0
@@ -193,7 +193,7 @@ def solve_casadi_single(tree_name, junction_mode, sol_prev = None, coef_factor =
         SS_constraint_counter += 4 * num_vessels
 
     # Enforce positive flows
-    positive_flows = True
+    positive_flows = False
     if positive_flows:
         opti.subject_to(casadi.vec(Q_in)  >= 0)
         opti.subject_to(casadi.vec(Q_out) >= 0)
@@ -206,7 +206,7 @@ def solve_casadi_single(tree_name, junction_mode, sol_prev = None, coef_factor =
     # Solve NLP with IPOPT
     opti.minimize(objective) # Dummy objective
     opts = {'ipopt.print_level': 0, 'print_time': 0, 'ipopt.sb': 'yes'}
-    #opts = {}
+    opts = {}
     opti.solver('ipopt', opts)
 
     try:

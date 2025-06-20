@@ -14,7 +14,7 @@ import jax.numpy as jnp
 from util.neural_net.nn_model import NeuralNet, predict
 from util.tree.extract_true_junctions_helpers import get_input_file_junction_dict_master, add_geometry_values, add_downstream_resistance_values, add_solution_values, add_3D_resistance
 
-def check_out_of_dist(param, param_name, scaling_dict, verbose = True):
+def check_out_of_dist(param, param_name, scaling_dict, verbose = False):
     if param < scaling_dict[param_name][2]:
         if verbose:
             print(f"{param_name} smaller than training set minimum: {param}, {scaling_dict[param_name][2]}")
@@ -36,11 +36,11 @@ def get_R_values_bif(inlet_area,
                      daughter2_flow_split):
     verbose = False
     anatomy = "tree_20"
-    set_type = "comined" #"random"#
+    set_type = "random"#
     #set_type = "combined" #"dict_res_fs_ext" 
     scaling_dict = load_dict(f"data/scaling_dictionaries/{anatomy}_{set_type}_scaling_dict")
     #model_name = "tree_20_ng_720_nl_3_lw_400_ne_2500_bs_20_dr_0.95_model"
-    model_name = "tree_20_ng_420_nl_2_lw_80_ne_2000_bs_10_dr_0.95_model" #"tree_20_ng_400_nl_2_lw_100_ne_1000_bs_20_dr_0.95_model"
+    model_name = "tree_20_ng_650_nl_2_lw_80_ne_2000_bs_10_dr_0.95_model" #"tree_20_ng_400_nl_2_lw_100_ne_1000_bs_20_dr_0.95_model"
     #model_name = "tree_20_ng_280_nl_3_lw_500_ne_2500_bs_20_dr_0.95_model" # "tree_20_ng_400_nl_2_lw_100_ne_1000_bs_20_dr_0.95_model"
     nn_model = dill_load(f"results/models/{anatomy}/{model_name}")
 
@@ -77,7 +77,7 @@ def get_R_values_bif(inlet_area,
                     #scale_jax(scaling_dict, jnp.asarray(total_daughter_area_ratio, dtype=jnp.float32), "total_daughter_area_ratio"),
                     scale_jax(scaling_dict, jnp.asarray(daughter1_area_ratio_inv2, dtype=jnp.float32), "daughter1_area_ratio_inv2"),
                     scale_jax(scaling_dict, jnp.asarray(daughter2_area_ratio_inv2, dtype=jnp.float32), "daughter2_area_ratio_inv2"),
-                    scale_jax(scaling_dict, jnp.asarray(total_area_ratio_inv2, dtype=jnp.float32), "total_area_ratio_inv2"),
+                    #scale_jax(scaling_dict, jnp.asarray(total_area_ratio_inv2, dtype=jnp.float32), "total_area_ratio_inv2"),
                     scale_jax(scaling_dict, jnp.asarray(daughter1_angle, dtype=jnp.float32), "daughter1_angle"),
                     scale_jax(scaling_dict, jnp.asarray(daughter2_angle, dtype=jnp.float32), "daughter2_angle"),
                     scale_jax(scaling_dict, jnp.asarray(daughter1_length_star, dtype=jnp.float32), "daughter1_length_star"),
@@ -90,7 +90,7 @@ def get_R_values_bif(inlet_area,
                     #scale_jax(scaling_dict, jnp.asarray(total_daughter_area_ratio, dtype=jnp.float32), "total_daughter_area_ratio"),
                     scale_jax(scaling_dict, jnp.asarray(daughter2_area_ratio_inv2, dtype=jnp.float32), "daughter1_area_ratio_inv2"),
                     scale_jax(scaling_dict, jnp.asarray(daughter1_area_ratio_inv2, dtype=jnp.float32), "daughter2_area_ratio_inv2"),
-                    scale_jax(scaling_dict, jnp.asarray(total_area_ratio_inv2, dtype=jnp.float32), "total_area_ratio_inv2"),
+                    #scale_jax(scaling_dict, jnp.asarray(total_area_ratio_inv2, dtype=jnp.float32), "total_area_ratio_inv2"),
                     scale_jax(scaling_dict, jnp.asarray(daughter2_angle, dtype=jnp.float32), "daughter1_angle"),
                     scale_jax(scaling_dict, jnp.asarray(daughter1_angle, dtype=jnp.float32), "daughter2_angle"),
                     scale_jax(scaling_dict, jnp.asarray(daughter2_length_star, dtype=jnp.float32), "daughter1_length_star"),

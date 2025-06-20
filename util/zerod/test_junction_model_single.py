@@ -9,8 +9,7 @@ from util.zerod.standard_to_RR import transform_standard_to_RR
 from util.zerod.svzerod_to_casadi_single import solve_casadi_single
 from util.zerod.correct_BCs import correct_BCs
 
-inflow_dict = { "tree_20": 84,
-                "tree_20_flow_100": 84,
+inflow_dict = { "tree_20_flow_100": 84,
                 "tree_20_flow_50": 42,
                 "tree_20_flow_150": 126,
                 "tree_20_flow_25": 21,
@@ -18,6 +17,14 @@ inflow_dict = { "tree_20": 84,
                 "tree_3_flow_50": 80,
                 "tree_3_flow_100": 160,
                 "tree_3_flow_150": 240,
+                "tree_5_flow_25": 45,
+                "tree_5_flow_50": 90,
+                "tree_5_flow_100": 179,
+                "tree_5_flow_150": 270,
+                "tree_20_flow_25": 21,
+                "tree_20_flow_50": 42,
+                "tree_20_flow_100": 84,
+                "tree_20_flow_150": 126,
                 }
 
 

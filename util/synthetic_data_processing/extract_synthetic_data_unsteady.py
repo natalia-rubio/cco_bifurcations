@@ -123,11 +123,12 @@ def extract_flow_behavior_unsteady(geo_results_dir, offset):
 
     # Solve
     coefs, residuals, t, q = np.linalg.lstsq(A_mat, dP_vec, rcond=None)
-    residuals = (dP_vec - A_mat @ coefs) / dP_vec
+    residuals = (dP_vec - A_mat @ coefs) / np.max(dP_vec)
     print(f"Residuals: {np.mean(residuals)}")
     if np.abs(np.mean(residuals)) > 0.1:
         print(f"Residuals are too high: {np.mean(residuals)}.")
-        return None
+        pdb.set_trace()
+        #return None
 
     R_lin1         = coefs[0]
     R_quad1        = coefs[1]
@@ -218,12 +219,8 @@ def plot_geo(geo_dict, anatomy, set_type, geo):
         times_arr = np.asarray(offset_dict["times"])
         flow_arr = np.asarray(offset_dict["flow"])[:,0]
         dflow_dt_arr = np.asarray(offset_dict["dflow_dt"])[:,0]
-        dp1_arr = flow_arr * offset_dict["daughter1_R_lin"] + \
-                    offset_dict["daughter1_R_quad"] * np.square(flow_arr) + \
-                    offset_dict["daughter1_L"] * dflow_dt_arr
-        dp2_arr = flow_arr * offset_dict["daughter2_R_lin"] + \
-                    offset_dict["daughter2_R_quad"] * np.square(flow_arr) \
-                    + offset_dict["daughter2_L"] *dflow_dt_arr
+        dp1_arr = flow_arr * offset_dict["daughter1_R_lin"] + offset_dict["daughter1_R_quad"] * np.square(flow_arr) + offset_dict["daughter1_L"] * dflow_dt_arr
+        dp2_arr = flow_arr * offset_dict["daughter2_R_lin"] + offset_dict["daughter2_R_quad"] * np.square(flow_arr) + offset_dict["daughter2_L"] *dflow_dt_arr
         
         
         ax2 = ax1.twinx()
@@ -255,7 +252,7 @@ def plot_geo(geo_dict, anatomy, set_type, geo):
         
         fig.savefig(f"data/synthetic_junctions_reduced_results/{anatomy}/{set_type}/{geo}/unsteady_plot_{offset_name}.pdf", bbox_inches='tight')
         
-        if offset_dict["daughter1_R_quad_star"] < 0 or offset_dict["daughter2_R_quad_star"] < 0:
+        if offset_dict["daughter1_R_quad_star"] < -1 or offset_dict["daughter2_R_quad_star"] < -1:
             print(f"Negative linear resistance for {geo} at offset {offset_name}.")
             pdb.set_trace()
         

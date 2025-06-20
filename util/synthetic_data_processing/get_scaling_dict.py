@@ -87,7 +87,7 @@ def get_scaling_dict(anatomy, set_type, doubled = True, unsteady = False):
                         "daughter1_P_dyn", "daughter2_P_dyn", "inlet_P_dyn",
                       "daughter1_velocity", "daughter2_velocity", "inlet_velocity", 
                       "daughter1_energy", "daughter2_energy", "inlet_energy", 
-                      "inlet_flow", "daughter1_flow", "daughter2_flow","daughter1_Re", "daughter2_Re", "inlet_Re","flow", "pressure", "dp1","dp2","times",]
+                      "inlet_flow", "daughter1_flow", "daughter2_flow","daughter1_Re", "daughter2_Re", "inlet_Re","flow", "pressure", "dp1","dp2","times","dflow_dt"]
     
     for value in to_normalize:
         if value in values_to_skip:
