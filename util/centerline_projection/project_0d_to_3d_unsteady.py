@@ -76,16 +76,16 @@ def project_to_centerline(tree_name, junction_mode):
         zerod_solver.run()
         results_df = zerod_solver.get_full_result()
         #pdb.set_trace()
-        print(f"Saving results to trees/zerod_output/{junction_mode}/{tree_name_base}/{tree_name}/results.csv")
+        #print(f"Saving results to trees/zerod_output/{junction_mode}/{tree_name_base}/{tree_name}/results.csv")
         results_df.to_csv(f"trees/zerod_output/{junction_mode}/{tree_name_base}/{tree_name}/results.csv")
     # 
     
     else:
         if casadi:
-            print(f"loading results from trees/zerod_output/{junction_mode}/{tree_name_base}/{tree_name}/sol_casadi.csv")
+            #print(f"loading results from trees/zerod_output/{junction_mode}/{tree_name_base}/{tree_name}/sol_casadi.csv")
             results_df = pd.read_csv(f"trees/zerod_output/{junction_mode}/{tree_name_base}/{tree_name}/sol_casadi.csv")
         else:
-            print(f"loading results from trees/zerod_output/{junction_mode}/{tree_name_base}/{tree_name}/results.csv")
+            #print(f"loading results from trees/zerod_output/{junction_mode}/{tree_name_base}/{tree_name}/results.csv")
             results_df = pd.read_csv(f"trees/zerod_output/{junction_mode}/{tree_name_base}/{tree_name}/results.csv")
     #print(results_df)
     branch_results = convert_csv_to_branch_result(results_df, zerod_handler)
@@ -204,7 +204,7 @@ def project_to_centerline(tree_name, junction_mode):
     time_strs = [f"{t:0.5f}" for t in branch_results["time"][0:num_time_steps]]
     for i, time_str in enumerate(time_strs):
         for f, a in arrays.items():
-            out_array = numpy_to_vtk(a[:,i+num_time_steps])
+            out_array = numpy_to_vtk(a[:,i]) #+num_time_steps])
             out_array.SetName(f+ "_" + time_str)
             #print(f"Adding array {f+ '_' + time_str} with shape {a[:,i].shape} to centerline.")
             centerline_handler.data.GetPointData().AddArray(out_array)

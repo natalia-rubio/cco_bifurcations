@@ -49,22 +49,25 @@ def compare_to_3d_inlet_unsteady(junction_mode = "standard",
     times_rr = [float(key[9:]) for key in arrays_rr.keys() if "pressure" in key]
     dt = times_0d[1] - times_0d[0]
    
-
+    branch0_locs = np.where(arrays_3d["BranchId"] == 0)
+    branch0_valid_locs = np.where(~np.isnan(arrays_3d["pressure_100"][branch0_locs])) # Get the first value of the pressure for branch 0
+    inlet_gid = arrays_3d["GlobalNodeId"][branch0_valid_locs[0][0]]
+    #inlet_gid = 23
     flows_0d = []; pressures_0d = []
     for time in times_0d:
-        flows_0d.append(arrays_0d[f"flow_{time:0.5f}"][arrays_3d["GlobalNodeId"] == 23][0])
-        pressures_0d.append(arrays_0d[f"pressure_{time:0.5f}"][arrays_3d["GlobalNodeId"] == 23][0]/1333)
+        flows_0d.append(arrays_0d[f"flow_{time:0.5f}"][arrays_3d["GlobalNodeId"] == inlet_gid][0])
+        pressures_0d.append(arrays_0d[f"pressure_{time:0.5f}"][arrays_3d["GlobalNodeId"] == inlet_gid][0]/1333)
 
     flows_rr = []; pressures_rr = []
     for time in times_rr:
-        flows_rr.append(arrays_rr[f"flow_{time:0.5f}"][arrays_3d["GlobalNodeId"] == 23][0])
-        pressures_rr.append(arrays_rr[f"pressure_{time:0.5f}"][arrays_3d["GlobalNodeId"] == 23][0]/1333)
+        flows_rr.append(arrays_rr[f"flow_{time:0.5f}"][arrays_3d["GlobalNodeId"] == inlet_gid][0])
+        pressures_rr.append(arrays_rr[f"pressure_{time:0.5f}"][arrays_3d["GlobalNodeId"] == inlet_gid][0]/1333)
 
 
     flows_3d = []; pressures_3d = []
     for time in times_3d:
-        flows_3d.append(arrays_3d[f"velocity_{time:03d}"][arrays_3d["GlobalNodeId"] == 23][0])
-        pressures_3d.append(arrays_3d[f"pressure_{time:03d}"][arrays_3d["GlobalNodeId"] == 23][0]/1333)
+        flows_3d.append(arrays_3d[f"velocity_{time:03d}"][arrays_3d["GlobalNodeId"] == inlet_gid][0])
+        pressures_3d.append(arrays_3d[f"pressure_{time:03d}"][arrays_3d["GlobalNodeId"] == inlet_gid][0]/1333)
     times_3d = [time * dt for time in times_3d]
 
 

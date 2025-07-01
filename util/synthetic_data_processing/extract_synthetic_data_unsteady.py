@@ -1,7 +1,10 @@
+from cProfile import label
 import re
 import sys
 import os
+import time
 
+import pandas as pd
 from pyparsing import line
 sys.path.append("/Users/natalia/Desktop/cco_bifurcations")
 from util.tools.basic import *
@@ -15,6 +18,7 @@ plt.rcParams.update({
          "font.family": "serif",
          "font.serif": ["Computer Modern"]
      })
+from scipy.interpolate import CubicSpline
 def extract_flow_behavior_unsteady(geo_results_dir, offset):
     
     verbose = True
@@ -40,15 +44,29 @@ def extract_flow_behavior_unsteady(geo_results_dir, offset):
         times = np.asarray(soln_dict["times"])
 
         # time derivatives
-        # pdb.set_trace()
-        dt = (times[1][0] - times[0][0]) * 2*0.4/800
+        
+        time_steps = times[1:,0] - times[:-1,0]
+        if np.any(time_steps != 25):
+            print(f"Time steps are not constant in {flow_result_dir}.")
+            raise ValueError(f"Time steps are not constant in {flow_result_dir}.")
+        #pdb.set_trace()
+        dt = (times[1][0] - times[0][0]) * 2*0.4/800 # convert to seconds, assuming 2*0.4 is the time step in ms
+        #print(f"dt: {dt}")
         dflow_dt = np.zeros_like(flow)
-        dflow_dt[1:-1,:] = (flow[2:,:] - flow[:-2,:])/(2*dt) # central difference
-
+        #dflow_dt[1:-1,:] = (flow[2:,:] - flow[:-2,:])/(2*dt) # central difference
+        cd_time_steps = np.tile((time_steps[0:-1]+time_steps[1:]),(3,1))
+        #pdb.set_trace()
+        dflow_dt[1:-1,:] = (flow[2:,:] - flow[:-2,:])#/cd_time_steps # central difference with variable time step
+        # dflow_dt[1:,:] = (flow[1:,:] - flow[:-1,:])/(dt) # central difference
+        
         flow = flow[1:-1,:] # remove first and last time step
         pressure = pressure[1:-1,:] # remove first and last time step
         times = times[1:-1,:] # remove first and last time step
         dflow_dt = dflow_dt[1:-1,:] # remove first and last time step
+        # flow = flow[1:,:] # remove first and last time step
+        # pressure = pressure[1:,:] # remove first and last time step
+        # times = times[1:,:] # remove first and last time step
+        # dflow_dt = dflow_dt[1:,:] # remove first and last time step
 
         tangents = np.asarray(soln_dict["tangents"])
         lengths = np.asarray(soln_dict["lengths"]).reshape((-1, 2))
@@ -85,7 +103,7 @@ def extract_flow_behavior_unsteady(geo_results_dir, offset):
     A_mat_star = np.zeros((2*num_flows, num_coefs))
     A_mat = np.zeros((2*num_flows, num_coefs))
 
-
+    #pdb.set_trace()
     # Linear resistors
     A_mat[0:num_flows,0] = flow[:,0]
     A_mat[num_flows:2*num_flows,3] = flow[:,0]
@@ -114,10 +132,17 @@ def extract_flow_behavior_unsteady(geo_results_dir, offset):
     R_quad_star2        = coefs_star[4]
     L_star2             = coefs_star[5]
 
+
     offset_dict["daughter1_R_lin_star"]     = copy.copy(R_lin_star1)
+    offset_dict["daughter1_R_lin_star_log"] = np.log(np.abs(np.max((0, offset_dict["daughter1_R_lin_star"]))))
     offset_dict["daughter2_R_lin_star"]     = copy.copy(R_lin_star2)
+    offset_dict["daughter2_R_lin_star_log"] = np.log(np.abs(np.max((0, offset_dict["daughter2_R_lin_star"]))))
+
     offset_dict["daughter1_R_quad_star"]    = copy.copy(R_quad_star1)
+    offset_dict["daughter1_R_quad_star_log"] = np.sign(offset_dict["daughter1_R_quad_star"]) * np.max((np.log(np.abs(offset_dict["daughter1_R_quad_star"]))+4, 0))
     offset_dict["daughter2_R_quad_star"]    = copy.copy(R_quad_star2)
+    offset_dict["daughter2_R_quad_star_log"] = np.sign(offset_dict["daughter2_R_quad_star"]) * np.max((np.log(np.abs(offset_dict["daughter2_R_quad_star"]))+4, 0))
+
     offset_dict["daughter1_L_star"]         = copy.copy(L_star1)
     offset_dict["daughter2_L_star"]         = copy.copy(L_star2)
 
@@ -138,9 +163,15 @@ def extract_flow_behavior_unsteady(geo_results_dir, offset):
     L2             = coefs[5]
 
     offset_dict["daughter1_R_lin"]      = copy.copy(R_lin1)
+    offset_dict["daughter1_R_lin_log"] = np.log(np.abs(np.max((0,offset_dict["daughter1_R_lin"]))))
     offset_dict["daughter2_R_lin"]      = copy.copy(R_lin2)
+    offset_dict["daughter2_R_lin_log"] = np.log(np.abs(np.max((0,offset_dict["daughter2_R_lin"]))))
+
     offset_dict["daughter1_R_quad"]     = copy.copy(R_quad1)
+    offset_dict["daughter1_R_quad_log"]     = np.sign(offset_dict["daughter1_R_quad"]) * np.max((np.log(np.abs(offset_dict["daughter1_R_quad"]))+4, 0))
     offset_dict["daughter2_R_quad"]     = copy.copy(R_quad2)
+    offset_dict["daughter2_R_quad_log"]     = np.sign(offset_dict["daughter2_R_quad"]) * np.max((np.log(np.abs(offset_dict["daughter2_R_quad"]))+4, 0))
+
     offset_dict["daughter1_L"]          = copy.copy(L1)
     offset_dict["daughter2_L"]          = copy.copy(L2)
 
@@ -166,7 +197,7 @@ def extract_flow_behavior_unsteady(geo_results_dir, offset):
     offset_dict["dp1"] = pressure[:,0] - pressure[:,1]
     offset_dict["dp2"] = pressure[:,0] - pressure[:,2]
     
-    offset_dict["times"] = times * dt
+    offset_dict["times"] = times * 0.001
 
     offset_dict["daughter1_flow_ratio"] = flow_ratio1
     offset_dict["daughter2_flow_ratio"] = flow_ratio2
@@ -178,7 +209,9 @@ def extract_flow_behavior_unsteady(geo_results_dir, offset):
     offset_dict["L_char"] = L_char
     
     offset_dict["daughter1_length_star"] = lengths[0,0]/L_char
+    offset_dict["daughter1_length_star_sq"] = offset_dict["daughter1_length_star"]**2
     offset_dict["daughter2_length_star"] = lengths[0,1]/L_char
+    offset_dict["daughter2_length_star_sq"] = offset_dict["daughter2_length_star"]**2
     
     offset_dict["daughter1_length"] = lengths[0,0]
     offset_dict["daughter2_length"] = lengths[0,1]
@@ -215,37 +248,50 @@ def plot_geo(geo_dict, anatomy, set_type, geo):
         offset_list = []; hp_list = []
         offset = int(offset_name.split("_")[1])
         
-        
-        times_arr = np.asarray(offset_dict["times"])
+        times_arr = np.asarray(offset_dict["times"])[:,0]
         flow_arr = np.asarray(offset_dict["flow"])[:,0]
-        dflow_dt_arr = np.asarray(offset_dict["dflow_dt"])[:,0]
-        dp1_arr = flow_arr * offset_dict["daughter1_R_lin"] + offset_dict["daughter1_R_quad"] * np.square(flow_arr) + offset_dict["daughter1_L"] * dflow_dt_arr
-        dp2_arr = flow_arr * offset_dict["daughter2_R_lin"] + offset_dict["daughter2_R_quad"] * np.square(flow_arr) + offset_dict["daughter2_L"] *dflow_dt_arr
+
+        cs = CubicSpline(times_arr, flow_arr)
+        times_arr_fine = np.linspace(times_arr[0], times_arr[-1], 1000)
+        flow_arr_fine = cs(times_arr_fine)
+        dflow_dt_arr_fine = np.gradient(flow_arr_fine, times_arr_fine[1] - times_arr_fine[0])
+
+        #dflow_dt_arr = np.asarray(offset_dict["dflow_dt"])[:,0]
+        #dp1_arr = flow_arr * offset_dict["daughter1_R_lin"] + offset_dict["daughter1_R_quad"] * np.square(flow_arr) + offset_dict["daughter1_L"] * dflow_dt_arr
+        #dp2_arr = flow_arr * offset_dict["daughter2_R_lin"] + offset_dict["daughter2_R_quad"] * np.square(flow_arr) + offset_dict["daughter2_L"] *dflow_dt_arr
+        dp1_arr_fine = flow_arr_fine * offset_dict["daughter1_R_lin"] + offset_dict["daughter1_R_quad"] * np.square(flow_arr_fine) + offset_dict["daughter1_L"] * dflow_dt_arr_fine
         
+        dp2_arr_fine = flow_arr_fine * offset_dict["daughter2_R_lin"] + offset_dict["daughter2_R_quad"] * np.square(flow_arr_fine) + offset_dict["daughter2_L"] * dflow_dt_arr_fine  
         
         ax2 = ax1.twinx()
-        ax2.plot(offset_dict["times"], offset_dict["flow"][:,0], "--", color = "black", label = "Inlet Flow")
-        ax1.plot(offset_dict["times"], offset_dict["dp1"]/1333, color = "cornflowerblue", label = "Outlet 1 $\Delta P$")
-        ax1.plot(times_arr, dp1_arr/1333, color = "cornflowerblue", linestyle = "--")
-        ax1.plot(offset_dict["times"], offset_dict["dp2"]/1333, color = "deeppink",  label = "Outlet 2 $\Delta P$")
-        ax1.plot(times_arr, dp2_arr/1333, color = "deeppink", linestyle = "--")
+        
+
+        ax1.scatter(offset_dict["times"], offset_dict["dp1"]/1333, color = "cornflowerblue", label = "Outlet 1 $\Delta P$ (Simulation)")
+        ax1.plot(times_arr_fine, dp1_arr_fine/1333, color = "cornflowerblue", label = "Outlet 1 $\Delta P$ (RRI Fit)")
+
+        ax1.scatter(offset_dict["times"], offset_dict["dp2"]/1333, color = "deeppink",  label = "Outlet 2 $\Delta P$")
+        ax1.plot(times_arr_fine, dp2_arr_fine/1333, color = "deeppink", label = "Outlet 2 $\Delta P$ (RRI Fit)")
+
         ax1.set_xlabel("Time (s)")
         ax1.set_ylabel("$\Delta P$ (mmHg)")
-        ax2.set_ylabel("Inlet Flow (cm$ ^3$/s)")
-        ax1.legend()
 
-        dp_steady1 = dp1_arr - offset_dict["daughter1_L"] * dflow_dt_arr
-        dp_steady_calc = flow_arr * offset_dict["daughter1_R_lin"] + \
-                        offset_dict["daughter1_R_quad"] * np.square(flow_arr)
-        dp_steady2 = dp2_arr - offset_dict["daughter2_L"] * dflow_dt_arr
-        dp_steady_calc2 = flow_arr * offset_dict["daughter2_R_lin"] + \
-                        offset_dict["daughter2_R_quad"] * np.square(flow_arr)
+        ax2.plot(times_arr_fine, flow_arr_fine, "--", color = "black", label = "Inlet Flow")
+        ax2.set_ylabel("Inlet Flow (cm$ ^3$/s)")
+        labels = ["Outlet 1 $\Delta P$ (Simulation)", "Outlet 1 $\Delta P$ (RRI Fit)", "Outlet 2 $\Delta P$ (Simulation)", "Outlet 2 $\Delta P$ (RRI Fit)", "Inlet Flow"]
+        ax1.legend(labels, bbox_to_anchor=(0.4, 1.2), loc='upper center', ncol = 3)
+
+        dp_steady1 = dp1_arr_fine - offset_dict["daughter1_L"] * dflow_dt_arr_fine
+        dp_steady_calc = flow_arr_fine * offset_dict["daughter1_R_lin"] + \
+                        offset_dict["daughter1_R_quad"] * np.square(flow_arr_fine)
+        dp_steady2 = dp2_arr_fine - offset_dict["daughter2_L"] * dflow_dt_arr_fine
+        dp_steady_calc2 = flow_arr_fine * offset_dict["daughter2_R_lin"] + \
+                        offset_dict["daughter2_R_quad"] * np.square(flow_arr_fine)
         ax3 = axs[1]
 
-        ax3.plot(flow_arr, dp_steady1/1333, color = "cornflowerblue", label = "Outlet 1 Steady $\Delta P$")
-        ax3.plot(flow_arr, dp_steady_calc/1333, color = "cornflowerblue", linestyle = "--", linewidth = 3, alpha = 0.5)
-        ax3.plot(flow_arr, dp_steady2/1333, color = "deeppink", label = "Outlet 2 Steady $\Delta P$")
-        ax3.plot(flow_arr, dp_steady_calc2/1333, color = "deeppink", linestyle = "--", linewidth = 3, alpha = 0.5)
+        ax3.plot(flow_arr_fine, dp_steady1/1333, color = "cornflowerblue", label = "Outlet 1 Steady $\Delta P$")
+        ax3.plot(flow_arr_fine, dp_steady_calc/1333, color = "cornflowerblue", linestyle = "--", linewidth = 3, alpha = 0.5)
+        ax3.plot(flow_arr_fine, dp_steady2/1333, color = "deeppink", label = "Outlet 2 Steady $\Delta P$")
+        ax3.plot(flow_arr_fine, dp_steady_calc2/1333, color = "deeppink", linestyle = "--", linewidth = 3, alpha = 0.5)
         ax3.set_xlabel("Inlet Flow (cm$ ^3$/s)")
         ax3.set_ylabel("$\Delta P$ (mmHg)")
         ax3.legend()
@@ -253,7 +299,7 @@ def plot_geo(geo_dict, anatomy, set_type, geo):
         fig.savefig(f"data/synthetic_junctions_reduced_results/{anatomy}/{set_type}/{geo}/unsteady_plot_{offset_name}.pdf", bbox_inches='tight')
         
         if offset_dict["daughter1_R_quad_star"] < -1 or offset_dict["daughter2_R_quad_star"] < -1:
-            print(f"Negative linear resistance for {geo} at offset {offset_name}.")
+            print(f"Negative quad resistance for {geo} at offset {offset_name}.")
             pdb.set_trace()
         
     return

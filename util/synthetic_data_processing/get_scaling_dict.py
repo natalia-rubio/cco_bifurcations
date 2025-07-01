@@ -1,4 +1,7 @@
 import sys
+
+from numpy import save
+import pandas as pd
 from util.tools.basic import *
 from collections import defaultdict
 #plt.rcParams.update(plt.rcParamsDefault)
@@ -68,13 +71,19 @@ def get_scaling_dict(anatomy, set_type, doubled = True, unsteady = False):
 
     data_list_dict = load_dict(f"data/data_dicts/{anatomy}_{set_type}_synthetic_data_list_dict")
     scaling_dict = {}
-    to_normalize = list(data_list_dict.keys())
+    
 
     if not os.path.exists(f"results/synthetic_data_trends"):
         os.mkdir(f"results/synthetic_data_trends")
     if not os.path.exists(f"results/synthetic_data_trends/geo_dist"):
         os.mkdir(f"results/synthetic_data_trends/geo_dist")
 
+    r_quad = data_list_dict["daughter1_R_quad_star"]
+    C = np.exp(-4)
+    r_quad_scaled = np.sign(r_quad) * np.log(1 + np.abs(r_quad) / C)
+    data_list_dict["daughter1_R_quad_star_logC"] = r_quad_scaled
+    save_dict(data_list_dict, f"data/data_dicts/{anatomy}_{set_type}_synthetic_data_list_dict")
+    to_normalize = list(data_list_dict.keys())
 
     values_of_interest = ["daughter1_R_lin_star", "daughter2_R_lin_star", "daughter1_R_quad_star", "daughter2_R_quad_star"]
     values_to_skip = ["daughter1_dP_star", "daughter2_dP_star",

@@ -211,6 +211,7 @@ def add_geometry_values(junction_dict_master, tree_name, flow_mag, time_step):
         branch2_id = junction_dict["0D_outlet2_branch_id"]
         # Get the indices of the inlet and outlet points of the first branch
         branch2_inlet_ind =     get_inds(arr = pt_id, vals = [branch_dict_3D[branch2_id]["min_pt"],])[0]
+
         branch2_outlet_ind =    get_inds(arr = pt_id, vals = [branch_dict_3D[branch2_id]["max_pt"],])[0]
         assert (np.linalg.norm(points[branch2_inlet_ind, :] - points[junc_outlet_inds[1], :]) < 1e-2), "Inlet point of branch 1 is not the same as outlet point of junction."
         junction_dict["3D_branch2_id"] = branch2_id

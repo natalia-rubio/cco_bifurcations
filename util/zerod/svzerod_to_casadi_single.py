@@ -43,6 +43,8 @@ def solve_casadi_single(tree_name, junction_mode, sol_prev = None, coef_factor =
     P_in_dt = opti.variable(num_vessels)
     P_out_dt = opti.variable(num_vessels)
 
+    # opti.set_initial(Q_in, input_file["boundary_conditions"][0]["bc_values"]["Q"][-1])
+    # opti.set_initial(Q_out, input_file["boundary_conditions"][0]["bc_values"]["Q"][-1])
     if sol_prev is not None:
         # Set initial guess for decision variables
         opti.set_initial(Q_in, sol_prev.value(Q_in))
@@ -82,7 +84,7 @@ def solve_casadi_single(tree_name, junction_mode, sol_prev = None, coef_factor =
         C = vessel["zero_d_element_values"]["C"]*0
         L = vessel["zero_d_element_values"]["L"]*0
 
-        if "branch0" in vessel["vessel_name"]:
+        if "branch0" not in vessel["vessel_name"] and junction_mode == "standard":
             #print(f"Branch 0 vessel {vessel['vessel_name']} found, adding vessel equation to objective")
             
             objective += (
@@ -193,7 +195,7 @@ def solve_casadi_single(tree_name, junction_mode, sol_prev = None, coef_factor =
         SS_constraint_counter += 4 * num_vessels
 
     # Enforce positive flows
-    positive_flows = False
+    positive_flows = True
     if positive_flows:
         opti.subject_to(casadi.vec(Q_in)  >= 0)
         opti.subject_to(casadi.vec(Q_out) >= 0)
@@ -206,7 +208,7 @@ def solve_casadi_single(tree_name, junction_mode, sol_prev = None, coef_factor =
     # Solve NLP with IPOPT
     opti.minimize(objective) # Dummy objective
     opts = {'ipopt.print_level': 0, 'print_time': 0, 'ipopt.sb': 'yes'}
-    opts = {}
+    #opts = {}
     opti.solver('ipopt', opts)
 
     try:

@@ -60,6 +60,7 @@ def convert_csv_to_branch_result(
     return out
 
 def project_to_centerline(tree_name, junction_mode):
+    
     tree_name_split = tree_name.split("_")
     tree_name_base = "_".join(tree_name_split[0:2])
 
@@ -70,22 +71,24 @@ def project_to_centerline(tree_name, junction_mode):
     #print(f"Input file: {input_file}")
     
     zerod_handler.update_simparams(last_cycle_only=True)
-
+    #print("in project_to_centerline: got handler")
     casadi = True
     if junction_mode == "standard":
         zerod_solver = pysvzerod.Solver(input_file)
+        #print("in project_to_centerline: got solver")
+
         zerod_solver.run()
+        #print("in project_to_centerline: ran solver")
         results_df = zerod_solver.get_full_result()
         os.makedirs(f"trees/zerod_output/{junction_mode}/{tree_name_base}/{tree_name}", exist_ok=True)
         results_df.to_csv(f"trees/zerod_output/{junction_mode}/{tree_name_base}/{tree_name}/results.csv")
     # 
-    
     else:
         if casadi:
             results_df = pd.read_csv(f"trees/zerod_output/{junction_mode}/{tree_name_base}/{tree_name}/sol_casadi.csv")
         else:
             results_df = pd.read_csv(f"trees/zerod_output/{junction_mode}/{tree_name_base}/{tree_name}/results.csv")
-    
+    #print("in project_to_centerline: loaded results")
     branch_results = convert_csv_to_branch_result(results_df, zerod_handler)
     arrays = rec_dd()
 

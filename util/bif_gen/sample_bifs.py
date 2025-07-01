@@ -9,7 +9,7 @@ plt.rcParams['font.family'] = 'serif'
 plt.rcParams['font.size'] = 16
 
 anatomy = "tree_20"
-num_geos = 60
+num_geos = 300
 sampler = qmc.LatinHypercube(d=6,seed = 0)
 samples = sampler.random(n=num_geos*10)
 

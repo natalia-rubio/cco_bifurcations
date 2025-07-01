@@ -80,29 +80,30 @@ def solve_casadi_unsteady(time_step = 0, sol_prev = None, input_file = None, res
         vessel_dict[vessel["vessel_id"]]["v_ind"] = i
         vessel_dict[vessel["vessel_id"]]["v_name"] = vessel["vessel_name"]
 
-        R_lin = vessel["zero_d_element_values"]["R_poiseuille"]*0
-        R_sten = vessel["zero_d_element_values"]["stenosis_coefficient"]*0
+        R_lin = vessel["zero_d_element_values"]["R_poiseuille"]
+        R_sten = vessel["zero_d_element_values"]["stenosis_coefficient"]
         if "pressure_recovery_coefficient" in vessel["zero_d_element_values"].keys():
-            R_quad = vessel["zero_d_element_values"]["pressure_recovery_coefficient"]*0
+            R_quad = vessel["zero_d_element_values"]["pressure_recovery_coefficient"]
+            print(f"R_quad: {R_quad} for vessel {vessel['vessel_name']}")
         else:
             R_quad = 0
-        C = vessel["zero_d_element_values"]["C"]*0
-        L = vessel["zero_d_element_values"]["L"]*0
+        C = vessel["zero_d_element_values"]["C"]
+        L = vessel["zero_d_element_values"]["L"]
 
-        if "branch0" in vessel["vessel_name"]:
-            #print(f"Branch 0 vessel {vessel['vessel_name']} found, adding vessel equation to objective")
+        # if "branch0" in vessel["vessel_name"]:
+        #     #print(f"Branch 0 vessel {vessel['vessel_name']} found, adding vessel equation to objective")
             
-            objective += (
-                P_in[i] +
-                - P_out[i] +
-                - (R_lin + R_sten * (10**-2 + Q_in[i]**2)**0.5 + R_quad * Q_in[i]) * Q_in[i] + # abs removed
-                - L * Q_out_dt[i]  
-                )**2
-        else:
-            objective += (
-                P_out[i] +
-                - P_in[i] 
-            )**2
+        #     objective += (
+        #         P_in[i] +
+        #         - P_out[i] +
+        #         - (R_lin + R_sten * (10**-2 + Q_in[i]**2)**0.5 + R_quad * Q_in[i]) * Q_in[i] + # abs removed
+        #         - L * Q_out_dt[i]  
+        #         )**2
+        # else:
+        #     objective += (
+        #         P_out[i] +
+        #         - P_in[i] 
+        #     )**2
 
         # objective += (
         #     P_in[i] +
@@ -135,6 +136,7 @@ def solve_casadi_unsteady(time_step = 0, sol_prev = None, input_file = None, res
         # Inlet boundary conditions (to satisfy exactly)
             if "inlet" in vessel["boundary_conditions"].keys():
                 opti.subject_to(Q_in[i] == inlet_Q)
+                print(f"Inlet flow: {inlet_Q} for vessel {vessel['vessel_name']}")
                 BC_constraint_counter += 1
         # if vessel["vessel_name"] == "branch32_seg0":
         #     pdb.set_trace()
@@ -157,17 +159,18 @@ def solve_casadi_unsteady(time_step = 0, sol_prev = None, input_file = None, res
                     R_quad = junction["junction_values"]["pressure_recovery_coefficient"][j] * coef_factor
                 else:
                     R_quad = 0
-                L = junction["junction_values"]["L"][j] * coef_factor
+
+                L = junction["junction_values"]["L"][j] *coef_factor
                 C = 0
                 #pdb.set_trace()
                 #print("Inductance: ", L)
 
-                # Junction pressure equation residual (to minimize)
+                #Junction pressure equation residual (to minimize)
                 objective += ((
                     P_out[inlet_vessel_ind] + # THIS IS THE INLET PRESSURE
                     - P_in[outlet_vessel_ind] +
                     - (R_lin + R_sten * (10**-2 + Q_in[outlet_vessel_ind]**2)**0.5 + R_quad * Q_in[outlet_vessel_ind]) * Q_in[outlet_vessel_ind] + # abs removed
-                    - L * Q_in_dt[outlet_vessel_ind])/(1333 * 20)
+                    - L * Q_in_dt[outlet_vessel_ind])/(1333 * 10)
                 )**2
                 junction_constraint_counter += 1
                 
@@ -176,11 +179,13 @@ def solve_casadi_unsteady(time_step = 0, sol_prev = None, input_file = None, res
                     opti.subject_to(
                         P_out[inlet_vessel_ind] - P_in[outlet_vessel_ind] >= 0
                     )
+                # opti.subject_to(P_out < 1e5)
+                # opti.subject_to(P_in < 1e5)
 
                 enforce_flow_splits = True
                 if enforce_flow_splits:
                     # objective += (
-                    #     100 * (Q_in[outlet_vessel_ind] - junction["junction_values"]["flow_split"][j] *  Q_out[inlet_vessel_ind])
+                    #     ((Q_in[outlet_vessel_ind] - junction["junction_values"]["flow_split"][j] *  Q_out[inlet_vessel_ind])/inlet_Q)**2
                     # )
                     opti.subject_to(
                         Q_in[outlet_vessel_ind] - junction["junction_values"]["flow_split"][j] *  Q_out[inlet_vessel_ind] == 0
@@ -193,8 +198,6 @@ def solve_casadi_unsteady(time_step = 0, sol_prev = None, input_file = None, res
 
             
             opti.set_value(outflow_extractors[outlet_vessel_ind, i], -1)
-
-            enforce_flow_splits = True
 
         # Conservation of mass
         opti.set_value(inflow_extractors[inlet_vessel_ind, i], 1)
@@ -287,6 +290,6 @@ if __name__ == "__main__":
     tree_name_split = tree_name.split("_")
     tree_name_split[-1] = "unsteady"
     tree_name_unsteady = "_".join(tree_name_split)   
-    if not os.path.exists(f'trees/zerod_output/{junction_mode}/{tree_name_unsteady}'):
-        os.makedirs(f'trees/zerod_output/{junction_mode}/{tree_name_unsteady}')
-    df.to_csv(f'trees/zerod_output/{junction_mode}/{tree_name_unsteady}/sol_casadi.csv', index=False)
+    if not os.path.exists(f'trees/zerod_output/{junction_mode}/{tree_name_base}/{tree_name_unsteady}'):
+        os.makedirs(f'trees/zerod_output/{junction_mode}/{tree_name_base}/{tree_name_unsteady}')
+    df.to_csv(f'trees/zerod_output/{junction_mode}/{tree_name_base}/{tree_name_unsteady}/sol_casadi.csv', index=False)

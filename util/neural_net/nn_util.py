@@ -12,8 +12,10 @@ def get_sizes(network_params):
     num_layers = network_params["num_layers"]
     layer_width = network_params["layer_width"]
     num_output_features = network_params["num_output_features"]
-    sizes = [num_input_features] + [layer_width]*num_layers + [num_output_features]
-    return sizes
+    #sizes = [num_input_features] + [layer_width]*num_layers + [num_output_features]
+    sizes_in = [num_input_features] + [layer_width]*num_layers
+    sizes_out = [layer_width]*num_layers + [num_output_features]
+    return sizes_in, sizes_out
 
 def random_layer_params(m, n, key, scale=1e-1):
     # Randomly initialize the weights of a layer
@@ -23,9 +25,10 @@ def random_layer_params(m, n, key, scale=1e-1):
 def init_weights(network_params):
     # Initialize the weights of the network
     key = random.key(0)
-    sizes = get_sizes(network_params)
-    keys = random.split(key, len(sizes))
-    return [random_layer_params(m, n, k) for m, n, k in zip(sizes[:-1], sizes[1:], keys)]
+    #sizes = get_sizes(network_params)
+    sizes_in, sizes_out = get_sizes(network_params)
+    keys = random.split(key, len(sizes_in))
+    return [random_layer_params(m, n, k) for m, n, k in zip(sizes_in, sizes_out, keys)]
 
 
 # Data Handling
@@ -62,11 +65,20 @@ def relu(x):
   # Rectified Linear Unit activation function
   return jnp.maximum(0, x)
 
+def sigmoid(x):
+    # Sigmoid activation function
+    return 1 / (1 + jnp.exp(-x))
+
+def tanh(x):
+    # Hyperbolic tangent activation function
+    return jnp.tanh(x)
+
     
 def forward_pass(input,weights):
     # Forward pass through the network
     latent_rep = input    
     for w, b in weights[:-1]:
+        jnp.concatenate((latent_rep, input), axis=-1)
         lin_comb = jnp.dot(w, latent_rep) + b
         latent_rep = relu(lin_comb)
 

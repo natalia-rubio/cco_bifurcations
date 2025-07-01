@@ -1,3 +1,4 @@
+import sys
 import xml.etree.ElementTree as ET
 import os
 import glob
@@ -22,6 +23,8 @@ def write_svfsiplus_xml(parent_file_dir, geo_name, sim_dir_sher, sim_dir_sher_or
     outlet_caps = []
     for cap in caps:
         if cap==inlet_cap:
+            continue
+        if "cap" not in cap:
             continue
         outlet_caps.append(cap)
 
@@ -50,7 +53,7 @@ def write_svfsiplus_xml(parent_file_dir, geo_name, sim_dir_sher, sim_dir_sher_or
     name_prefix = ET.SubElement(gensimparams, "Name_prefix_of_saved_VTK_files")
     name_prefix.text = f"{geo_name}_{flow_mag}_result"
     increment_vtk = ET.SubElement(gensimparams, "Increment_in_saving_VTK_files")
-    increment_vtk.text = "100"
+    increment_vtk.text = "10"
     start_saving_tstep = ET.SubElement(gensimparams, "Start_saving_after_time_step")
     start_saving_tstep.text = "1"
     incrememnt_restart = ET.SubElement(gensimparams, "Increment_in_saving_restart_files")
@@ -179,15 +182,17 @@ def write_svfsiplus_xml(parent_file_dir, geo_name, sim_dir_sher, sim_dir_sher_or
     elif geo_name == "tree_5":
         inlet_rad = 0.279
     elif geo_name == "tree_3":
-        inlet_rad = 0.248
+        inlet_rad = 0.20
     elif geo_name == "tree_10":
-        inlet_rad = 0.23
+        inlet_rad = 0.176
+    elif geo_name == "tree_40":
+        inlet_rad = 0.252
 
     if flow_mag == "unsteady":
         num_time_steps = n_tsteps
         flow = f"{int(num_time_steps)}    16\n"
-        flow_amp = 2 * 0.04*5500/(1.06*inlet_rad*2)
-        t = np.linspace(start = 0, stop = 4*np.pi, num = num_time_steps)
+        flow_amp = 0.04*5500/(1.06*inlet_rad*2)
+        t = np.linspace(start = 0, stop = 8*np.pi, num = num_time_steps)
         q = (flow_amp/2) * (np.cos(t)-1)
         for i in range(t.size):
             flow = flow + "%1.5f    %1.3f\n" %(i*dt, q[i])
@@ -227,10 +232,10 @@ mpirun --mca mpi_cuda_support 0 -n {int(num_nodes * 24)} singularity run $IMAGE_
 # file_dir = "/Users/natalia/Desktop/cco_bifurcations/trees/geo_files/tree_80/"
 
 parent_file_dir = "/Users/natalia/Desktop/cco_bifurcations/trees/geo_files/"
-geo_name = "tree_10"
+geo_name = sys.argv[1]  # e.g., "tree_20"
 
 flow_mag = "unsteady"
 sim_dir_sher = f"/scratch/users/nrubio/synthetic_junctions/CCO/{geo_name}/{geo_name}_flow_{flow_mag}/"
 sim_dir_sher_orig = f"/scratch/users/nrubio/synthetic_junctions/CCO/{geo_name}/{geo_name}_original"
-write_svfsiplus_xml(parent_file_dir, geo_name, sim_dir_sher, sim_dir_sher_orig, num_nodes = 2, flow_mag = flow_mag)
+write_svfsiplus_xml(parent_file_dir, geo_name, sim_dir_sher, sim_dir_sher_orig, num_nodes = 4, n_tsteps=800, flow_mag = flow_mag)
 

@@ -2,6 +2,7 @@ import xml.etree.ElementTree as ET
 import os
 import glob
 import numpy as np
+import sys
 
 #from util.tools.vtk_functions import geo
 
@@ -24,6 +25,8 @@ def write_svfsiplus_xml(parent_file_dir, geo_name, sim_dir_sher, sim_dir_sher_or
     outlet_caps = []
     for cap in caps:
         if cap==inlet_cap:
+            continue
+        if "cap" not in cap:
             continue
         outlet_caps.append(cap)
 
@@ -200,11 +203,13 @@ def write_svfsiplus_xml(parent_file_dir, geo_name, sim_dir_sher, sim_dir_sher_or
         elif geo_name == "tree_5":
             inlet_rad = 0.279
         elif geo_name == "tree_3":
-            inlet_rad = 0.248
+            inlet_rad = 0.20
         elif geo_name == "tree_10":
-            inlet_rad = 0.23
+            inlet_rad = 0.176
+        elif geo_name == "tree_40":
+            inlet_rad = 0.252
         #q[i] = 0.01* flow_mag * q_fac * -2 * 0.04*5500/(1.06*inlet_rad*2)  #q_fac * -2 * 0.04*5500/(1.06*1.5*2) tree_dec
-        q[i] = 0.01* flow_mag * q_fac * -2 * 0.04*5500/(1.06*inlet_rad*2)
+        q[i] = 0.01* flow_mag * q_fac * -1 * 0.04*5500/(1.06*inlet_rad*2)
 
         flow = flow + "%1.5f    %1.3f\n" %(i*dt, q[i])
     f = open(file_dir + f"/inflow_svFSI_flow_{flow_mag}.flow", "w")
@@ -243,15 +248,15 @@ mpirun --mca mpi_cuda_support 0 -n {int(num_nodes * 24)} singularity run $IMAGE_
 # file_dir = "/Users/natalia/Desktop/cco_bifurcations/trees/geo_files/tree_80/"
 
 parent_file_dir = "/Users/natalia/Desktop/cco_bifurcations/trees/geo_files/"
-geo_name = "tree_10"
+geo_name = sys.argv[1]  # e.g., "tree_20", "tree_5", "tree_3", "tree_10"
 
 sim_dir_sher_orig = f"/scratch/users/nrubio/synthetic_junctions/CCO/{geo_name}/{geo_name}_original"
-for flow_mag in [25, 50, 100, 150, 200]:
+for flow_mag in [12, 25, 50, 100]:
     # for flow_mag in [0]:
     #     write_svfsiplus_xml(file_dir, geo_name, sim_dir_sher, flow_mag)
     # if flow_mag == 100:
     #     continue
     # else:
         sim_dir_sher = f"/scratch/users/nrubio/synthetic_junctions/CCO/{geo_name}/{geo_name}_flow_{flow_mag}/"
-        write_svfsiplus_xml(parent_file_dir, geo_name, sim_dir_sher, sim_dir_sher_orig, flow_mag = flow_mag, num_nodes = 2)
+        write_svfsiplus_xml(parent_file_dir, geo_name, sim_dir_sher, sim_dir_sher_orig, flow_mag = flow_mag, num_nodes = 4)
 

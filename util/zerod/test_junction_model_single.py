@@ -6,25 +6,28 @@ sys.path.append("/Users/natalia/Desktop/cco_bifurcations")
 from util.tree.centerline_proj import extract_results
 from util.fidelity_comparison.compare_to_3d_inlet import compare_to_3d_inlet
 from util.zerod.standard_to_RR import transform_standard_to_RR
-from util.zerod.svzerod_to_casadi_single import solve_casadi_single
+#from util.zerod.svzerod_to_casadi_ws import solve_casadi_single
 from util.zerod.correct_BCs import correct_BCs
 
-inflow_dict = { "tree_20_flow_100": 84,
-                "tree_20_flow_50": 42,
-                "tree_20_flow_150": 126,
-                "tree_20_flow_25": 21,
-                "tree_3_flow_25": 40,
-                "tree_3_flow_50": 80,
-                "tree_3_flow_100": 160,
-                "tree_3_flow_150": 240,
-                "tree_5_flow_25": 45,
-                "tree_5_flow_50": 90,
-                "tree_5_flow_100": 179,
-                "tree_5_flow_150": 270,
+inflow_dict = { "tree_3_flow_25": 16,#20,
+                "tree_3_flow_50": 32,#40,
+                "tree_3_flow_100": 63, #80,
+                "tree_3_flow_150": 120,
+                "tree_5_flow_25": 22.5,#45*.5,
+                "tree_5_flow_50": 45,#*.5,
+                "tree_5_flow_100": 90,#179*.5,
+                "tree_5_flow_150": 134, #270*.5,
+                "tree_10_flow_25": 14,
+                "tree_10_flow_50": 27,
+                "tree_10_flow_100": 54,
+                "tree_10_flow_150": 108,
                 "tree_20_flow_25": 21,
                 "tree_20_flow_50": 42,
                 "tree_20_flow_100": 84,
                 "tree_20_flow_150": 126,
+                "tree_40_flow_25": 20,
+                "tree_40_flow_50": 40,
+                "tree_40_flow_100": 80,
                 }
 
 
@@ -66,7 +69,8 @@ def test_junction_model_single(tree_name, junction_mode):
     # If special junction handling is needed, create and run the modified 0D file
     if junction_mode == "RR":
         transform_standard_to_RR(tree_name)
-        solve_casadi_single(tree_name, junction_mode)
+        os.system(f"python3 util/zerod/svzerod_to_casadi_ws.py {tree_name} {junction_mode}")
+        #solve_casadi_single(tree_name, junction_mode)
         
 
     # Project the 0D results to the 3D centerline

@@ -12,6 +12,7 @@ from util.neural_net.nn_util import scale_jax, inv_scale_jax, dill_load
 import jax.numpy as jnp
 from util.neural_net.nn_model import NeuralNet, predict
 from util.tree.extract_true_junctions_helpers import *
+from scipy.interpolate import interp1d
 
 if __name__ == "__main__":
     
@@ -26,8 +27,8 @@ if __name__ == "__main__":
     t = []
     Q = []
 
-    with open("util/zerod/inflow_svFSI_flow_unsteady.flow", 'r') as file:
-        
+    #with open("util/zerod/inflow_svFSI_flow_unsteady.flow", 'r') as file:
+    with open(f"trees/geo_files/{tree_name_base}/{tree_name_base}_flow_unsteady/inflow_svFSI_flow_unsteady.flow", 'r') as file:
         for line in file:
             # Split the line by whitespace
             columns = line.split("    ")
@@ -40,9 +41,16 @@ if __name__ == "__main__":
                 print(f"Skipping line with unexpected format: {line}")
     inlet_area = input_file["junctions"][0]["areas"][0]
     
-    Q = [q * inlet_area for q in Q]  # Scale flow by inlet area
-    input_file["boundary_conditions"][0]["bc_values"]["Q"]= Q[1:] + Q[1:]
-    input_file["boundary_conditions"][0]["bc_values"]["t"]= t[1:] + [t[-1] + tt for tt in(t[1:])]
+    t = t[1:801]  # Remove the first time point
+    t_fine = t#jnp.linspace(t[0], t[-1], 10000)
+
+    Q = [q * inlet_area for q in Q[1:801]]  # Scale flow by inlet area
+    Q_fine = interp1d(t, Q, kind='linear', fill_value="extrapolate")(t_fine)
+    #t_fine = #t_fine.tolist()
+    Q_fine = Q#Q_fine.tolist()
+
+    input_file["boundary_conditions"][0]["bc_values"]["Q"]= Q_fine #+ Q_fine
+    input_file["boundary_conditions"][0]["bc_values"]["t"]= t_fine #+ [t_fine[-1] + tt for tt in(t_fine)]
 
     input_file["simulation_parameters"]["number_of_time_pts_per_cardiac_cycle"] = len(input_file["boundary_conditions"][0]["bc_values"]["t"]) 
     input_file["simulation_parameters"]["number_of_cardiac_cycles"] = 1
