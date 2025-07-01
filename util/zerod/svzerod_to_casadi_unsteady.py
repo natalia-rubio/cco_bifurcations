@@ -52,13 +52,13 @@ def solve_casadi_unsteady(time_step = 0, sol_prev = None, input_file = None, res
 
     if sol_prev is not None:
         # Set initial guess for decision variables
-        opti.set_initial(Q_in, sol_prev["Q_in"])
-        opti.set_initial(Q_out, sol_prev["Q_out"])
+        opti.set_initial(Q_in, sol_prev["Q_in"]+dt*sol_prev["Q_in_dt"])
+        opti.set_initial(Q_out, sol_prev["Q_out"]+dt*sol_prev["Q_out_dt"])
         opti.set_initial(Q_in_dt, sol_prev["Q_in_dt"])
         opti.set_initial(Q_out_dt, sol_prev["Q_out_dt"])
 
-        opti.set_initial(P_in, sol_prev["P_in"])
-        opti.set_initial(P_out, sol_prev["P_out"])
+        opti.set_initial(P_in, sol_prev["P_in"]+dt*sol_prev["P_in_dt"])
+        opti.set_initial(P_out, sol_prev["P_out"]+dt*sol_prev["P_out_dt"])
         opti.set_initial(P_in_dt, sol_prev["P_in_dt"])
         opti.set_initial(P_out_dt, sol_prev["P_out_dt"])
 
@@ -87,8 +87,8 @@ def solve_casadi_unsteady(time_step = 0, sol_prev = None, input_file = None, res
             print(f"R_quad: {R_quad} for vessel {vessel['vessel_name']}")
         else:
             R_quad = 0
-        C = vessel["zero_d_element_values"]["C"]
-        L = vessel["zero_d_element_values"]["L"]
+        C = vessel["zero_d_element_values"]["C"]*0
+        L = vessel["zero_d_element_values"]["L"]*0
 
         # if "branch0" in vessel["vessel_name"]:
         #     #print(f"Branch 0 vessel {vessel['vessel_name']} found, adding vessel equation to objective")
@@ -160,7 +160,7 @@ def solve_casadi_unsteady(time_step = 0, sol_prev = None, input_file = None, res
                 else:
                     R_quad = 0
 
-                L = junction["junction_values"]["L"][j] *coef_factor
+                L = junction["junction_values"]["L"][j]
                 C = 0
                 #pdb.set_trace()
                 #print("Inductance: ", L)
@@ -179,17 +179,21 @@ def solve_casadi_unsteady(time_step = 0, sol_prev = None, input_file = None, res
                     opti.subject_to(
                         P_out[inlet_vessel_ind] - P_in[outlet_vessel_ind] >= 0
                     )
-                # opti.subject_to(P_out < 1e5)
-                # opti.subject_to(P_in < 1e5)
+                opti.subject_to(P_out < 1e7)
+                opti.subject_to(P_in  < 1e7)
+                opti.subject_to(P_out > -1e7)
+                opti.subject_to(P_in  > -1e7)
+                opti.subject_to(Q_in <= inlet_Q)
+                opti.subject_to(Q_out <= inlet_Q)
 
                 enforce_flow_splits = True
                 if enforce_flow_splits:
-                    # objective += (
-                    #     ((Q_in[outlet_vessel_ind] - junction["junction_values"]["flow_split"][j] *  Q_out[inlet_vessel_ind])/inlet_Q)**2
-                    # )
-                    opti.subject_to(
-                        Q_in[outlet_vessel_ind] - junction["junction_values"]["flow_split"][j] *  Q_out[inlet_vessel_ind] == 0
+                    objective += (
+                        ((Q_in[outlet_vessel_ind] - junction["junction_values"]["flow_split"][j] *  Q_out[inlet_vessel_ind])/inlet_Q)**2
                     )
+                    # opti.subject_to(
+                    #     Q_in[outlet_vessel_ind] - junction["junction_values"]["flow_split"][j] *  Q_out[inlet_vessel_ind] == 0
+                    # )
 
             elif junction["junction_type"] == "NORMAL_JUNCTION":
                 # Continuity of pressure (to satisfy exactly)
@@ -278,7 +282,7 @@ if __name__ == "__main__":
         input_file = json.load(json_file)
     
     df = pd.DataFrame(columns=['name', 'time','flow_in', 'flow_out', 'pressure_in', 'pressure_out'])
-    num_time_steps = len(input_file["boundary_conditions"][0]["bc_values"]["t"])
+    num_time_steps = int(len(input_file["boundary_conditions"][0]["bc_values"]["t"])/2)
     for time_step in range(num_time_steps):
         print(f"Solving time step {time_step + 1} of {num_time_steps}.")
         if time_step == 0:

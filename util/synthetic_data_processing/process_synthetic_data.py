@@ -20,7 +20,7 @@ print(f"Unsteady: {unsteady}")
 #     extract_unsteady_flow_data(anatomy = anatomy, set_type = set_type, require4 = True)
 # else:
 #     extract_steady_flow_data(anatomy = anatomy, set_type = set_type, require4 =False)
-# print("Extracted simulation results.")
+print("Extracted simulation results.")
 
 
 get_data_lists(anatomy, set_type = set_type, unsteady = unsteady)

@@ -43,7 +43,7 @@ def get_R_values_bif(inlet_area,
     set_type = "random"#
     #set_type = "combined" #"dict_res_fs_ext" 
     scaling_dict = load_dict(f"data/scaling_dictionaries/{anatomy}_{set_type}_scaling_dict")
-    model_name = "tree_20_ng_1220_nl_1_lw_70_ne_10000_bs_50_dr_0.95_model"
+    model_name = "tree_20_ng_1220_nl_1_lw_120_ne_8000_bs_50_dr_0.95_model"
     #model_name = "tree_20_ng_950_nl_2_lw_200_ne_5000_bs_100_dr_0.95_model" #"tree_20_ng_400_nl_2_lw_100_ne_1000_bs_20_dr_0.95_model"
     #model_name = "tree_20_ng_280_nl_3_lw_500_ne_2500_bs_20_dr_0.95_model" # "tree_20_ng_400_nl_2_lw_100_ne_1000_bs_20_dr_0.95_model"
     nn_model = dill_load(f"results/models/{anatomy}/{model_name}")

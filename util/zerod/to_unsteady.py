@@ -42,15 +42,14 @@ if __name__ == "__main__":
     inlet_area = input_file["junctions"][0]["areas"][0]
     
     t = t[1:801]  # Remove the first time point
-    t_fine = t#jnp.linspace(t[0], t[-1], 10000)
-
+    t_fine = jnp.linspace(t[0], t[-1], 1600)
     Q = [q * inlet_area for q in Q[1:801]]  # Scale flow by inlet area
     Q_fine = interp1d(t, Q, kind='linear', fill_value="extrapolate")(t_fine)
-    #t_fine = #t_fine.tolist()
-    Q_fine = Q#Q_fine.tolist()
+    t_fine = t_fine.tolist()
+    Q_fine = Q_fine.tolist()
 
-    input_file["boundary_conditions"][0]["bc_values"]["Q"]= Q_fine #+ Q_fine
-    input_file["boundary_conditions"][0]["bc_values"]["t"]= t_fine #+ [t_fine[-1] + tt for tt in(t_fine)]
+    input_file["boundary_conditions"][0]["bc_values"]["Q"]= Q_fine + Q_fine
+    input_file["boundary_conditions"][0]["bc_values"]["t"]= t_fine + [t_fine[-1] + tt for tt in(t_fine)]
 
     input_file["simulation_parameters"]["number_of_time_pts_per_cardiac_cycle"] = len(input_file["boundary_conditions"][0]["bc_values"]["t"]) 
     input_file["simulation_parameters"]["number_of_cardiac_cycles"] = 1

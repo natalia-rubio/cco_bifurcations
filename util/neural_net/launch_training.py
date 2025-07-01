@@ -20,7 +20,7 @@ if __name__ == "__main__":
 
     network_params = {"num_input_features": 10,
                       "num_layers": 1,
-                      "layer_width": 90,
+                      "layer_width": 120,
                       "num_output_features": 3,
                       "anatomy": anatomy,
                       "set_type": set_type,

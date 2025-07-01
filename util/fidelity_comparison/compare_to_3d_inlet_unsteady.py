@@ -48,6 +48,7 @@ def compare_to_3d_inlet_unsteady(junction_mode = "standard",
     times_0d = [float(key[9:]) for key in arrays_0d.keys() if "pressure" in key]
     times_rr = [float(key[9:]) for key in arrays_rr.keys() if "pressure" in key]
     dt = times_0d[1] - times_0d[0]
+    dt_3d = 0.001
    
     branch0_locs = np.where(arrays_3d["BranchId"] == 0)
     branch0_valid_locs = np.where(~np.isnan(arrays_3d["pressure_100"][branch0_locs])) # Get the first value of the pressure for branch 0
@@ -65,12 +66,21 @@ def compare_to_3d_inlet_unsteady(junction_mode = "standard",
 
 
     flows_3d = []; pressures_3d = []
+
     for time in times_3d:
         flows_3d.append(arrays_3d[f"velocity_{time:03d}"][arrays_3d["GlobalNodeId"] == inlet_gid][0])
         pressures_3d.append(arrays_3d[f"pressure_{time:03d}"][arrays_3d["GlobalNodeId"] == inlet_gid][0]/1333)
-    times_3d = [time * dt for time in times_3d]
+    times_3d = [time * dt_3d for time in times_3d]
 
 
+    zipped_lists = zip(times_3d, flows_3d, pressures_3d)
+    sorted_zipped_lists = sorted(zipped_lists)
+    # Unzip the sorted lists
+    times_3d, flows_3d, pressures_3d = zip(*sorted_zipped_lists)
+    half_pt = int(len(times_3d)/2)
+    times_3d = times_3d[:half_pt]  # Only take the second half of the time steps
+    flows_3d = flows_3d[half_pt:]
+    pressures_3d = pressures_3d[half_pt:]
     
     plt.clf()
     plt.plot(flows_0d, pressures_0d, label="0D standard", color="slategrey")

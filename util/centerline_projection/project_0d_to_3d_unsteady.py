@@ -200,11 +200,15 @@ def project_to_centerline(tree_name, junction_mode):
 
     # add arrays to centerline and write to file
     #pdb.set_trace()
-    num_time_steps = 800
+    num_time_steps = 1600
     time_strs = [f"{t:0.5f}" for t in branch_results["time"][0:num_time_steps]]
     for i, time_str in enumerate(time_strs):
         for f, a in arrays.items():
-            out_array = numpy_to_vtk(a[:,i]) #+num_time_steps])
+            if junction_mode == "standard":
+                shift = num_time_steps
+            else:
+                shift = 0
+            out_array = numpy_to_vtk(a[:,i+shift])
             out_array.SetName(f+ "_" + time_str)
             #print(f"Adding array {f+ '_' + time_str} with shape {a[:,i].shape} to centerline.")
             centerline_handler.data.GetPointData().AddArray(out_array)
