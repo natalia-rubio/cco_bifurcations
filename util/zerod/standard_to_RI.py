@@ -4,6 +4,7 @@ import pdb
 from pyexpat import model
 import sys
 import os
+from tabnanny import check
 
 import pandas as pd
 
@@ -43,7 +44,7 @@ def get_R_values_bif(inlet_area,
     set_type = "random"#
     #set_type = "combined" #"dict_res_fs_ext" 
     scaling_dict = load_dict(f"data/scaling_dictionaries/{anatomy}_{set_type}_scaling_dict")
-    model_name = "rri_tree_20_ng_1310_nl_1_lw_120_ne_5000_bs_50_dr_0.95_model"
+    model_name = "ri_tree_20_ng_1310_nl_1_lw_120_ne_5000_bs_50_dr_0.95_model"
     #model_name = "tree_20_ng_950_nl_2_lw_200_ne_5000_bs_100_dr_0.95_model" #"tree_20_ng_400_nl_2_lw_100_ne_1000_bs_20_dr_0.95_model"
     #model_name = "tree_20_ng_280_nl_3_lw_500_ne_2500_bs_20_dr_0.95_model" # "tree_20_ng_400_nl_2_lw_100_ne_1000_bs_20_dr_0.95_model"
     nn_model = dill_load(f"results/models/{anatomy}/{model_name}")
@@ -108,54 +109,31 @@ def get_R_values_bif(inlet_area,
     coefs_pred1 = predict(input_tens1, nn_model.weights)
     coefs_pred2 = predict(input_tens2, nn_model.weights)
 
-    R_lin_star_pred1_log = float(inv_scale_jax(scaling_dict, coefs_pred1[0][0], "daughter1_R_lin_star_log")[0][0]); 
-    R_lin_star_pred1_log = check_out_of_dist(R_lin_star_pred1_log, "daughter1_R_lin_star_log", scaling_dict)
-    #R_lin_star_pred1 = np.exp(R_lin_star_pred1_log )
-    R_lin_star_pred1 = float(inv_scale_jax(scaling_dict, coefs_pred1[0][0], "daughter1_R_lin_star")[0][0])
 
-    # R_quad_star_pred1_log = float(inv_scale_jax(scaling_dict, coefs_pred1[0][1], "daughter1_R_quad_star_log")[0][0]); 
-    # R_quad_star_pred1_log = check_out_of_dist(R_quad_star_pred1_log, "daughter1_R_quad_star_log", scaling_dict)
-    # R_quad_star_pred1 = np.sign(R_quad_star_pred1_log) * np.exp(np.abs(R_quad_star_pred1_log)-4)
-    C = np.exp(-4)
-    R_quad_star_pred1_log = float(inv_scale_jax(scaling_dict, coefs_pred1[0][1], "daughter1_R_quad_star_logC")[0][0]); 
-    R_quad_star_pred1_log = check_out_of_dist(R_quad_star_pred1_log, "daughter1_R_quad_star_logC", scaling_dict)
-    R_quad_star_pred1 = np.sign(R_quad_star_pred1_log) * C * (np.exp(np.abs(R_quad_star_pred1_log))-1)
+    R_lin_star_pred1 = float(inv_scale_jax(scaling_dict, coefs_pred1[0][0], "daughter1_R_lin_star_m2")[0][0])
+    check_out_of_dist(R_lin_star_pred1, "daughter1_R_lin_star_m2", scaling_dict)
 
     if coefs_pred1.size > 2:
-        L_star_pred1 = float(inv_scale_jax(scaling_dict, coefs_pred1[0][2], "daughter1_L_star")[0][0]); 
-        L_star_pred1 = check_out_of_dist(L_star_pred1, "daughter1_L_star", scaling_dict)
+        L_star_pred1 = float(inv_scale_jax(scaling_dict, coefs_pred1[0][2], "daughter1_L_star_m2")[0][0]); 
+        L_star_pred1 = check_out_of_dist(L_star_pred1, "daughter1_L_star_m2", scaling_dict)
     else:
         L_star_pred1 = 0.0
 
-    R_lin_star_pred2_log = float(inv_scale_jax(scaling_dict, coefs_pred2[0][0], "daughter2_R_lin_star_log")[0][0]); 
-    R_lin_star_pred2_log = check_out_of_dist(R_lin_star_pred2_log, "daughter2_R_lin_star_log", scaling_dict)
-    #R_lin_star_pred2 = np.exp(R_lin_star_pred2_log)
-    R_lin_star_pred2 = float(inv_scale_jax(scaling_dict, coefs_pred2[0][0], "daughter2_R_lin_star")[0][0])
+    R_lin_star_pred2 = float(inv_scale_jax(scaling_dict, coefs_pred2[0][0], "daughter2_R_lin_star_m2")[0][0])
+    check_out_of_dist(R_lin_star_pred2, "daughter2_R_lin_star_m2", scaling_dict)
 
-    # R_quad_star_pred2_log = float(inv_scale_jax(scaling_dict, coefs_pred2[0][1], "daughter2_R_quad_star_log")[0][0]); 
-    # R_quad_star_pred2_log = check_out_of_dist(R_quad_star_pred2_log, "daughter2_R_quad_star_log", scaling_dict)
-    # R_quad_star_pred2 = np.sign(R_quad_star_pred2_log) * np.exp(np.abs(R_quad_star_pred2_log)-4)
-    R_quad_star_pred2_log = float(inv_scale_jax(scaling_dict, coefs_pred2[0][1], "daughter1_R_quad_star_logC")[0][0]); 
-    R_quad_star_pred2_log = check_out_of_dist(R_quad_star_pred2_log, "daughter1_R_quad_star_logC", scaling_dict)
-    R_quad_star_pred2 = np.sign(R_quad_star_pred2_log) * C * (np.exp(np.abs(R_quad_star_pred2_log))-1)
-    #.set_trace()
     if coefs_pred2.size > 2:
-        L_star_pred2 = float(inv_scale_jax(scaling_dict, coefs_pred2[0][2], "daughter2_L_star")[0][0]); 
-        L_star_pred2 = check_out_of_dist(L_star_pred2, "daughter2_L_star", scaling_dict)
+        L_star_pred2 = float(inv_scale_jax(scaling_dict, coefs_pred2[0][2], "daughter2_L_star_m2")[0][0]); 
+        L_star_pred2 = check_out_of_dist(L_star_pred2, "daughter2_L_star_m2", scaling_dict)
     else:   
         L_star_pred2 = 0.0
 
-    #pdb.set_trace()
-
     daughter1_R_lin = float((1.06 * jnp.square(U_char) * R_lin_star_pred1 /  (A_char * U_char)))
     daughter1_R_lin_final = float((1.06 * jnp.square(U_char) * R_lin_star_pred1 /  (A_char * U_char))) + (res_add1 - res_sub1) * daughter1_flow_split
-    #pdb.set_trace()
-    daughter1_R_quad = float(1.06 * jnp.square(U_char) * R_quad_star_pred1 / jnp.square(A_char * U_char))
     daughter1_L = float(L_star_pred1) *1.06*L_char/A_char
 
     daughter2_R_lin = float((1.06 * jnp.square(U_char) * R_lin_star_pred2 /  (A_char * U_char)))
     daughter2_R_lin_final = float((1.06 * jnp.square(U_char) * R_lin_star_pred2 /  (A_char * U_char))) + (res_add2 - res_sub2) * daughter2_flow_split
-    daughter2_R_quad = float(1.06 * jnp.square(U_char) * R_quad_star_pred2 / jnp.square(A_char * U_char))
     daughter2_L = float(L_star_pred2) *1.06*L_char/A_char
 
 
@@ -163,15 +141,15 @@ def get_R_values_bif(inlet_area,
               "daughter1_R_lin": daughter1_R_lin_final,
               "daughter2_R_lin": daughter2_R_lin_final,
               "inlet_R_quad": 0,
-              "daughter1_R_quad": daughter1_R_quad,
-              "daughter2_R_quad": daughter2_R_quad,
+              "daughter1_R_quad": 0,
+              "daughter2_R_quad": 0,
               "daughter1_L": daughter1_L,
               "daughter2_L": daughter2_L,}
     
     return R_dict
 
 #if __name__ == "__main__":
-def transform_standard_to_RR(tree_name):
+def transform_standard_to_RI(tree_name):
         
     tree_name_split = tree_name.split("_")
     tree_name_base = "_".join(tree_name_split[0:2])
@@ -209,19 +187,29 @@ def transform_standard_to_RR(tree_name):
 
         input_file["junctions"][i]["junction_type"] = "BloodVesselJunction"
         input_file["junctions"][i]["junction_values"] = {"R_poiseuille": [R_dict["daughter1_R_lin"]/daughter1_flow_ratio, 
-                                                                          R_dict["daughter2_R_lin"]/daughter2_flow_ratio], 
-                                                                    "stenosis_coefficient": [0, 0],
-                                                                    "pressure_recovery_coefficient": [R_dict["daughter1_R_quad"]/(daughter1_flow_ratio**2), 
-                                                                                                      R_dict["daughter2_R_quad"]/(daughter2_flow_ratio**2)],
-                                                                    "L": [R_dict["daughter1_L"]/daughter1_flow_ratio, 
-                                                                          R_dict["daughter2_L"]/daughter2_flow_ratio],
-                                                                    "flow_split": [daughter1_flow_ratio, daughter2_flow_ratio],}
+                                                                          R_dict["daughter2_R_lin"]/daughter2_flow_ratio],
+                                                         "stenosis_coefficient": [0, 0],
+                                                         "L": [R_dict["daughter1_L"]/daughter1_flow_ratio, 
+                                                                R_dict["daughter2_L"]/daughter2_flow_ratio],}
+        
+    for vessel in input_file["vessels"]:
+        if "branch0" not in vessel["vessel_name"]:
+            vessel["zero_d_element_values"]["R_poiseuille"] = 0
+            vessel["zero_d_element_values"]["stenosis_coefficient"] = 0
+            vessel["zero_d_element_values"]["L"] = 0
+        else:
+            continue
+        
+    t = input_file["boundary_conditions"][0]["bc_values"]["t"]
+    Q = input_file["boundary_conditions"][0]["bc_values"]["Q"]
+    for i in range(int(len(Q)/2)):
+        Q[i] = Q[i] * i/int(len(Q)/2)
+        input_file["boundary_conditions"][0]["bc_values"]["Q"][i] = Q[i]
 
-
-    if not os.path.exists(f'trees/zerod_input/RR/{tree_name_base}/{tree_name}'):
-        os.makedirs(f'trees/zerod_input/RR/{tree_name_base}/{tree_name}')
-    if not os.path.exists(f'trees/zerod_output/RR/{tree_name_base}/{tree_name}'):
-        os.makedirs(f'trees/zerod_output/RR/{tree_name_base}/{tree_name}')
-    with open(f'trees/zerod_input/RR/{tree_name_base}/{tree_name}/solver_0d.json', 'w') as fp:
+    if not os.path.exists(f'trees/zerod_input/RI/{tree_name_base}/{tree_name}'):
+        os.makedirs(f'trees/zerod_input/RI/{tree_name_base}/{tree_name}')
+    if not os.path.exists(f'trees/zerod_output/RI/{tree_name_base}/{tree_name}'):
+        os.makedirs(f'trees/zerod_output/RI/{tree_name_base}/{tree_name}')
+    with open(f'trees/zerod_input/RI/{tree_name_base}/{tree_name}/solver_0d.json', 'w') as fp:
         json.dump(input_file, indent = 4, fp = fp)
     #print(f"RRI 0D input file saved to trees/zerod_input/RR/{tree_name_base}/{tree_name}/solver_0d.json")

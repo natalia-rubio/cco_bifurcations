@@ -65,7 +65,7 @@ def project_to_centerline(tree_name, junction_mode):
     tree_name_base = "_".join(tree_name_split[0:2])
 
     centerline_handler = CenterlineHandler.from_file(f"trees/geo_files/{tree_name_base}/{tree_name_base}_original/centerlines/centerlines.vtp")
-    input_file = f"trees/zerod_input/standard/{tree_name_base}/{tree_name}/solver_0d.json"
+    input_file = f"trees/zerod_input/{junction_mode}/{tree_name_base}/{tree_name}/solver_0d.json"
     zerod_handler = SvZeroDSolverInputHandler.from_file(input_file)
     casadi = False
     #print(f"Input file: {input_file}")
@@ -73,10 +73,9 @@ def project_to_centerline(tree_name, junction_mode):
     zerod_handler.update_simparams(last_cycle_only=True)
     #print("in project_to_centerline: got handler")
     casadi = True
-    if junction_mode == "standard":
+    if junction_mode == "standard" or junction_mode == "RI":
         zerod_solver = pysvzerod.Solver(input_file)
         #print("in project_to_centerline: got solver")
-
         zerod_solver.run()
         #print("in project_to_centerline: ran solver")
         results_df = zerod_solver.get_full_result()

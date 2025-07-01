@@ -14,20 +14,21 @@ def launch_training(network_params, optimizer_params, training_params):
 if __name__ == "__main__":
     anatomy = sys.argv[1]
     num_geos = int(sys.argv[2])
+    output_type = sys.argv[3]  # "rri", "ri", or "rr"
     set_type = "random"
 
     split_ind_dict = load_dict(f"data/split_indices/{anatomy}/{set_type}/train_val_ind_{anatomy}_num_geos_{num_geos}")
 
     network_params = {"num_input_features": 10,
-                      "num_layers": 1,
-                      "layer_width": 120,
-                      "num_output_features": 3,
+                      "num_layers": 2,
+                      "layer_width": 70,
+                      "output_type": output_type,
                       "anatomy": anatomy,
                       "set_type": set_type,
                       "num_geos": num_geos,
                       "pred_mode": "m1"}
     
-    training_params = {"num_epochs": 8000, 
+    training_params = {"num_epochs": 20000, 
                        "batch_size": 50,
                        "train_inds": split_ind_dict["train_ind"],
                        "val_inds": split_ind_dict["val_ind"]}

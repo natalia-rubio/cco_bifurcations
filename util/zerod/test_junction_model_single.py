@@ -6,6 +6,7 @@ sys.path.append("/Users/natalia/Desktop/cco_bifurcations")
 from util.tree.centerline_proj import extract_results
 from util.fidelity_comparison.compare_to_3d_inlet import compare_to_3d_inlet
 from util.zerod.standard_to_RR import transform_standard_to_RR
+from util.zerod.standard_to_RI import transform_standard_to_RI
 #from util.zerod.svzerod_to_casadi_ws import solve_casadi_single
 from util.zerod.correct_BCs import correct_BCs
 
@@ -31,19 +32,17 @@ inflow_dict = { "tree_3_flow_25": 16,#20,
                 }
 
 
-
 def test_junction_model_single(tree_name, junction_mode):
     """
     Test the junction model for a given tree and junction mode.
     """
-    if junction_mode not in ["standard", "RR", "TP"]:
+    if junction_mode not in ["standard", "RR", "RI"]:
         raise ValueError("Invalid junction mode. Choose from 'standard', 'RR', or 'TP'.")
     
     tree_name_split = tree_name.split("_")
     tree_name_base = "_".join(tree_name_split[0:2])
     flow_mag = tree_name_split[-1]
 
-        # If a 3D file doesn't exist, create it
     time_step = 700
     if not os.path.exists(f"trees/threed_output_cent/{tree_name_base}/{tree_name}/centerline_sol_{time_step}.vtp"):
         fpath_out = f"trees/threed_output_cent/{tree_name_base}/{tree_name}/centerline_sol_{time_step}.vtp"
@@ -56,8 +55,6 @@ def test_junction_model_single(tree_name, junction_mode):
 
 
     inflow = inflow_dict[tree_name]
-    casadi = True
-
     # If a standard 0D file doesn't exist, create it
     if not os.path.exists(f"trees/zerod_input/standard/{tree_name_base}/{tree_name}/solver_0d.json"):
         os.makedirs(f"trees/zerod_input/standard/{tree_name_base}/{tree_name}", exist_ok=True)
@@ -67,9 +64,11 @@ def test_junction_model_single(tree_name, junction_mode):
     # correct_BCs(tree_name)
 
     # If special junction handling is needed, create and run the modified 0D file
-    if junction_mode == "RR":
+    if junction_mode == "RI":
+        transform_standard_to_RI(tree_name)
+    elif junction_mode == "RR":
         transform_standard_to_RR(tree_name)
-        os.system(f"python3 util/zerod/svzerod_to_casadi_ws.py {tree_name} {junction_mode}")
+        os.system(f"python3 util/zerod/svzerod_to_casadi_ws.py {tree_name} RR")
         #solve_casadi_single(tree_name, junction_mode)
         
 

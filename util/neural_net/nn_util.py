@@ -8,10 +8,17 @@ import dill
 # Neural Network Architecture
 def get_sizes(network_params):
     # Get the sizes of the network layers
+    if network_params["output_type"] == "rri":
+        num_output_features = 3
+    elif network_params["output_type"] == "ri":
+        num_output_features = 2
+    elif network_params["output_type"] == "rr":
+        num_output_features = 2
+    
     num_input_features = network_params["num_input_features"]
     num_layers = network_params["num_layers"]
     layer_width = network_params["layer_width"]
-    num_output_features = network_params["num_output_features"]
+    #num_output_features = network_params["num_output_features"]
     #sizes = [num_input_features] + [layer_width]*num_layers + [num_output_features]
     sizes_in = [num_input_features] + [layer_width]*num_layers
     sizes_out = [layer_width]*num_layers + [num_output_features]
