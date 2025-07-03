@@ -12,14 +12,15 @@ from util.synthetic_data_processing.get_scaling_dict import *
 anatomy = sys.argv[1]
 set_type= sys.argv[2]
 unsteady_text = sys.argv[3] #false
+num_offsets = 7
 unsteady = False
 if unsteady_text == "unsteady":
     unsteady = True
 print(f"Unsteady: {unsteady}")
-# if unsteady:
-#     extract_unsteady_flow_data(anatomy = anatomy, set_type = set_type, require4 = True)
-# else:
-#     extract_steady_flow_data(anatomy = anatomy, set_type = set_type, require4 =False)
+if unsteady:
+    extract_unsteady_flow_data(anatomy = anatomy, set_type = set_type, require4 = True, num_offsets = num_offsets)
+else:
+    extract_steady_flow_data(anatomy = anatomy, set_type = set_type, require4 =False)
 print("Extracted simulation results.")
 
 
@@ -27,7 +28,7 @@ get_data_lists(anatomy, set_type = set_type, unsteady = unsteady)
 get_scaling_dict(anatomy, set_type = set_type, unsteady = unsteady)
 print("Generated scaling dictionary.")
 
-generate_train_val_indices(anatomy = anatomy, set_type = set_type, unsteady = unsteady)
+generate_train_val_indices(anatomy = anatomy, set_type = set_type, unsteady = unsteady, num_offsets= num_offsets)
 print("Generated train and validation indices.")
 
 get_jax_arrays(anatomy = anatomy, set_type = set_type, unsteady = unsteady)

@@ -16,24 +16,29 @@ def train_nn(model, training_params):
     plotting = True
     train_hist = []
     val_hist = []
+    
+    num_offsets = training_params["num_offsets"]
+    train_inds = np.concatenate([training_params["train_inds"] * num_offsets  + i for i in range(num_offsets)])
+    val_inds =  np.concatenate([training_params["val_inds"] * num_offsets + i for i in range(num_offsets)])
+
     for epoch in range(training_params['num_epochs']): # Loop through the epochs
         start_time = time.time() # Time each epoch
-        batch_ind_list = get_batch_indices(training_params["train_inds"], 
+        batch_ind_list = get_batch_indices(train_inds, 
                                            training_params['batch_size']) # Split the training set into random batches
         for i, batch_inds in enumerate(batch_ind_list): # Loop through the batches
                 model.update(indices = batch_inds) # Update the model based on the batch
         epoch_time = time.time() - start_time
-
-        train_loss = loss(input = model.data_dict["input"][training_params["train_inds"],:],
-                        outputs= model.output[training_params["train_inds"],:],
-                        scaling_factors = model.data_dict["scaling_factors"][training_params["train_inds"],:],
+ 
+        train_loss = loss(input = model.data_dict["input"][train_inds,:],
+                        outputs= model.output[train_inds,:],
+                        scaling_factors = model.data_dict["scaling_factors"][train_inds,:],
                         scaling_dict = model.scaling_dict,
                         weights = model.weights)
         train_hist.append(train_loss)
 
-        val_loss = loss(input = model.data_dict["input"][training_params["val_inds"],:],
-                        outputs= model.output[training_params["val_inds"],:],
-                        scaling_factors = model.data_dict["scaling_factors"][training_params["val_inds"],:],
+        val_loss = loss(input = model.data_dict["input"][val_inds,:],
+                        outputs= model.output[val_inds,:],
+                        scaling_factors = model.data_dict["scaling_factors"][val_inds,:],
                         scaling_dict = model.scaling_dict,
                         weights = model.weights)
         val_hist.append(val_loss)
@@ -53,7 +58,7 @@ def train_nn(model, training_params):
             plt.legend()
             if not os.path.exists(f"results/models/{model.anatomy}"):
                 os.makedirs(f"results/models/{model.anatomy}")
-            plt.savefig(f"results/models/{model.anatomy}/{model_name}_training_plot.png")
+            plt.savefig(f"results/models/{model.anatomy}/{model_name}_training_plot.png", bbox_inches='tight')
 
     dill_save(model, f"results/models/{model.anatomy}/{model_name}_model")
     

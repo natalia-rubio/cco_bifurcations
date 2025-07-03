@@ -32,7 +32,7 @@ def get_jax_arrays(anatomy, set_type, unsteady = True):
     if unsteady:
         output_tens_rri = jnp.concatenate((
                                 scale_jax(scaling_dict, jnp.asarray(char_val_dict["daughter1_R_lin_star"], dtype=jnp.float32), "daughter1_R_lin_star"),
-                                scale_jax(scaling_dict, jnp.asarray(char_val_dict["daughter1_R_quad_star_logC"], dtype=jnp.float32), "daughter1_R_quad_star_logC"),
+                                scale_jax(scaling_dict, jnp.asarray(char_val_dict["daughter1_R_quad_star"], dtype=jnp.float32), "daughter1_R_quad_star"),
                                 scale_jax(scaling_dict, jnp.asarray(char_val_dict["daughter1_L_star"], dtype=jnp.float32), "daughter1_L_star"),
                                 ), axis = -1)
         output_tens_ri = jnp.concatenate((

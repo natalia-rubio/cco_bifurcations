@@ -206,8 +206,8 @@ def extract_flow_behavior(geo_results_dir, offset):
     offset_dict["daughter1_length"] = soln_dict["lengths"][0][0]
     offset_dict["daughter2_length"] = soln_dict["lengths"][1][0]
 
-    offset_dict["daughter1_angle"] = np.cos(get_angle_diff(soln_dict["tangents"][:,1], soln_dict["tangents"][:,0])[0])
-    offset_dict["daughter2_angle"] = np.cos(get_angle_diff(soln_dict["tangents"][:,2], soln_dict["tangents"][:,0])[0])
+    offset_dict["daughter1_angle"] = get_angle_diff(soln_dict["tangents"][:,1], soln_dict["tangents"][:,0])[0]
+    offset_dict["daughter2_angle"] = get_angle_diff(soln_dict["tangents"][:,2], soln_dict["tangents"][:,0])[0]
 
     offset_dict["daughter1_area_ratio"] = soln_dict["areas"][0,1]/A_char
     offset_dict["daughter2_area_ratio"] = soln_dict["areas"][0,2]/A_char
@@ -297,7 +297,7 @@ def extract_steady_flow_data(anatomy, set_type, require4):
             #     continue
             geo_results_dir = f"data/synthetic_junctions_reduced_results/{anatomy}/{set_type}/{geo}"
             geo_dict = {}
-            for offset in range(4,10):
+            for offset in range(7,10):
                 try:
                     offset_dict = extract_flow_behavior(geo_results_dir, offset)
                     geo_dict[f"offset_{int(10*offset)}"] = offset_dict
@@ -310,7 +310,8 @@ def extract_steady_flow_data(anatomy, set_type, require4):
                     
                     continue
             if len(geo_dict.keys()) > 0:
-                plot_geo(geo_dict, anatomy, set_type, geo)
+                print("no plot")
+                #plot_geo(geo_dict, anatomy, set_type, geo)
             CCO_data_dict[f"{geo}_{set_type}"] = geo_dict
     set_type = "combined"
     if not os.path.exists(f"data/data_dicts"):

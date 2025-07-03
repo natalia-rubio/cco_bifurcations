@@ -200,7 +200,7 @@ def project_to_centerline(tree_name, junction_mode):
 
     # add arrays to centerline and write to file
     #pdb.set_trace()
-    num_time_steps = 1600
+    num_time_steps = 800
     time_strs = [f"{t:0.5f}" for t in branch_results["time"][0:num_time_steps]]
     for i, time_str in enumerate(time_strs):
         for f, a in arrays.items():

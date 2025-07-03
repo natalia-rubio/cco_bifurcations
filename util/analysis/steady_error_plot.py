@@ -24,7 +24,7 @@ flow_mag_list = ["25", "50", "100"]
 junction_mode_list = ["standard", "RI", "RR"]
 color_list = ["royalblue", "seagreen", "darkorange", "crimson"]
 
-redo = False
+redo = True #False
 if redo:
     error_dict = {}
     for tree_name in tree_list:
@@ -41,7 +41,7 @@ if redo:
     save_dict(error_dict, f"util/analysis/steady_error_dict.pkl")
 else:
     error_dict = load_dict(f"util/analysis/steady_error_dict.pkl")
-
+pdb.set_trace()
 plt.clf()
 for i, flow_mag in enumerate(flow_mag_list):
     RR_error = []; RI_error = []; standard_error = []; re_list = []; flow_list = []

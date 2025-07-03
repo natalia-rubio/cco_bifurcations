@@ -19,13 +19,13 @@ import jax.numpy as jnp
 from util.neural_net.nn_model import NeuralNet, predict
 from util.tree.extract_true_junctions_helpers import get_input_file_junction_dict_master, add_geometry_values, add_downstream_resistance_values, add_solution_values, add_3D_resistance
 
-def check_out_of_dist(param, param_name, scaling_dict, verbose = False):
+def check_out_of_dist(param, param_name, scaling_dict, verbose = True):
     if param < scaling_dict[param_name][2]:
-        if verbose:
+        if verbose and param_name != "daughter1_length_star" and param_name != "daughter2_length_star" and param *0.9 < scaling_dict[param_name][2]:
             print(f"{param_name} smaller than training set minimum: {param}, {scaling_dict[param_name][2]}")
         param = scaling_dict[param_name][2]
     if param > scaling_dict[param_name][3]:
-        if verbose:
+        if verbose and param_name != "daughter1_length_star" and param_name != "daughter2_length_star" and param *1.1 > scaling_dict[param_name][3]:
             print(f"{param_name} larger than training set maximum: {param}, {scaling_dict[param_name][3]}")
         param = scaling_dict[param_name][3]
     return param
@@ -44,7 +44,7 @@ def get_R_values_bif(inlet_area,
     set_type = "random"#
     #set_type = "combined" #"dict_res_fs_ext" 
     scaling_dict = load_dict(f"data/scaling_dictionaries/{anatomy}_{set_type}_scaling_dict")
-    model_name = "ri_tree_20_ng_1310_nl_1_lw_120_ne_5000_bs_50_dr_0.95_model"
+    model_name = "ri_tree_20_ng_2492_nl_2_lw_100_ne_500_bs_50_dr_0.95_model"
     #model_name = "tree_20_ng_950_nl_2_lw_200_ne_5000_bs_100_dr_0.95_model" #"tree_20_ng_400_nl_2_lw_100_ne_1000_bs_20_dr_0.95_model"
     #model_name = "tree_20_ng_280_nl_3_lw_500_ne_2500_bs_20_dr_0.95_model" # "tree_20_ng_400_nl_2_lw_100_ne_1000_bs_20_dr_0.95_model"
     nn_model = dill_load(f"results/models/{anatomy}/{model_name}")
@@ -114,7 +114,7 @@ def get_R_values_bif(inlet_area,
     check_out_of_dist(R_lin_star_pred1, "daughter1_R_lin_star_m2", scaling_dict)
 
     if coefs_pred1.size > 2:
-        L_star_pred1 = float(inv_scale_jax(scaling_dict, coefs_pred1[0][2], "daughter1_L_star_m2")[0][0]); 
+        L_star_pred1 = float(inv_scale_jax(scaling_dict, coefs_pred1[0][1], "daughter1_L_star_m2")[0][0]); 
         L_star_pred1 = check_out_of_dist(L_star_pred1, "daughter1_L_star_m2", scaling_dict)
     else:
         L_star_pred1 = 0.0
@@ -123,17 +123,17 @@ def get_R_values_bif(inlet_area,
     check_out_of_dist(R_lin_star_pred2, "daughter2_R_lin_star_m2", scaling_dict)
 
     if coefs_pred2.size > 2:
-        L_star_pred2 = float(inv_scale_jax(scaling_dict, coefs_pred2[0][2], "daughter2_L_star_m2")[0][0]); 
+        L_star_pred2 = float(inv_scale_jax(scaling_dict, coefs_pred2[0][1], "daughter2_L_star_m2")[0][0]); 
         L_star_pred2 = check_out_of_dist(L_star_pred2, "daughter2_L_star_m2", scaling_dict)
     else:   
         L_star_pred2 = 0.0
 
     daughter1_R_lin = float((1.06 * jnp.square(U_char) * R_lin_star_pred1 /  (A_char * U_char)))
-    daughter1_R_lin_final = float((1.06 * jnp.square(U_char) * R_lin_star_pred1 /  (A_char * U_char))) + (res_add1 - res_sub1) * daughter1_flow_split
+    daughter1_R_lin_final = float((1.06 * jnp.square(U_char) * R_lin_star_pred1 /  (A_char * U_char))) + (res_add1 - res_sub1) #* daughter1_flow_split
     daughter1_L = float(L_star_pred1) *1.06*L_char/A_char
 
     daughter2_R_lin = float((1.06 * jnp.square(U_char) * R_lin_star_pred2 /  (A_char * U_char)))
-    daughter2_R_lin_final = float((1.06 * jnp.square(U_char) * R_lin_star_pred2 /  (A_char * U_char))) + (res_add2 - res_sub2) * daughter2_flow_split
+    daughter2_R_lin_final = float((1.06 * jnp.square(U_char) * R_lin_star_pred2 /  (A_char * U_char))) + (res_add2 - res_sub2) #* daughter2_flow_split
     daughter2_L = float(L_star_pred2) *1.06*L_char/A_char
 
 
@@ -186,11 +186,14 @@ def transform_standard_to_RI(tree_name):
                                     daughter2_flow_ratio)
 
         input_file["junctions"][i]["junction_type"] = "BloodVesselJunction"
-        input_file["junctions"][i]["junction_values"] = {"R_poiseuille": [R_dict["daughter1_R_lin"]/daughter1_flow_ratio, 
-                                                                          R_dict["daughter2_R_lin"]/daughter2_flow_ratio],
+        input_file["junctions"][i]["junction_values"] = {"R_poiseuille": [R_dict["daughter1_R_lin"],#/daughter1_flow_ratio, 
+                                                                          R_dict["daughter2_R_lin"]],#/daughter2_flow_ratio],
                                                          "stenosis_coefficient": [0, 0],
-                                                         "L": [R_dict["daughter1_L"]/daughter1_flow_ratio, 
-                                                                R_dict["daughter2_L"]/daughter2_flow_ratio],}
+                                                         "L": [R_dict["daughter1_L"],#/daughter1_flow_ratio, 
+                                                                R_dict["daughter2_L"]],
+                                                         "flow_split": [daughter1_flow_ratio,daughter2_flow_ratio],
+                                                         "pressure_recovery_coefficient": [0, 0],
+                                                         }#/daughter2_flow_ratio],}
         
     for vessel in input_file["vessels"]:
         if "branch0" not in vessel["vessel_name"]:
@@ -200,11 +203,13 @@ def transform_standard_to_RI(tree_name):
         else:
             continue
         
-    t = input_file["boundary_conditions"][0]["bc_values"]["t"]
-    Q = input_file["boundary_conditions"][0]["bc_values"]["Q"]
+    t = input_file["boundary_conditions"][0]["bc_values"]["t"] + [tt + input_file["boundary_conditions"][0]["bc_values"]["t"][-1] for tt in input_file["boundary_conditions"][0]["bc_values"]["t"]]
+    Q = 2*input_file["boundary_conditions"][0]["bc_values"]["Q"]
     for i in range(int(len(Q)/2)):
         Q[i] = Q[i] * i/int(len(Q)/2)
-        input_file["boundary_conditions"][0]["bc_values"]["Q"][i] = Q[i]
+        
+    input_file["boundary_conditions"][0]["bc_values"]["t"] = t
+    input_file["boundary_conditions"][0]["bc_values"]["Q"] = Q
 
     if not os.path.exists(f'trees/zerod_input/RI/{tree_name_base}/{tree_name}'):
         os.makedirs(f'trees/zerod_input/RI/{tree_name_base}/{tree_name}')

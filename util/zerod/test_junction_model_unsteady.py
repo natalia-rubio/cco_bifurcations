@@ -25,7 +25,7 @@ transform_standard_to_RR(tree_name_unsteady)
 
 # # If special junction handling is needed, create and run the modified 0D file
 #if junction_mode != "standard" and not os.path.exists(f"trees/zerod_output/{junction_mode}/{tree_name_base}/{tree_name_unsteady}/sol_casadi.csv"):
-os.system(f"python3 util/zerod/svzerod_to_casadi_unsteady.py {tree_name_unsteady} RR")
+os.system(f"python3 util/zerod/svzerod_to_casadi_unsteady_acc.py {tree_name_unsteady} RR")
     
 # Project the 0D results to the 3D centerline
 os.system(f"python3 util/centerline_projection/project_0d_to_3d_unsteady.py {tree_name_unsteady} standard")

@@ -49,7 +49,7 @@ def extract_flow_behavior_unsteady(geo_results_dir, offset):
         time_steps = times[1:,0] - times[:-1,0]
         if np.any(time_steps != 25):
             print(f"Time steps are not constant in {flow_result_dir}.")
-            raise ValueError(f"Time steps are not constant in {flow_result_dir}.")
+            #raise ValueError(f"Time steps are not constant in {flow_result_dir}.")
         #pdb.set_trace()
         dt = (times[1][0] - times[0][0]) * 2*0.4/800 # convert to seconds, assuming 2*0.4 is the time step in ms
         #print(f"dt: {dt}")
@@ -103,25 +103,24 @@ def extract_flow_behavior_unsteady(geo_results_dir, offset):
     num_coefs = 6
     A_mat_star = np.zeros((2*num_flows, num_coefs))
     A_mat = np.zeros((2*num_flows, num_coefs))
-
-    #pdb.set_trace()
+    
     # Linear resistors
-    A_mat[0:num_flows,0] = flow[:,0]
-    A_mat[num_flows:2*num_flows,3] = flow[:,0]
-    A_mat_star[0:num_flows,0] = flow_star[:,0]
-    A_mat_star[num_flows:2*num_flows,3] = flow_star[:,0]
+    A_mat[0:num_flows,0] = flow[:,1]
+    A_mat[num_flows:2*num_flows,3] = flow[:,2]
+    A_mat_star[0:num_flows,0] = flow_star[:,1]
+    A_mat_star[num_flows:2*num_flows,3] = flow_star[:,2]
 
     # Quadratic resistors
-    A_mat[0:num_flows,1] = np.square(flow[:,0])
-    A_mat[num_flows:2*num_flows,4] = np.square(flow[:,0])
-    A_mat_star[0:num_flows,1] = np.square(flow_star[:,0])
-    A_mat_star[num_flows:2*num_flows,4] = np.square(flow_star[:,0])
+    A_mat[0:num_flows,1] = np.square(flow[:,1])
+    A_mat[num_flows:2*num_flows,4] = np.square(flow[:,2])
+    A_mat_star[0:num_flows,1] = np.square(flow_star[:,1])
+    A_mat_star[num_flows:2*num_flows,4] = np.square(flow_star[:,2])
 
     # Inductors
-    A_mat[0:num_flows,2] = dflow_dt[:,0]
-    A_mat[num_flows:2*num_flows,5] = dflow_dt[:,0]
-    A_mat_star[0:num_flows,2] = dflow_dt_star[:,0]
-    A_mat_star[num_flows:2*num_flows,5] = dflow_dt_star[:,0]
+    A_mat[0:num_flows,2] = dflow_dt[:,1]
+    A_mat[num_flows:2*num_flows,5] = dflow_dt[:,2]
+    A_mat_star[0:num_flows,2] = dflow_dt_star[:,1]
+    A_mat_star[num_flows:2*num_flows,5] = dflow_dt_star[:,2]
 
     # Solve
     coefs_star, residuals, t, q = np.linalg.lstsq(A_mat_star, dP_vec_star, rcond=None)
@@ -135,14 +134,14 @@ def extract_flow_behavior_unsteady(geo_results_dir, offset):
 
 
     offset_dict["daughter1_R_lin_star"]     = copy.copy(R_lin_star1)
-    offset_dict["daughter1_R_lin_star_log"] = np.log(np.abs(np.max((0, offset_dict["daughter1_R_lin_star"]))))
+    #offset_dict["daughter1_R_lin_star_log"] = np.log(np.abs(np.max((0, offset_dict["daughter1_R_lin_star"]))))
     offset_dict["daughter2_R_lin_star"]     = copy.copy(R_lin_star2)
-    offset_dict["daughter2_R_lin_star_log"] = np.log(np.abs(np.max((0, offset_dict["daughter2_R_lin_star"]))))
+    #offset_dict["daughter2_R_lin_star_log"] = np.log(np.abs(np.max((0, offset_dict["daughter2_R_lin_star"]))))
 
     offset_dict["daughter1_R_quad_star"]    = copy.copy(R_quad_star1)
-    offset_dict["daughter1_R_quad_star_log"] = np.sign(offset_dict["daughter1_R_quad_star"]) * np.max((np.log(np.abs(offset_dict["daughter1_R_quad_star"]))+4, 0))
+    #offset_dict["daughter1_R_quad_star_log"] = np.sign(offset_dict["daughter1_R_quad_star"]) * np.max((np.log(np.abs(offset_dict["daughter1_R_quad_star"]))+4, 0))
     offset_dict["daughter2_R_quad_star"]    = copy.copy(R_quad_star2)
-    offset_dict["daughter2_R_quad_star_log"] = np.sign(offset_dict["daughter2_R_quad_star"]) * np.max((np.log(np.abs(offset_dict["daughter2_R_quad_star"]))+4, 0))
+    #offset_dict["daughter2_R_quad_star_log"] = np.sign(offset_dict["daughter2_R_quad_star"]) * np.max((np.log(np.abs(offset_dict["daughter2_R_quad_star"]))+4, 0))
 
     offset_dict["daughter1_L_star"]         = copy.copy(L_star1)
     offset_dict["daughter2_L_star"]         = copy.copy(L_star2)
@@ -166,18 +165,26 @@ def extract_flow_behavior_unsteady(geo_results_dir, offset):
     L2             = coefs[5]
 
     offset_dict["daughter1_R_lin"]      = copy.copy(R_lin1)
-    offset_dict["daughter1_R_lin_log"] = np.log(np.abs(np.max((0,offset_dict["daughter1_R_lin"]))))
+    #offset_dict["daughter1_R_lin_log"] = np.log(np.abs(np.max((0,offset_dict["daughter1_R_lin"]))))
     offset_dict["daughter2_R_lin"]      = copy.copy(R_lin2)
-    offset_dict["daughter2_R_lin_log"] = np.log(np.abs(np.max((0,offset_dict["daughter2_R_lin"]))))
+    #offset_dict["daughter2_R_lin_log"] = np.log(np.abs(np.max((0,offset_dict["daughter2_R_lin"]))))
 
     offset_dict["daughter1_R_quad"]     = copy.copy(R_quad1)
-    offset_dict["daughter1_R_quad_log"]     = np.sign(offset_dict["daughter1_R_quad"]) * np.max((np.log(np.abs(offset_dict["daughter1_R_quad"]))+4, 0))
+    #offset_dict["daughter1_R_quad_log"]     = np.sign(offset_dict["daughter1_R_quad"]) * np.max((np.log(np.abs(offset_dict["daughter1_R_quad"]))+4, 0))
     offset_dict["daughter2_R_quad"]     = copy.copy(R_quad2)
-    offset_dict["daughter2_R_quad_log"]     = np.sign(offset_dict["daughter2_R_quad"]) * np.max((np.log(np.abs(offset_dict["daughter2_R_quad"]))+4, 0))
+    #offset_dict["daughter2_R_quad_log"]     = np.sign(offset_dict["daughter2_R_quad"]) * np.max((np.log(np.abs(offset_dict["daughter2_R_quad"]))+4, 0))
 
     offset_dict["daughter1_L"]          = copy.copy(L1)
     offset_dict["daughter2_L"]          = copy.copy(L2)
-
+    
+    tol = 0.02
+    assert abs(offset_dict["daughter1_R_lin"]   - offset_dict["daughter1_R_lin_star"]*1.06*U_char/A_char)   < tol; "Daughter 1 linear resistances do not match."
+    assert abs(offset_dict["daughter2_R_lin"]   - offset_dict["daughter2_R_lin_star"]*1.06*U_char/A_char)   < tol; "Daughter 2 linear resistances do not match."
+    assert abs(offset_dict["daughter1_R_quad"]  - offset_dict["daughter1_R_quad_star"]*1.06/A_char**2)      < tol; "Daughter 1 quadratic resistances do not match."
+    assert abs(offset_dict["daughter2_R_quad"]  - offset_dict["daughter2_R_quad_star"]*1.06/A_char**2)      < tol; "Daughter 2 quadratic resistances do not match."
+    assert abs(offset_dict["daughter1_L"]       - offset_dict["daughter1_L_star"]*1.06*L_char/A_char)       < tol; "Daughter 1 inductances do not match."
+    assert abs(offset_dict["daughter2_L"]       - offset_dict["daughter2_L_star"]*1.06*L_char/A_char)       < tol; "Daughter 2 inductances do not match."
+    
     # ONLY LINEAR RESISTANCE
     num_flows = flow.shape[0]
     num_coefs = 4
@@ -186,16 +193,16 @@ def extract_flow_behavior_unsteady(geo_results_dir, offset):
 
     #pdb.set_trace()
     # Linear resistors
-    A_mat[0:num_flows,0] = flow[:,0]
-    A_mat[num_flows:2*num_flows,2] = flow[:,0]
-    A_mat_star[0:num_flows,0] = flow_star[:,0]
-    A_mat_star[num_flows:2*num_flows,2] = flow_star[:,0]
+    A_mat[0:num_flows,0] = flow[:,1]
+    A_mat[num_flows:2*num_flows,2] = flow[:,2]
+    A_mat_star[0:num_flows,0] = flow_star[:,1]
+    A_mat_star[num_flows:2*num_flows,2] = flow_star[:,2]
 
     # Inductors
-    A_mat[0:num_flows,1] = dflow_dt[:,0]
-    A_mat[num_flows:2*num_flows,3] = dflow_dt[:,0]
-    A_mat_star[0:num_flows,1] = dflow_dt_star[:,0]
-    A_mat_star[num_flows:2*num_flows,3] = dflow_dt_star[:,0]
+    A_mat[0:num_flows,1] = dflow_dt[:,1]
+    A_mat[num_flows:2*num_flows,3] = dflow_dt[:,2]
+    A_mat_star[0:num_flows,1] = dflow_dt_star[:,1]
+    A_mat_star[num_flows:2*num_flows,3] = dflow_dt_star[:,2]
 
     # Solve
     coefs_star, residuals, t, q = np.linalg.lstsq(A_mat_star, dP_vec_star, rcond=None)
@@ -237,10 +244,10 @@ def extract_flow_behavior_unsteady(geo_results_dir, offset):
 
     # Check consistency of non-dimensionalization
     tol = 0.02
-    assert abs(offset_dict["daughter1_R_lin"]   - offset_dict["daughter1_R_lin_star"]*1.06*U_char/A_char)   < tol; "Daughter 1 linear resistances do not match."
-    assert abs(offset_dict["daughter2_R_lin"]   - offset_dict["daughter2_R_lin_star"]*1.06*U_char/A_char)   < tol; "Daughter 2 linear resistances do not match."
-    assert abs(offset_dict["daughter1_L"]       - offset_dict["daughter1_L_star"]*1.06*L_char/A_char)       < tol; "Daughter 1 inductances do not match."
-    assert abs(offset_dict["daughter2_L"]       - offset_dict["daughter2_L_star"]*1.06*L_char/A_char)       < tol; "Daughter 2 inductances do not match."
+    assert abs(offset_dict["daughter1_R_lin_m2"]   - offset_dict["daughter1_R_lin_star_m2"]*1.06*U_char/A_char)   < tol; "Daughter 1 linear resistances do not match."
+    assert abs(offset_dict["daughter2_R_lin_m2"]   - offset_dict["daughter2_R_lin_star_m2"]*1.06*U_char/A_char)   < tol; "Daughter 2 linear resistances do not match."
+    assert abs(offset_dict["daughter1_L_m2"]       - offset_dict["daughter1_L_star_m2"]*1.06*L_char/A_char)       < tol; "Daughter 1 inductances do not match."
+    assert abs(offset_dict["daughter2_L_m2"]       - offset_dict["daughter2_L_star_m2"]*1.06*L_char/A_char)       < tol; "Daughter 2 inductances do not match."
 
     if verbose:
         print("Passed non-dimensionalization consistency check.")
@@ -304,17 +311,26 @@ def plot_geo(geo_dict, anatomy, set_type, geo):
         
         times_arr = np.asarray(offset_dict["times"])[:,0]
         flow_arr = np.asarray(offset_dict["flow"])[:,0]
+        flow_arr1 = np.asarray(offset_dict["flow"])[:,1]
+        flow_arr2 = np.asarray(offset_dict["flow"])[:,2]
 
         cs = CubicSpline(times_arr, flow_arr)
         times_arr_fine = np.linspace(times_arr[0], times_arr[-1], 1000)
         flow_arr_fine = cs(times_arr_fine)
+        flow_arr_fine1 = interp1d(times_arr, flow_arr1, kind='linear')(times_arr_fine)
+        flow_arr_fine2 = interp1d(times_arr, flow_arr2, kind='linear')(times_arr_fine)
+        
         dflow_dt_arr = offset_dict["dflow_dt"][:,0]
+        dflow_dt_arr1 = offset_dict["dflow_dt"][:,1]
+        dflow_dt_arr2 = offset_dict["dflow_dt"][:,2]
         dflow_dt_arr_fine = interp1d(times_arr, dflow_dt_arr, kind='linear')(times_arr_fine)
+        dflow_dt_arr_fine1 = interp1d(times_arr, dflow_dt_arr1, kind='linear')(times_arr_fine)
+        dflow_dt_arr_fine2 = interp1d(times_arr, dflow_dt_arr2, kind='linear')(times_arr_fine)
 
         dp1_arr = offset_dict["dp1"]
         dp2_arr = offset_dict["dp2"]
-        dp1_arr_fine = flow_arr_fine * offset_dict["daughter1_R_lin"] + offset_dict["daughter1_R_quad"] * np.square(flow_arr_fine) + offset_dict["daughter1_L"] * dflow_dt_arr_fine
-        dp2_arr_fine = flow_arr_fine * offset_dict["daughter2_R_lin"] + offset_dict["daughter2_R_quad"] * np.square(flow_arr_fine) + offset_dict["daughter2_L"] * dflow_dt_arr_fine  
+        dp1_arr_fine = flow_arr_fine1 * offset_dict["daughter1_R_lin"] + offset_dict["daughter1_R_quad"] * np.square(flow_arr_fine1) + offset_dict["daughter1_L"] * dflow_dt_arr_fine1
+        dp2_arr_fine = flow_arr_fine2 * offset_dict["daughter2_R_lin"] + offset_dict["daughter2_R_quad"] * np.square(flow_arr_fine2) + offset_dict["daughter2_L"] * dflow_dt_arr_fine2  
         
         ax2 = ax1.twinx()
 
@@ -332,12 +348,12 @@ def plot_geo(geo_dict, anatomy, set_type, geo):
         labels = ["Outlet 1 $\Delta P$ (Simulation)", "Outlet 1 $\Delta P$ (Fit)", "Outlet 2 $\Delta P$ (Simulation)", "Outlet 2 $\Delta P$ (Fit)", "Inlet Flow"]
         ax1.legend(labels, bbox_to_anchor=(1.3, 1.4), loc='upper center', ncol = 2, frameon=False)
 
-        dp_steady1 = dp1_arr - offset_dict["daughter1_L"] * dflow_dt_arr
-        dp_steady_calc = flow_arr_fine * offset_dict["daughter1_R_lin"] + \
-                        offset_dict["daughter1_R_quad"] * np.square(flow_arr_fine)
-        dp_steady2 = dp2_arr - offset_dict["daughter2_L"] * dflow_dt_arr
-        dp_steady_calc2 = flow_arr_fine * offset_dict["daughter2_R_lin"] + \
-                        offset_dict["daughter2_R_quad"] * np.square(flow_arr_fine)
+        dp_steady1 = dp1_arr - offset_dict["daughter1_L"] * dflow_dt_arr1
+        dp_steady_calc = flow_arr_fine1 * offset_dict["daughter1_R_lin"] + \
+                        offset_dict["daughter1_R_quad"] * np.square(flow_arr_fine1)
+        dp_steady2 = dp2_arr - offset_dict["daughter2_L"] * dflow_dt_arr2
+        dp_steady_calc2 = flow_arr_fine2 * offset_dict["daughter2_R_lin"] + \
+                        offset_dict["daughter2_R_quad"] * np.square(flow_arr_fine2)
         ax3 = axs[1,0]
 
         ax3.scatter(flow_arr, dp_steady1/1333, color = "cornflowerblue", label = "Outlet 1 Steady $\Delta P$")
@@ -348,8 +364,8 @@ def plot_geo(geo_dict, anatomy, set_type, geo):
         ax3.set_ylabel("$\Delta P$ (mmHg)")
 
         ax4 = axs[0,1]
-        dp1_arr_fine_m2 = flow_arr_fine * offset_dict["daughter1_R_lin_m2"] + + offset_dict["daughter1_L_m2"] * dflow_dt_arr_fine
-        dp2_arr_fine_m2 = flow_arr_fine * offset_dict["daughter2_R_lin_m2"] + + offset_dict["daughter2_L_m2"] * dflow_dt_arr_fine  
+        dp1_arr_fine_m2 = flow_arr_fine1 * offset_dict["daughter1_R_lin_m2"] + + offset_dict["daughter1_L_m2"] * dflow_dt_arr_fine1
+        dp2_arr_fine_m2 = flow_arr_fine2 * offset_dict["daughter2_R_lin_m2"] + + offset_dict["daughter2_L_m2"] * dflow_dt_arr_fine2  
         
         ax5 = ax4.twinx()
 
@@ -367,10 +383,10 @@ def plot_geo(geo_dict, anatomy, set_type, geo):
         labels = ["Outlet 1 $\Delta P$ (Simulation)", "Outlet 1 $\Delta P$ (RI Fit)", "Outlet 2 $\Delta P$ (Simulation)", "Outlet 2 $\Delta P$ (RI Fit)", "Inlet Flow"]
         
 
-        dp_steady1_m2       = dp1_arr - offset_dict["daughter1_L_m2"] * dflow_dt_arr
-        dp_steady_calc_m2   = flow_arr_fine * offset_dict["daughter1_R_lin_m2"]
-        dp_steady2_m2      = dp2_arr - offset_dict["daughter2_L_m2"] * dflow_dt_arr
-        dp_steady_calc2_m2 = flow_arr_fine * offset_dict["daughter2_R_lin_m2"]
+        dp_steady1_m2       = dp1_arr - offset_dict["daughter1_L_m2"] * dflow_dt_arr1
+        dp_steady_calc_m2   = flow_arr_fine1 * offset_dict["daughter1_R_lin_m2"]
+        dp_steady2_m2       = dp2_arr - offset_dict["daughter2_L_m2"] * dflow_dt_arr2
+        dp_steady_calc2_m2  = flow_arr_fine2 * offset_dict["daughter2_R_lin_m2"]
         ax5 = axs[1,1]
 
         ax5.scatter(flow_arr, dp_steady1_m2/1333, color = "cornflowerblue", label = "Outlet 1 Steady $\Delta P$")
@@ -385,13 +401,13 @@ def plot_geo(geo_dict, anatomy, set_type, geo):
         plt.subplots_adjust(hspace=0.3)
         fig.savefig(f"data/synthetic_junctions_reduced_results/{anatomy}/{set_type}/{geo}/unsteady_plot_{offset_name}.pdf", bbox_inches='tight')
         
-        if offset_dict["daughter1_R_quad_star"] < -1 or offset_dict["daughter2_R_quad_star"] < -1:
-            print(f"Negative quad resistance for {geo} at offset {offset_name}.")
-            pdb.set_trace()
+        # if offset_dict["daughter1_R_quad_star"] < -1 or offset_dict["daughter2_R_quad_star"] < -1:
+        #     print(f"Negative quad resistance for {geo} at offset {offset_name}.")
+        #     pdb.set_trace()
         
     return
 
-def extract_unsteady_flow_data(anatomy, set_type, require4):
+def extract_unsteady_flow_data(anatomy, set_type, require4, num_offsets = 5):
     residuals_total = (0,0)
     residuals_cnt = 0
     CCO_data_dict = {}
@@ -408,7 +424,7 @@ def extract_unsteady_flow_data(anatomy, set_type, require4):
                 continue
             geo_results_dir = f"data/synthetic_junctions_reduced_results/{anatomy}/{set_type}/{geo}"
             geo_dict = {}
-            for offset in range(5,10):
+            for offset in range(10-num_offsets,10):
                 try:
                     offset_dict, res = extract_flow_behavior_unsteady(geo_results_dir, offset)
                     
@@ -421,7 +437,7 @@ def extract_unsteady_flow_data(anatomy, set_type, require4):
                     
                     if offset == 7:
                         print(f"Plotting offset {offset} is the steady state for {geo}.")
-                        plot_geo(geo_dict, anatomy, set_type, geo)
+                        #plot_geo(geo_dict, anatomy, set_type, geo)
 
                 except Exception as error:
                     # handle the exception
@@ -430,6 +446,9 @@ def extract_unsteady_flow_data(anatomy, set_type, require4):
                     print(f"Could not extract steady data from {geo}, offset {offset}.")
                     
                     continue
+            if len(geo_dict.keys()) != num_offsets:
+                print(f"Could not extract all offsets for geometry {geo}. Found {len(geo_dict.keys())} instead of {num_offsets}.")
+                continue
             
 
             CCO_data_dict[f"{geo}_{set_type}"] = geo_dict

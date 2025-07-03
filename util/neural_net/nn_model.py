@@ -2,7 +2,7 @@ import jax.numpy as jnp
 from jax import grad, jit, vmap
 from jax import random
 from util.tools.basic import *
-from util.neural_net.nn_util import init_weights, batched_forward_pass, inv_scale_jax, relu, dill_load
+from util.neural_net.nn_util import get_L2, init_weights, batched_forward_pass, inv_scale_jax, relu, dill_load
 import optax
 
 class NeuralNet():
@@ -60,5 +60,6 @@ def predict(input, weights):
 @jit
 def loss(input, outputs, scaling_factors, scaling_dict, weights):
     coefs_pred = predict(input, weights)
-    return jnp.sqrt(jnp.mean(jnp.square(coefs_pred - outputs)))
+    L2_penalty = get_L2(weights)
+    return jnp.sqrt(jnp.mean(jnp.square(coefs_pred - outputs))) + L2_penalty*0.001 # L2 regularization term
 

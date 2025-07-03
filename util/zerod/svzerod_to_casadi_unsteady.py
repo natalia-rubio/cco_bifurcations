@@ -17,6 +17,7 @@ def solve_casadi_unsteady(time_step = 0, sol_prev = None, input_file = None, res
 
     time = input_file["boundary_conditions"][0]["bc_values"]["t"][time_step]
     dt = input_file["boundary_conditions"][0]["bc_values"]["t"][1] - input_file["boundary_conditions"][0]["bc_values"]["t"][0]
+    print(f"Time step: {time_step}, Time: {time}, dt: {dt}")
     inlet_Q = input_file["boundary_conditions"][0]["bc_values"]["Q"][time_step]
 
     num_vessels = len(input_file["vessels"])
@@ -67,6 +68,8 @@ def solve_casadi_unsteady(time_step = 0, sol_prev = None, input_file = None, res
     opti.set_value(inflow_extractors, 0)
     outflow_extractors = opti.parameter(num_vessels, num_junctions)
     opti.set_value(outflow_extractors, 0)
+    inlet_flow = opti.parameter()
+    opti.set_value(inlet_flow, inlet_Q)
 
     # Dictionary to organize vessel information (needing for wiring junctions)
     vessel_dict = defaultdict(dict)
@@ -81,7 +84,7 @@ def solve_casadi_unsteady(time_step = 0, sol_prev = None, input_file = None, res
         vessel_dict[vessel["vessel_id"]]["v_name"] = vessel["vessel_name"]
 
         R_lin = vessel["zero_d_element_values"]["R_poiseuille"]
-        R_sten = vessel["zero_d_element_values"]["stenosis_coefficient"]
+        R_sten = vessel["zero_d_element_values"]["stenosis_coefficient"]*0
         if "pressure_recovery_coefficient" in vessel["zero_d_element_values"].keys():
             R_quad = vessel["zero_d_element_values"]["pressure_recovery_coefficient"]
             print(f"R_quad: {R_quad} for vessel {vessel['vessel_name']}")
@@ -90,20 +93,20 @@ def solve_casadi_unsteady(time_step = 0, sol_prev = None, input_file = None, res
         C = vessel["zero_d_element_values"]["C"]*0
         L = vessel["zero_d_element_values"]["L"]*0
 
-        # if "branch0" in vessel["vessel_name"]:
-        #     #print(f"Branch 0 vessel {vessel['vessel_name']} found, adding vessel equation to objective")
+        if "branch0" in vessel["vessel_name"]:
+            #print(f"Branch 0 vessel {vessel['vessel_name']} found, adding vessel equation to objective")
             
-        #     objective += (
-        #         P_in[i] +
-        #         - P_out[i] +
-        #         - (R_lin + R_sten * (10**-2 + Q_in[i]**2)**0.5 + R_quad * Q_in[i]) * Q_in[i] + # abs removed
-        #         - L * Q_out_dt[i]  
-        #         )**2
-        # else:
-        #     objective += (
-        #         P_out[i] +
-        #         - P_in[i] 
-        #     )**2
+            objective += (
+                P_in[i] +
+                - P_out[i] +
+                - (R_lin + R_sten * (10**-2 + Q_in[i]**2)**0.5 + R_quad * Q_in[i]) * Q_in[i] + # abs removed
+                - L * Q_out_dt[i]  
+                )**2
+        else:
+            objective += (
+                P_out[i] +
+                - P_in[i] 
+            )**2
 
         # objective += (
         #     P_in[i] +
@@ -170,26 +173,26 @@ def solve_casadi_unsteady(time_step = 0, sol_prev = None, input_file = None, res
                     P_out[inlet_vessel_ind] + # THIS IS THE INLET PRESSURE
                     - P_in[outlet_vessel_ind] +
                     - (R_lin + R_sten * (10**-2 + Q_in[outlet_vessel_ind]**2)**0.5 + R_quad * Q_in[outlet_vessel_ind]) * Q_in[outlet_vessel_ind] + # abs removed
-                    - L * Q_in_dt[outlet_vessel_ind])/(1333 * 10)
+                    - L * Q_in_dt[outlet_vessel_ind])/(1333 * 20)
                 )**2
                 junction_constraint_counter += 1
                 
-                enforce_pressure_loss = False
+                enforce_pressure_loss = True
                 if enforce_pressure_loss:
                     opti.subject_to(
                         P_out[inlet_vessel_ind] - P_in[outlet_vessel_ind] >= 0
                     )
-                opti.subject_to(P_out < 1e7)
-                opti.subject_to(P_in  < 1e7)
-                opti.subject_to(P_out > -1e7)
-                opti.subject_to(P_in  > -1e7)
-                opti.subject_to(Q_in <= inlet_Q)
-                opti.subject_to(Q_out <= inlet_Q)
+                # opti.subject_to(P_out < 1e7)
+                # opti.subject_to(P_in  < 1e7)
+                # opti.subject_to(P_out > -1e7)
+                # opti.subject_to(P_in  > -1e7)
+                # opti.subject_to(Q_in <= inlet_Q)
+                # opti.subject_to(Q_out <= inlet_Q)
 
                 enforce_flow_splits = True
                 if enforce_flow_splits:
                     objective += (
-                        ((Q_in[outlet_vessel_ind] - junction["junction_values"]["flow_split"][j] *  Q_out[inlet_vessel_ind])/inlet_Q)**2
+                        ((Q_in[outlet_vessel_ind] - junction["junction_values"]["flow_split"][j] *  Q_out[inlet_vessel_ind])*1000)**2
                     )
                     # opti.subject_to(
                     #     Q_in[outlet_vessel_ind] - junction["junction_values"]["flow_split"][j] *  Q_out[inlet_vessel_ind] == 0
@@ -241,6 +244,7 @@ def solve_casadi_unsteady(time_step = 0, sol_prev = None, input_file = None, res
     opti.solver('ipopt', opts)
     try:
         sol = opti.solve()
+        print("Objective value: ", opti.debug.value(objective))
     except:
         opti.debug.value(objective)
         print("Objective value: ", opti.debug.value(objective))
@@ -267,6 +271,7 @@ def solve_casadi_unsteady(time_step = 0, sol_prev = None, input_file = None, res
                 "Q_out_dt": sol.value(Q_out_dt),
                 "P_in_dt": sol.value(P_in_dt),
                 "P_out_dt": sol.value(P_out_dt)}
+    print("Pressure: ", sol.value(P_in)[0])
     return (sol_dict)
 
 

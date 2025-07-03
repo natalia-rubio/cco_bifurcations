@@ -85,7 +85,7 @@ def forward_pass(input,weights):
     # Forward pass through the network
     latent_rep = input    
     for w, b in weights[:-1]:
-        jnp.concatenate((latent_rep, input), axis=-1)
+        #jnp.concatenate((latent_rep, input), axis=-1)
         lin_comb = jnp.dot(w, latent_rep) + b
         latent_rep = relu(lin_comb)
 
@@ -93,6 +93,10 @@ def forward_pass(input,weights):
     output = jnp.dot(final_w, latent_rep) + final_b
     #output = input[5:] * weights
     return output
+
+def get_L2(weights):
+    # Get the L2 norm of the weights
+    return jnp.sum(jnp.array([jnp.linalg.norm(w) for w, _ in weights]))
 
 batched_forward_pass = vmap(forward_pass, in_axes=(0, None))
 

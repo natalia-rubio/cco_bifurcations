@@ -66,6 +66,7 @@ def compare_to_3d_inlet(junction_mode = "standard",
         "flow_error_0d_tot": flow_error_0d_tot,
         "pressure_error_0d_rel": pressure_error_0d_rel,
         "pressure_error_0d_tot": pressure_error_0d_tot,
+        "inlet_pressure": pressure_3d,
         "inlet_re": inlet_re,
     }
     #pdb.set_trace()

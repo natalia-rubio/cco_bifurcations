@@ -42,7 +42,7 @@ if __name__ == "__main__":
     inlet_area = input_file["junctions"][0]["areas"][0]
     
     t = t[1:801]  # Remove the first time point
-    t_fine = jnp.linspace(t[0], t[-1], 1600)
+    t_fine = jnp.linspace(t[0], t[-1], 800)
     Q = [q * inlet_area for q in Q[1:801]]  # Scale flow by inlet area
     Q_fine = interp1d(t, Q, kind='linear', fill_value="extrapolate")(t_fine)
     t_fine = t_fine.tolist()

@@ -66,6 +66,7 @@ def test_junction_model_single(tree_name, junction_mode):
     # If special junction handling is needed, create and run the modified 0D file
     if junction_mode == "RI":
         transform_standard_to_RI(tree_name)
+        os.system(f"python3 util/zerod/svzerod_to_casadi_ws.py {tree_name} RI")
     elif junction_mode == "RR":
         transform_standard_to_RR(tree_name)
         os.system(f"python3 util/zerod/svzerod_to_casadi_ws.py {tree_name} RR")

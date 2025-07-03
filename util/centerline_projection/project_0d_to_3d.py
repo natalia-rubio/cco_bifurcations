@@ -73,7 +73,7 @@ def project_to_centerline(tree_name, junction_mode):
     zerod_handler.update_simparams(last_cycle_only=True)
     #print("in project_to_centerline: got handler")
     casadi = True
-    if junction_mode == "standard" or junction_mode == "RI":
+    if junction_mode == "standard": #or junction_mode == "RI":
         zerod_solver = pysvzerod.Solver(input_file)
         #print("in project_to_centerline: got solver")
         zerod_solver.run()

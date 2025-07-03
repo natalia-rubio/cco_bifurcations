@@ -34,7 +34,6 @@ def compare_to_3d_inlet_unsteady(junction_mode = "standard",
 
     reader_0d = read_geo(f"trees/zerod_output_cent/standard/{tree_name_base}/{tree_name}/centerline_sol.vtp").GetOutput()
     reader_rr = read_geo(f"trees/zerod_output_cent/RR/{tree_name_base}/{tree_name}/centerline_sol.vtp").GetOutput()
-    pdb.set_trace()
     reader_3d = read_geo(f"trees/threed_output_cent/{tree_name_base}/{tree_name}/centerline_sol_unsteady.vtp").GetOutput()
     #was 300
 
@@ -49,10 +48,10 @@ def compare_to_3d_inlet_unsteady(junction_mode = "standard",
     times_rr = [float(key[9:]) for key in arrays_rr.keys() if "pressure" in key]
     dt = times_0d[1] - times_0d[0]
     dt_3d = 0.001
-   
-    branch0_locs = np.where(arrays_3d["BranchId"] == 0)
+    branch0_locs = np.where(arrays_3d["BranchId"] == 0)[0]
     branch0_valid_locs = np.where(~np.isnan(arrays_3d["pressure_100"][branch0_locs])) # Get the first value of the pressure for branch 0
-    inlet_gid = arrays_3d["GlobalNodeId"][branch0_valid_locs[0][0]]
+    inlet_gid = arrays_3d["GlobalNodeId"][branch0_locs[branch0_valid_locs[0][0]]]
+    #inlet_gid = arrays_3d["GlobalNodeId"][branch0_valid_locs[0][0]]
     #inlet_gid = 23
     flows_0d = []; pressures_0d = []
     for time in times_0d:
@@ -77,10 +76,10 @@ def compare_to_3d_inlet_unsteady(junction_mode = "standard",
     sorted_zipped_lists = sorted(zipped_lists)
     # Unzip the sorted lists
     times_3d, flows_3d, pressures_3d = zip(*sorted_zipped_lists)
-    half_pt = int(len(times_3d)/2)
-    times_3d = times_3d[:half_pt]  # Only take the second half of the time steps
-    flows_3d = flows_3d[half_pt:]
-    pressures_3d = pressures_3d[half_pt:]
+    # half_pt = int(len(times_3d)/2)
+    # times_3d = times_3d[:half_pt]  # Only take the second half of the time steps
+    # flows_3d = flows_3d[half_pt:]
+    # pressures_3d = pressures_3d[half_pt:]
     
     plt.clf()
     plt.plot(flows_0d, pressures_0d, label="0D standard", color="slategrey")
