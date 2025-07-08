@@ -111,10 +111,14 @@ def get_input_file_junction_dict_master(tree_name):
         junction_dict[junction_name]["0D_terminal_outlet_vessel_id"] = terminal_outlet_vessel_id
         if "boundary_conditions" in vessel_dict[terminal_outlet_vessel_id].keys():
             junction_dict[junction_name]["0D_termination"] = "resistance"
+            junction_dict[junction_name]["0D_termination_RI"] = "resistance"
             junction_dict[junction_name]["0D_bc_resistance_name"] = vessel_dict[terminal_outlet_vessel_id]["boundary_conditions"]["outlet"]
             junction_dict[junction_name]["0D_bc_geo_resistance"] = bc_dict[junction_dict[junction_name]["0D_bc_resistance_name"]]["bc_values"]["R"]
+            junction_dict[junction_name]["0D_bc_geo_resistance_RI"] = bc_dict[junction_dict[junction_name]["0D_bc_resistance_name"]]["bc_values"]["R"]
+
         else:
             junction_dict[junction_name]["0D_termination"] = "junction"
+            junction_dict[junction_name]["0D_termination_RI"] = "junction"
             junction_dict[junction_name]["0D_terminal_junction_name"] = terminal_junction_dict[terminal_outlet_vessel_id]["terminal_junction_name"]
             junction_dict[junction_name]["0D_terminal_junction_id"] = terminal_junction_dict[terminal_outlet_vessel_id]["terminal_junction_id"]
 
@@ -123,10 +127,13 @@ def get_input_file_junction_dict_master(tree_name):
         junction_dict[junction_name]["0D_aux_terminal_outlet_vessel_id"] = aux_terminal_outlet_vessel_id
         if "boundary_conditions" in vessel_dict[aux_terminal_outlet_vessel_id].keys():
             junction_dict[junction_name]["0D_aux_termination"] = "resistance"
+            junction_dict[junction_name]["0D_aux_termination_RI"] = "resistance"
             junction_dict[junction_name]["0D_aux_bc_resistance_name"] = vessel_dict[aux_terminal_outlet_vessel_id]["boundary_conditions"]["outlet"]
             junction_dict[junction_name]["0D_aux_bc_geo_resistance"] = bc_dict[junction_dict[junction_name]["0D_aux_bc_resistance_name"]]["bc_values"]["R"]
+            junction_dict[junction_name]["0D_aux_bc_geo_resistance_RI"] = bc_dict[junction_dict[junction_name]["0D_aux_bc_resistance_name"]]["bc_values"]["R"]
         else:
             junction_dict[junction_name]["0D_aux_termination"] = "junction"
+            junction_dict[junction_name]["0D_aux_termination_RI"] = "junction"
             junction_dict[junction_name]["0D_aux_terminal_junction_name"] = terminal_junction_dict[aux_terminal_outlet_vessel_id]["terminal_junction_name"]
             junction_dict[junction_name]["0D_aux_terminal_junction_id"] = terminal_junction_dict[aux_terminal_outlet_vessel_id]["terminal_junction_id"]
             

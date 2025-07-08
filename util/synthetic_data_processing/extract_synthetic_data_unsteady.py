@@ -12,6 +12,7 @@ from fpdf import FPDF
 from util.tools.junction_proc import get_angle_diff
 import matplotlib.pyplot as plt
 from scipy.interpolate import interp1d
+from sklearn.metrics import r2_score
 plt.rcParams['text.usetex'] = True
 plt.rcParams['font.size'] = 10
 plt.rcParams.update({
@@ -51,19 +52,23 @@ def extract_flow_behavior_unsteady(geo_results_dir, offset):
             print(f"Time steps are not constant in {flow_result_dir}.")
             #raise ValueError(f"Time steps are not constant in {flow_result_dir}.")
         #pdb.set_trace()
-        dt = (times[1][0] - times[0][0]) * 2*0.4/800 # convert to seconds, assuming 2*0.4 is the time step in ms
+        dt = 0.001 # convert to seconds, assuming 2*0.4 is the time step in ms
         #print(f"dt: {dt}")
         dflow_dt = np.zeros_like(flow)
         #dflow_dt[1:-1,:] = (flow[2:,:] - flow[:-2,:])/(2*dt) # central difference
-        cd_time_steps = np.tile((time_steps[0:-1]+time_steps[1:]),(3,1))
+        cd_time_steps = np.tile((time_steps[0:-1]+time_steps[1:]),(3,1)).T
         #pdb.set_trace()
-        dflow_dt[1:-1,:] = (flow[2:,:] - flow[:-2,:])#/cd_time_steps # central difference with variable time step
+        dflow_dt[1:-1,:] = (flow[2:,:] - flow[:-2,:])/(cd_time_steps*dt) # central difference with variable time step
+        
         # dflow_dt[1:,:] = (flow[1:,:] - flow[:-1,:])/(dt) # central difference
         
-        flow = flow[1:-1,:] # remove first and last time step
-        pressure = pressure[1:-1,:] # remove first and last time step
-        times = times[1:-1,:] # remove first and last time step
-        dflow_dt = dflow_dt[1:-1,:] # remove first and last time step
+        #flow = flow[1:-1,:] # remove first and last time step
+        #pressure = pressure[1:-1,:] # remove first and last time step
+        #times = times[1:-1,:] # remove first and last time step
+        #dflow_dt = dflow_dt[1:-1,:] # remove first and last time step
+        dflow_dt[0,:] = (flow[1,:] - flow[0,:])/((times[1][0] - times[0][0]) * 2*0.4/800) # forward difference for first time step
+        dflow_dt[-1,:] = (flow[-1,:] - flow[-2,:])/((times[-1][0] - times[-2][0]) * 2*0.4/800) # backward difference for last time step
+        #pdb.set_trace()
         # flow = flow[1:,:] # remove first and last time step
         # pressure = pressure[1:,:] # remove first and last time step
         # times = times[1:,:] # remove first and last time step
@@ -148,7 +153,9 @@ def extract_flow_behavior_unsteady(geo_results_dir, offset):
 
     # Solve
     coefs, residuals, t, q = np.linalg.lstsq(A_mat, dP_vec, rcond=None)
+    
     residuals = (dP_vec - A_mat @ coefs) / np.max(dP_vec)
+    r2_rri = r2_score(dP_vec, A_mat @ coefs)
     print(f"Residuals: {np.mean(residuals)}")
     residuals_avg = np.mean(residuals)
     if np.abs(np.mean(residuals)) > 0.1:
@@ -221,11 +228,12 @@ def extract_flow_behavior_unsteady(geo_results_dir, offset):
     # Solve
     coefs, residuals, t, q = np.linalg.lstsq(A_mat, dP_vec, rcond=None)
     residuals = (dP_vec - A_mat @ coefs) / np.max(dP_vec)
+    r2_ri = r2_score(dP_vec, A_mat @ coefs)
     residuals_avg_m2 = np.mean(residuals)
     print(f"Residuals: {np.mean(residuals)}")
     if np.abs(np.mean(residuals)) > 0.1:
         print(f"Residuals are too high: {np.mean(residuals)}.")
-        pdb.set_trace()
+        
         #return None
 
     R_lin1_m2         = coefs[0]
@@ -292,7 +300,8 @@ def extract_flow_behavior_unsteady(geo_results_dir, offset):
     offset_dict["daughter2_area_ratio_inv2"] = (A_char/areas[0,2])**2
     offset_dict["total_area_ratio_inv2"] = (A_char/(areas[0,1] + areas[0,2]))**2
     print(f"Extracted flow behavior for offset {offset} in geometry {geo_results_dir}.")
-    return offset_dict, (residuals_avg, residuals_avg_m2)
+    
+    return offset_dict, (r2_rri, r2_ri)
 
 def plot_geo(geo_dict, anatomy, set_type, geo):
     plt.rcParams['text.usetex'] = True
@@ -303,8 +312,8 @@ def plot_geo(geo_dict, anatomy, set_type, geo):
     for offset_name, offset_dict in geo_dict.items():
         colors = ['b', 'g', 'y', 'r',"orange", "c", "m", "k"]
         
-        fig, axs = plt.subplots(2,2)
-        fig.set_size_inches(8, 6)
+        fig, axs = plt.subplots(2,2, width_ratios=[2, 1])
+        fig.set_size_inches(7, 5)
         ax1 = axs[0,0]
         offset_list = []; hp_list = []
         offset = int(offset_name.split("_")[1])
@@ -334,19 +343,22 @@ def plot_geo(geo_dict, anatomy, set_type, geo):
         
         ax2 = ax1.twinx()
 
-        ax1.scatter(offset_dict["times"], offset_dict["dp1"]/1333, color = "cornflowerblue", label = "Outlet 1 $\Delta P$ (Simulation)")
-        ax1.plot(times_arr_fine, dp1_arr_fine/1333, color = "cornflowerblue", label = "Outlet 1 $\Delta P$ (RRI Fit)")
-        ax1.scatter(offset_dict["times"], offset_dict["dp2"]/1333, color = "deeppink",  label = "Outlet 2 $\Delta P$")
-        ax1.plot(times_arr_fine, dp2_arr_fine/1333, color = "deeppink", label = "Outlet 2 $\Delta P$ (RRI Fit)")
+        ax1.scatter(offset_dict["times"], offset_dict["dp1"]/1333, color = "orange", label = "Outlet 1 $\Delta P$ (Simulation)")
+        ax1.plot(times_arr_fine, dp1_arr_fine/1333, color = "orange", label = "Outlet 1 $\Delta P$ (RRI Fit)")
+        ax1.scatter(offset_dict["times"], offset_dict["dp2"]/1333, color = "mediumpurple",  label = "Outlet 2 $\Delta P$")
+        ax1.plot(times_arr_fine, dp2_arr_fine/1333, color = "mediumpurple", label = "Outlet 2 $\Delta P$ (RRI Fit)")
 
         ax1.set_xlabel("Time (s)")
-        ax1.set_ylabel("$\Delta P$ (mmHg)")
-        ax1.set_title(f"RRI Fit")
+        ax1.set_ylabel("RRI Fit \n \n $\Delta P$ (mmHg)")
 
         ax2.plot(times_arr_fine, flow_arr_fine, "--", color = "black", label = "Inlet Flow")
+
         ax2.set_ylabel("Inlet Flow (cm$ ^3$/s)")
-        labels = ["Outlet 1 $\Delta P$ (Simulation)", "Outlet 1 $\Delta P$ (Fit)", "Outlet 2 $\Delta P$ (Simulation)", "Outlet 2 $\Delta P$ (Fit)", "Inlet Flow"]
-        ax1.legend(labels, bbox_to_anchor=(1.3, 1.4), loc='upper center', ncol = 2, frameon=False)
+        #labels = ["Outlet 1 $\Delta P$ (Simulation)", "Outlet 1 $\Delta P$ (Fit)", "Outlet 2 $\Delta P$ (Simulation)", "Outlet 2 $\Delta P$ (Fit)", "Inlet Flow"]
+        labels = ["Outlet 1 (Simulation)", "Outlet 1 (Fit)", "Outlet 2 (Simulation)", "Outlet 2 (Fit)", "Inlet Flow"]
+        labels2 = ["Inlet Flow"]
+        ax1.legend(labels, bbox_to_anchor=(0.7, 1.4), loc='upper center', ncol = 2, frameon=False)
+        ax2.legend(labels2, bbox_to_anchor=(1.7, 1.4), loc='upper center', ncol = 1, frameon=False)
 
         dp_steady1 = dp1_arr - offset_dict["daughter1_L"] * dflow_dt_arr1
         dp_steady_calc = flow_arr_fine1 * offset_dict["daughter1_R_lin"] + \
@@ -354,29 +366,28 @@ def plot_geo(geo_dict, anatomy, set_type, geo):
         dp_steady2 = dp2_arr - offset_dict["daughter2_L"] * dflow_dt_arr2
         dp_steady_calc2 = flow_arr_fine2 * offset_dict["daughter2_R_lin"] + \
                         offset_dict["daughter2_R_quad"] * np.square(flow_arr_fine2)
-        ax3 = axs[1,0]
+        ax3 = axs[0,1]
 
-        ax3.scatter(flow_arr, dp_steady1/1333, color = "cornflowerblue", label = "Outlet 1 Steady $\Delta P$")
-        ax3.plot(flow_arr_fine, dp_steady_calc/1333, color = "cornflowerblue")
-        ax3.scatter(flow_arr, dp_steady2/1333, color = "deeppink", label = "Outlet 2 Steady $\Delta P$")
-        ax3.plot(flow_arr_fine, dp_steady_calc2/1333, color = "deeppink")
+        ax3.scatter(flow_arr, dp_steady1/1333, color = "orange", label = "Outlet 1 Steady $\Delta P$")
+        ax3.plot(flow_arr_fine, dp_steady_calc/1333, color = "orange")
+        ax3.scatter(flow_arr, dp_steady2/1333, color = "mediumpurple", label = "Outlet 2 Steady $\Delta P$")
+        ax3.plot(flow_arr_fine, dp_steady_calc2/1333, color = "mediumpurple")
         ax3.set_xlabel("Inlet Flow (cm$ ^3$/s)")
-        ax3.set_ylabel("$\Delta P$ (mmHg)")
+        ax3.set_ylabel("$\Delta P_{steady}$ (mmHg)")
 
-        ax4 = axs[0,1]
+        ax4 = axs[1,0]
         dp1_arr_fine_m2 = flow_arr_fine1 * offset_dict["daughter1_R_lin_m2"] + + offset_dict["daughter1_L_m2"] * dflow_dt_arr_fine1
         dp2_arr_fine_m2 = flow_arr_fine2 * offset_dict["daughter2_R_lin_m2"] + + offset_dict["daughter2_L_m2"] * dflow_dt_arr_fine2  
         
         ax5 = ax4.twinx()
 
-        ax4.scatter(offset_dict["times"], offset_dict["dp1"]/1333, color = "cornflowerblue", label = "Outlet 1 $\Delta P$ (Simulation)")
-        ax4.plot(times_arr_fine, dp1_arr_fine_m2/1333, color = "cornflowerblue", label = "Outlet 1 $\Delta P$ (RRI Fit)")
-        ax4.scatter(offset_dict["times"], offset_dict["dp2"]/1333, color = "deeppink",  label = "Outlet 2 $\Delta P$")
-        ax4.plot(times_arr_fine, dp2_arr_fine_m2/1333, color = "deeppink", label = "Outlet 2 $\Delta P$ (RRI Fit)")
+        ax4.scatter(offset_dict["times"], offset_dict["dp1"]/1333, color = "orange", label = "Outlet 1 $\Delta P$ (Simulation)")
+        ax4.plot(times_arr_fine, dp1_arr_fine_m2/1333, color = "orange", label = "Outlet 1 $\Delta P$ (RRI Fit)")
+        ax4.scatter(offset_dict["times"], offset_dict["dp2"]/1333, color = "mediumpurple",  label = "Outlet 2 $\Delta P$")
+        ax4.plot(times_arr_fine, dp2_arr_fine_m2/1333, color = "mediumpurple", label = "Outlet 2 $\Delta P$ (RRI Fit)")
 
         ax4.set_xlabel("Time (s)")
-        ax4.set_ylabel("$\Delta P$ (mmHg)")
-        ax4.set_title(f"RI Fit")
+        ax4.set_ylabel("RRI Fit \n\n $\Delta P$ (mmHg)")
 
         ax5.plot(times_arr_fine, flow_arr_fine, "--", color = "black", label = "Inlet Flow")
         ax5.set_ylabel("Inlet Flow (cm$ ^3$/s)")
@@ -387,17 +398,24 @@ def plot_geo(geo_dict, anatomy, set_type, geo):
         dp_steady_calc_m2   = flow_arr_fine1 * offset_dict["daughter1_R_lin_m2"]
         dp_steady2_m2       = dp2_arr - offset_dict["daughter2_L_m2"] * dflow_dt_arr2
         dp_steady_calc2_m2  = flow_arr_fine2 * offset_dict["daughter2_R_lin_m2"]
-        ax5 = axs[1,1]
+        ax6 = axs[1,1]
 
-        ax5.scatter(flow_arr, dp_steady1_m2/1333, color = "cornflowerblue", label = "Outlet 1 Steady $\Delta P$")
-        ax5.plot(flow_arr_fine, dp_steady_calc_m2/1333, color = "cornflowerblue")
-        ax5.scatter(flow_arr, dp_steady2_m2/1333, color = "deeppink", label = "Outlet 2 Steady $\Delta P$")
-        ax5.plot(flow_arr_fine, dp_steady_calc2_m2/1333, color = "deeppink")
-        ax5.set_xlabel("Inlet Flow (cm$ ^3$/s)")
-        ax5.set_ylabel("$\Delta P$ (mmHg)")
+        ax6.scatter(flow_arr, dp_steady1_m2/1333, color = "orange", label = "Outlet 1 Steady $\Delta P$")
+        ax6.plot(flow_arr_fine, dp_steady_calc_m2/1333, color = "orange")
+        ax6.scatter(flow_arr, dp_steady2_m2/1333, color = "mediumpurple", label = "Outlet 2 Steady $\Delta P$")
+        ax6.plot(flow_arr_fine, dp_steady_calc2_m2/1333, color = "mediumpurple")
+        ax6.set_xlabel("Inlet Flow (cm$ ^3$/s)")
+        ax6.set_ylabel("$\Delta P_{steady}$ (mmHg)")
 
         #fig.tight_layout()
-        plt.subplots_adjust(wspace=0.5)
+        ax1.tick_params(direction="in")
+        ax2.tick_params(direction="in")
+        ax3.tick_params(direction="in")
+        ax4.tick_params(direction="in")
+        ax5.tick_params(direction="in")
+        ax6.tick_params(direction="in")
+        
+        plt.subplots_adjust(wspace=0.7)
         plt.subplots_adjust(hspace=0.3)
         fig.savefig(f"data/synthetic_junctions_reduced_results/{anatomy}/{set_type}/{geo}/unsteady_plot_{offset_name}.pdf", bbox_inches='tight')
         
@@ -457,6 +475,7 @@ def extract_unsteady_flow_data(anatomy, set_type, require4, num_offsets = 5):
     if not os.path.exists(f"data/data_dicts"):
         os.makedirs(f"data/data_dicts")
     save_dict(CCO_data_dict, f"data/data_dicts/{anatomy}_{set_type}_synthetic_data_dict")
-    print(f"Average RRI residuals: {residuals_total[0]/residuals_cnt}, average RI residuals: {residuals_total[1]/residuals_cnt}")
-    #pdb.set_trace()
+    #print(f"Average RRI residuals: {residuals_total[0]/residuals_cnt}, average RI residuals: {residuals_total[1]/residuals_cnt}")
+    print(f"Average RRI R2: {residuals_total[0]/residuals_cnt}, average RI R2: {residuals_total[1]/residuals_cnt}")
+    pdb.set_trace()
     return

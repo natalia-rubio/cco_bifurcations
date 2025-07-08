@@ -49,7 +49,7 @@ def get_jax_arrays(anatomy, set_type, unsteady = True):
         output_tens_ri = None
         
 
-    
+    pdb.set_trace()
     scaling_factors = jnp.concatenate((jnp.reshape(jnp.asarray(char_val_dict["A_char"], dtype=jnp.float32), (num_geos, 1)),
                                 jnp.reshape(jnp.asarray(char_val_dict["U_char"], dtype=jnp.float32), (num_geos, 1))), axis = -1)
     

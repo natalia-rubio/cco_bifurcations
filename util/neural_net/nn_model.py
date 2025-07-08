@@ -29,6 +29,8 @@ class NeuralNet():
         elif self.output_type == "rr":
             self.num_output_features = 2
             self.output = self.data_dict["output_rr"]
+        # self.num_output_features = 1
+        # self.output = self.data_dict["output_rri"][:,2:3]
             
         self.num_geos       = network_params["num_geos"]
         self.decay_rate     = optimizer_params["decay_rate"]
@@ -61,5 +63,5 @@ def predict(input, weights):
 def loss(input, outputs, scaling_factors, scaling_dict, weights):
     coefs_pred = predict(input, weights)
     L2_penalty = get_L2(weights)
-    return jnp.sqrt(jnp.mean(jnp.square(coefs_pred - outputs))) + L2_penalty*0.001 # L2 regularization term
+    return jnp.sqrt(jnp.mean(jnp.square(coefs_pred - outputs))) + L2_penalty*0.00 # L2 regularization term
 

@@ -184,7 +184,7 @@ def write_svfsiplus_xml(parent_file_dir, geo_name, sim_dir_sher, sim_dir_sher_or
     elif geo_name == "tree_3":
         inlet_rad = 0.20
     elif geo_name == "tree_10":
-        inlet_rad = 0.176
+        inlet_rad = 0.204 #0.176
     elif geo_name == "tree_40":
         inlet_rad = 0.252
 
@@ -205,7 +205,7 @@ def write_svfsiplus_xml(parent_file_dir, geo_name, sim_dir_sher, sim_dir_sher_or
 #SBATCH --partition=amarsden\n\
 #SBATCH --output=/scratch/users/nrubio/job_scripts/{geo_name}_{flow_mag}.o%j\n\
 #SBATCH --error=/scratch/users/nrubio/job_scripts/{geo_name}_{flow_mag}.e%j\n\
-#SBATCH --time=06:00:00\n\
+#SBATCH --time=10:00:00\n\
 #SBATCH --mem=50000\n\
 #SBATCH --nodes={num_nodes}\n\
 #SBATCH --tasks-per-node=24\n\
@@ -237,5 +237,5 @@ geo_name = sys.argv[1]  # e.g., "tree_20"
 flow_mag = "unsteady"
 sim_dir_sher = f"/scratch/users/nrubio/synthetic_junctions/CCO/{geo_name}/{geo_name}_flow_{flow_mag}/"
 sim_dir_sher_orig = f"/scratch/users/nrubio/synthetic_junctions/CCO/{geo_name}/{geo_name}_original"
-write_svfsiplus_xml(parent_file_dir, geo_name, sim_dir_sher, sim_dir_sher_orig, num_nodes = 4, n_tsteps=800, flow_mag = flow_mag)
+write_svfsiplus_xml(parent_file_dir, geo_name, sim_dir_sher, sim_dir_sher_orig, num_nodes = 2, n_tsteps=1600, flow_mag = flow_mag)
 

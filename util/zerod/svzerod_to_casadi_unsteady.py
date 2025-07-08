@@ -90,7 +90,7 @@ def solve_casadi_unsteady(time_step = 0, sol_prev = None, input_file = None, res
             print(f"R_quad: {R_quad} for vessel {vessel['vessel_name']}")
         else:
             R_quad = 0
-        C = vessel["zero_d_element_values"]["C"]*0
+        C = vessel["zero_d_element_values"]["C"]
         L = vessel["zero_d_element_values"]["L"]*0
 
         if "branch0" in vessel["vessel_name"]:

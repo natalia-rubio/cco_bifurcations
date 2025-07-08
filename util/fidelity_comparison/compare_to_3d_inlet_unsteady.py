@@ -1,12 +1,13 @@
 from cProfile import label
 import sys
 from turtle import color
+from matplotlib import lines
 from pyparsing import line
 import vtk
 import os
 import numpy as np
 import pdb
-
+from scipy.interpolate import interp1d
 sys.path.append("/Users/natalia/Desktop/cco_bifurcations")
 from vtk.util.numpy_support import vtk_to_numpy as v2n
 from tqdm import tqdm
@@ -33,19 +34,23 @@ def compare_to_3d_inlet_unsteady(junction_mode = "standard",
     tree_name_base = "_".join(tree_name_split)
 
     reader_0d = read_geo(f"trees/zerod_output_cent/standard/{tree_name_base}/{tree_name}/centerline_sol.vtp").GetOutput()
-    reader_rr = read_geo(f"trees/zerod_output_cent/RR/{tree_name_base}/{tree_name}/centerline_sol.vtp").GetOutput()
+    reader_rri = read_geo(f"trees/zerod_output_cent/RRI/{tree_name_base}/{tree_name}/centerline_sol.vtp").GetOutput()
+    reader_ri = read_geo(f"trees/zerod_output_cent/RI/{tree_name_base}/{tree_name}/centerline_sol.vtp").GetOutput()
     reader_3d = read_geo(f"trees/threed_output_cent/{tree_name_base}/{tree_name}/centerline_sol_unsteady.vtp").GetOutput()
     #was 300
 
     arrays_0d = get_all_arrays(reader_0d)
-    arrays_rr = get_all_arrays(reader_rr)
+    arrays_rri = get_all_arrays(reader_rri)
+    arrays_ri = get_all_arrays(reader_ri)
     arrays_3d = get_all_arrays(reader_3d)
 
     
     times_3d = [int(key[9:]) for key in arrays_3d.keys() if "pressure" in key]
     times_3d = [time for time in times_3d if time % 20 == 0]  # Only take every 10th time step
     times_0d = [float(key[9:]) for key in arrays_0d.keys() if "pressure" in key]
-    times_rr = [float(key[9:]) for key in arrays_rr.keys() if "pressure" in key]
+    times_rri = [float(key[9:]) for key in arrays_rri.keys() if "pressure" in key]
+    times_ri = [float(key[9:]) for key in arrays_ri.keys() if "pressure" in key]
+
     dt = times_0d[1] - times_0d[0]
     dt_3d = 0.001
     branch0_locs = np.where(arrays_3d["BranchId"] == 0)[0]
@@ -58,76 +63,88 @@ def compare_to_3d_inlet_unsteady(junction_mode = "standard",
         flows_0d.append(arrays_0d[f"flow_{time:0.5f}"][arrays_3d["GlobalNodeId"] == inlet_gid][0])
         pressures_0d.append(arrays_0d[f"pressure_{time:0.5f}"][arrays_3d["GlobalNodeId"] == inlet_gid][0]/1333)
 
-    flows_rr = []; pressures_rr = []
-    for time in times_rr:
-        flows_rr.append(arrays_rr[f"flow_{time:0.5f}"][arrays_3d["GlobalNodeId"] == inlet_gid][0])
-        pressures_rr.append(arrays_rr[f"pressure_{time:0.5f}"][arrays_3d["GlobalNodeId"] == inlet_gid][0]/1333)
+    flows_rri = []; pressures_rri = []
+    for time in times_rri:
+        flows_rri.append(arrays_rri[f"flow_{time:0.5f}"][arrays_3d["GlobalNodeId"] == inlet_gid][0])
+        pressures_rri.append(arrays_rri[f"pressure_{time:0.5f}"][arrays_3d["GlobalNodeId"] == inlet_gid][0]/1333)
 
-
+    flows_ri = []; pressures_ri = []
+    for time in times_rri:
+        flows_ri.append(arrays_ri[f"flow_{time:0.5f}"][arrays_3d["GlobalNodeId"] == inlet_gid][0])
+        pressures_ri.append(arrays_ri[f"pressure_{time:0.5f}"][arrays_3d["GlobalNodeId"] == inlet_gid][0]/1333)
+        
     flows_3d = []; pressures_3d = []
 
     for time in times_3d:
         flows_3d.append(arrays_3d[f"velocity_{time:03d}"][arrays_3d["GlobalNodeId"] == inlet_gid][0])
         pressures_3d.append(arrays_3d[f"pressure_{time:03d}"][arrays_3d["GlobalNodeId"] == inlet_gid][0]/1333)
     times_3d = [time * dt_3d for time in times_3d]
-
-
+    
     zipped_lists = zip(times_3d, flows_3d, pressures_3d)
     sorted_zipped_lists = sorted(zipped_lists)
     # Unzip the sorted lists
     times_3d, flows_3d, pressures_3d = zip(*sorted_zipped_lists)
+    n_reps = 2
+    times_3d_last = times_3d[-len(times_3d)//n_reps:]  # Only take the second half of the time steps
+    flows_3d_last = flows_3d[-len(flows_3d)//n_reps:]
+    pressures_3d_last = pressures_3d[-len(pressures_3d)//n_reps:]
+    
+    times_3d_lst_fine = np.linspace(times_3d_last[0], times_3d_last[-1], len(times_3d_last)*100)
+    flows_3d_last_fine = interp1d(times_3d_last, flows_3d_last, kind='quadratic')(times_3d_lst_fine)
+    pressures_3d_last_fine = interp1d(times_3d_last, pressures_3d_last, kind='quadratic')(times_3d_lst_fine)
+    n_reps = 4
+    pressures_0d_last = pressures_0d[-len(pressures_0d)//n_reps:]
+    flows_0d_last = flows_0d[-len(flows_0d)//n_reps:]
+    pressures_rri_last = pressures_rri[-len(pressures_rri)//n_reps:]
+    flows_rri_last = flows_rri[-len(flows_rri)//n_reps:]
+    pressures_ri_last = pressures_ri[-len(pressures_ri)//n_reps:]
+    flows_ri_last = flows_ri[-len(flows_ri)//n_reps:]
+    
+    
+
+
     # half_pt = int(len(times_3d)/2)
     # times_3d = times_3d[:half_pt]  # Only take the second half of the time steps
     # flows_3d = flows_3d[half_pt:]
     # pressures_3d = pressures_3d[half_pt:]
     
+    # --------------------- FLOW PLOT ---------------------
     plt.clf()
-    plt.plot(flows_0d, pressures_0d, label="0D standard", color="slategrey")
-    plt.plot(flows_rr, pressures_rr, label="0D RR", color="mediumturquoise")
-    plt.scatter(flows_3d, pressures_3d, marker = "*", s = 70,  color="goldenrod", label="3D")
+    plt.plot(times_0d, pressures_0d, label="0D standard", color="tomato")
+    plt.plot(times_rri, pressures_rri, label="0D RRI", color="seagreen")
+    plt.plot(times_ri, pressures_ri, label="0D RI", color="royalblue")
+    plt.plot(times_3d, pressures_3d, color="slategrey", label="3D")
     plt.xlabel("Flow (cm$^3$/s)")
     plt.ylabel("Pressure (mmHg)")
     plt.legend()
-    os.makedirs(f"results/{tree_name}", exist_ok=True)
-    plt.savefig(f"results/{tree_name}/0d_standard_pf.png")
+    os.makedirs(f"results/unsteady/{tree_name}", exist_ok=True)
+    plt.savefig(f"results/unsteady/{tree_name}/0d_standard_pf.png")
 
+    # --------------------- PRESSURE PLOT ---------------------
     plt.clf()
-    plt.plot(times_0d, flows_0d, color="slategrey", linewidth=4)
-    plt.plot(times_rr, flows_rr, color="mediumturquoise")
-    plt.scatter(times_3d, flows_3d, marker = "*", s = 70,  color="goldenrod")
+    plt.plot(times_0d, flows_0d, color="tomato", linewidth=4)
+    plt.plot(times_rri, flows_rri, color="seagreen")
+    plt.plot(times_ri, flows_ri, color="royalblue")
+    plt.plot(times_3d, flows_3d, color="slategrey")
     plt.xlabel("Time (s)")
     plt.ylabel("Flow (cm$^3$/s)")
-    plt.savefig(f"results/{tree_name}/0d_ft.png")
+    plt.savefig(f"results/unsteady/{tree_name}/0d_ft.png")
 
+    # --------------------- PRESSURE LOOP ---------------------
     plt.clf()
-    plt.plot(times_0d, pressures_0d, color="slategrey")
-    plt.plot(times_rr, pressures_rr, color="mediumturquoise")
-    plt.scatter(times_3d, pressures_3d, marker = "*", s = 70,  color="goldenrod")
-    plt.xlabel("Time (s)")
+    fig = plt.figure(figsize=(2.5, 2.5))
+    plt.plot(flows_0d_last,         pressures_0d_last,          color="tomato",             dashes=(1, 1),     label="0D standard", linewidth=3)
+    plt.plot(flows_rri_last,        pressures_ri_last,          color="cornflowerblue",     linestyle='dashdot',    label="0D RI", linewidth=2)
+    plt.plot(flows_rri_last,        pressures_rri_last,         color="limegreen",          linestyle='dashed',     label="0D RRI", linewidth=2)
+    
+    plt.plot(flows_3d_last_fine,    pressures_3d_last_fine,     color="slategray",          linestyle='solid',      label="3D", linewidth=2)
+    plt.xlabel("Flow (cm$^3$/s)")
     plt.ylabel("Pressure (mmHg)")
-    plt.savefig(f"results/{tree_name}/0d_pt.png")
+    plt.legend(bbox_to_anchor=(0.5, 1.15), loc='lower center', ncols = 4)
+    plt.savefig(f"results/unsteady/{tree_name}/0d_pressure_loop.pdf", bbox_inches='tight')
+    
     pdb.set_trace()    
 
-    flow_3d = arrays_3d["Velocity"][arrays_3d["GlobalNodeId"] == 100]
-
-    area = arrays_3d["CenterlineSectionArea"]
-
-    pressure_0d = arrays_0d["pressure"][arrays_3d["GlobalNodeId"] == 10]
-    pressure_3d = arrays_3d["Pressure"][arrays_3d["GlobalNodeId"] == 10]
-
-    # flow_error_0d_rel = (flow_0d-flow_3d)/flow_3d
-    # flow_error_0d_tot = (flow_0d-flow_3d)
-    # flow_error_0d_rel[arrays_3d["BifurcationId"] >= 0] = 0
-    # flow_error_0d_tot[arrays_3d["BifurcationId"] >= 0] = 0
-    # print(f"Flow error      (Relative):     {flow_error_0d_rel}")
-    # print(f"Flow error      (Total):        {flow_error_0d_tot}")
-   
-    pressure_error_0d_rel = (pressure_0d - pressure_3d)/pressure_3d
-    pressure_error_0d_tot = (pressure_0d - pressure_3d)/1333
-    # pressure_error_0d_rel[arrays_3d["BifurcationId"] >= 0] = 0
-    # pressure_error_0d_tot[arrays_3d["BifurcationId"] >= 0] = 0
-    print(f"Pressure error  (Relative):     {pressure_error_0d_rel}")
-    print(f"Pressure error  (Total mmHg):        {pressure_error_0d_tot}")
 
     return
 

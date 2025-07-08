@@ -6,7 +6,10 @@ from util.tools.basic import load_dict
 
 
 def launch_training(network_params, optimizer_params, training_params):
-    
+    # if network_params["output_type"] == "rri":
+    #     print("Training RRI model...")
+    #     for i in range(3):
+    #         print(f"training model 1")
     model = NeuralNet(network_params, optimizer_params)
     train_nn(model, training_params)
     return
@@ -21,22 +24,22 @@ if __name__ == "__main__":
 
     network_params = {"num_input_features": 10,
                       "num_layers": 1,
-                      "layer_width": 20,
+                      "layer_width": 200,
                       "output_type": output_type,
                       "anatomy": anatomy,
                       "set_type": set_type,
                       "num_geos": num_geos,
                       "pred_mode": "m1"}
     
-    training_params = {"num_epochs": 500, 
-                       "batch_size": 100,
+    training_params = {"num_epochs": 1000, 
+                       "batch_size": 400,
                        "train_inds": split_ind_dict["train_ind"],
                        "val_inds": split_ind_dict["val_ind"],
                        "num_offsets": split_ind_dict["num_offsets"],}
     
     optimizer_params = {#"step_size": 0.0002,
-                        "init" : 0.0035,
+                        "init" : 0.02,
                         "transition_steps": 5000,
-                        "decay_rate" : 0.95}
+                        "decay_rate" : 0.9}
     
     launch_training(network_params, optimizer_params, training_params)

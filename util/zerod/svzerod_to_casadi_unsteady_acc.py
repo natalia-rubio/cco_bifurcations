@@ -8,6 +8,8 @@ import casadi
 import pandas as pd
 import os
 import sys
+sys.path.append("/Users/natalia/Desktop/cco_bifurcations")
+from util.tools.basic import save_dict
 
 #from util.neural_net.nn_model import coef_loss
 # Solve a zerod vascular flow with CasADi
@@ -66,8 +68,8 @@ def solve_casadi_unsteady(input_file = None, result_df = None):
             print(f"R_quad: {R_quad} for vessel {vessel['vessel_name']}")
         else:
             R_quad = 0
-        C = vessel["zero_d_element_values"]["C"]*0
-        L = vessel["zero_d_element_values"]["L"]*0
+        C = vessel["zero_d_element_values"]["C"]
+        L = vessel["zero_d_element_values"]["L"]
 
         if "branch0" in vessel["vessel_name"]:
             #print(f"Branch 0 vessel {vessel['vessel_name']} found, adding vessel equation to objective")
@@ -155,12 +157,12 @@ def solve_casadi_unsteady(input_file = None, result_df = None):
 
                 enforce_flow_splits = True
                 if enforce_flow_splits:
-                    # objective += (
-                    #     ((Q_in[outlet_vessel_ind] - junction["junction_values"]["flow_split"][j] *  Q_out[inlet_vessel_ind])*1000)**2
-                    # )
-                    opti.subject_to(
-                        Q_in[outlet_vessel_ind] - junction["junction_values"]["flow_split"][j] *  Q_out[inlet_vessel_ind] == 0
+                    objective += (
+                        ((Q_in[outlet_vessel_ind] - junction["junction_values"]["flow_split"][j] *  Q_out[inlet_vessel_ind])*100)**2
                     )
+                    # opti.subject_to(
+                    #     Q_in[outlet_vessel_ind] - junction["junction_values"]["flow_split"][j] *  Q_out[inlet_vessel_ind] == 0
+                    # )
 
             elif junction["junction_type"] == "NORMAL_JUNCTION":
                 opti.subject_to(P_out[inlet_vessel_ind] - P_in[outlet_vessel_ind] == 0)
@@ -194,7 +196,7 @@ def solve_casadi_unsteady(input_file = None, result_df = None):
     
     # ---------------------------------------------------------------- #
     
-    num_time_steps = int(len(input_file["boundary_conditions"][0]["bc_values"]["t"])/2)
+    num_time_steps = int(len(input_file["boundary_conditions"][0]["bc_values"]["t"]))
     for time_step in range(num_time_steps):
         print(f"Solving time step {time_step + 1} of {num_time_steps}.")
         if time_step == 0:
@@ -265,7 +267,8 @@ def solve_casadi_unsteady(input_file = None, result_df = None):
                     "P_in_dt": sol.value(P_in_dt),
                     "P_out_dt": sol.value(P_out_dt)}
         print("Pressure: ", sol.value(P_in)[0])
-    return
+        
+    return sol_prev
 
 
 
@@ -282,7 +285,7 @@ if __name__ == "__main__":
     df = pd.DataFrame(columns=['name', 'time','flow_in', 'flow_out', 'pressure_in', 'pressure_out'])
 
         
-    solve_casadi_unsteady(input_file= input_file, result_df = df)
+    sol_prev = solve_casadi_unsteady(input_file= input_file, result_df = df)
     
     df.sort_values(by=['name', 'time'], inplace=True)
     tree_name_split = tree_name.split("_")
@@ -291,3 +294,5 @@ if __name__ == "__main__":
     if not os.path.exists(f'trees/zerod_output/{junction_mode}/{tree_name_base}/{tree_name_unsteady}'):
         os.makedirs(f'trees/zerod_output/{junction_mode}/{tree_name_base}/{tree_name_unsteady}')
     df.to_csv(f'trees/zerod_output/{junction_mode}/{tree_name_base}/{tree_name_unsteady}/sol_casadi.csv', index=False)
+    
+    save_dict(sol_prev, f'trees/zerod_output/{junction_mode}/{tree_name_base}/{tree_name}/sol_casadi_dict')

@@ -34,32 +34,53 @@ def check_out_of_dist(param, param_name, scaling_dict):
         param = scaling_dict[param_name][3]
     return param
 
-def get_recursive_resistance(junction_dict_master, junction_name):
+def get_recursive_resistance_0D(junction_dict_master, junction_name):
     
     # Base Case
-    if junction_dict_master[junction_name]["0D_termination"] == "resistance":
+    if junction_dict_master[junction_name]["0D_termination"] == "resistance" :
         junction_dict_master[junction_name]["0D_geo_resistance"] = junction_dict_master[junction_name]["0D_bc_geo_resistance"] + junction_dict_master[junction_name]["0D_R_poiseuille_outlet1"]
     elif junction_dict_master[junction_name]["0D_termination"] == "junction":
         downstream_junction_name = junction_dict_master[junction_name]["0D_terminal_junction_name"]
-        junction_dict_master[junction_name]["0D_bc_geo_resistance"] = get_recursive_resistance(junction_dict_master, downstream_junction_name)
+        junction_dict_master[junction_name]["0D_bc_geo_resistance"] = get_recursive_resistance_0D(junction_dict_master, downstream_junction_name)
         junction_dict_master[junction_name]["0D_geo_resistance"] = junction_dict_master[junction_name]["0D_bc_geo_resistance"] + junction_dict_master[junction_name]["0D_R_poiseuille_outlet1"]
         junction_dict_master[junction_name]["0D_termination"] = "resistance"
-        #downstream_resistance = junction_dict_master[downstream_junction_name]["0D_bc_resistance"] + junction_dict_master[junction_name]["0D_R_poiseuille_outlet1"]
 
     if junction_dict_master[junction_name]["0D_aux_termination"] == "resistance":
         junction_dict_master[junction_name]["0D_aux_geo_resistance"] = junction_dict_master[junction_name]["0D_aux_bc_geo_resistance"] + junction_dict_master[junction_name]["0D_R_poiseuille_outlet2"]
     elif junction_dict_master[junction_name]["0D_aux_termination"] == "junction":
         downstream_aux_junction_name = junction_dict_master[junction_name]["0D_aux_terminal_junction_name"]
-        junction_dict_master[junction_name]["0D_aux_bc_geo_resistance"] = get_recursive_resistance(junction_dict_master, downstream_aux_junction_name)
+        junction_dict_master[junction_name]["0D_aux_bc_geo_resistance"] = get_recursive_resistance_0D(junction_dict_master, downstream_aux_junction_name)
         junction_dict_master[junction_name]["0D_aux_geo_resistance"] = junction_dict_master[junction_name]["0D_aux_bc_geo_resistance"] + junction_dict_master[junction_name]["0D_R_poiseuille_outlet2"]
         junction_dict_master[junction_name]["0D_aux_termination"] = "resistance"
-        #downstream_aux_resistance = junction_dict_master[downstream_aux_junction_name]["0D_aux_bc_resistance"] + junction_dict_master[junction_name]["0D_R_poiseuille_outlet2"]
 
     junction_resistance = (junction_dict_master[junction_name]["0D_geo_resistance"]**-1 + junction_dict_master[junction_name]["0D_aux_geo_resistance"]**-1)**-1
-    #junction_dict_master[junction_name]["resistance_at_junction"] = junction_resistance
-    # elif junction_dict_master[junction_name]["0D_termination"] == "resistance":
-    #     get_recursive_resistance
     return junction_resistance #, downstream_aux_resistance
+
+def get_recursive_resistance_0D_RI(junction_dict_master, junction_name):
+    
+    # Base Case
+    if junction_dict_master[junction_name]["0D_termination_RI"] == "resistance":
+        junction_dict_master[junction_name]["0D_geo_resistance_RI"] = junction_dict_master[junction_name]["0D_bc_geo_resistance_RI"] + junction_dict_master[junction_name]["0D_R_RI_outlet1"]
+        depth = 0
+    elif junction_dict_master[junction_name]["0D_termination_RI"] == "junction":
+        downstream_junction_name = junction_dict_master[junction_name]["0D_terminal_junction_name"]
+        junction_dict_master[junction_name]["0D_bc_geo_resistance_RI"], depth = get_recursive_resistance_0D_RI(junction_dict_master, downstream_junction_name)
+        junction_dict_master[junction_name]["0D_geo_resistance_RI"] = junction_dict_master[junction_name]["0D_bc_geo_resistance_RI"] + junction_dict_master[junction_name]["0D_R_RI_outlet1"]
+        junction_dict_master[junction_name]["0D_termination_RI"] = "resistance"
+        
+
+    if junction_dict_master[junction_name]["0D_aux_termination_RI"] == "resistance":
+        junction_dict_master[junction_name]["0D_aux_geo_resistance_RI"] = junction_dict_master[junction_name]["0D_aux_bc_geo_resistance_RI"] + junction_dict_master[junction_name]["0D_R_RI_outlet2"]
+        depth_aux = 0
+    elif junction_dict_master[junction_name]["0D_aux_termination_RI"] == "junction":
+        downstream_aux_junction_name = junction_dict_master[junction_name]["0D_aux_terminal_junction_name"]
+        junction_dict_master[junction_name]["0D_aux_bc_geo_resistance_RI"], depth_aux = get_recursive_resistance_0D_RI(junction_dict_master, downstream_aux_junction_name)
+        junction_dict_master[junction_name]["0D_aux_geo_resistance_RI"] = junction_dict_master[junction_name]["0D_aux_bc_geo_resistance_RI"] + junction_dict_master[junction_name]["0D_R_RI_outlet2"]
+        junction_dict_master[junction_name]["0D_aux_termination_RI"] = "resistance"
+        
+    junction_resistance = (junction_dict_master[junction_name]["0D_geo_resistance_RI"]**-1 + junction_dict_master[junction_name]["0D_aux_geo_resistance_RI"]**-1)**-1
+    junction_dict_master[junction_name]["depth"] = depth + depth_aux
+    return junction_resistance,  depth + depth_aux + 1 #, downstream_aux_resistance
 
 def add_solution_values(junction_dict_master, tree_name, flow_mag, time_step):
     
@@ -139,12 +160,16 @@ def add_solution_values(junction_dict_master, tree_name, flow_mag, time_step):
 
 def add_downstream_resistance_values(junction_dict_master):
     junction_name = "J0"
-    junction_resistance = get_recursive_resistance(junction_dict_master, junction_name)
+    junction_resistance = get_recursive_resistance_0D(junction_dict_master, junction_name)
     for junction_name, junction_dict in junction_dict_master.items():
         junction_dict["0D_geo_flow_split"] = junction_dict["0D_aux_geo_resistance"] / junction_dict["0D_geo_resistance"]
-        # junction_dict["0D_bc_resistance"] = downstream_resistance
-        # junction_dict["0D_aux_bc_resistance"] = downstream_aux_resistance
-    
+    return
+
+def add_downstream_resistance_values_RI(junction_dict_master):
+    junction_name = "J0"
+    junction_resistance, depth = get_recursive_resistance_0D_RI(junction_dict_master, junction_name)
+    junction_dict_master[junction_name]["depth"] = depth
+
     return
 
 def add_geometry_values(junction_dict_master, tree_name, flow_mag, time_step):
@@ -341,6 +366,43 @@ def add_3D_resistance(junction_dict_master, tree_name, flow_mag_list, time_step)
 
     return
 
+def add_3D_resistance_total(junction_dict_master, tree_name, flow_mag_list, time_step):
+    for junction_name, junction_dict in junction_dict_master.items():
+
+        re_char = 4500
+        A_char = junction_dict["3D_junc_inlet_area"]
+        L_char = np.sqrt(A_char/np.pi)
+        U_char = re_char * 0.04/(1.06 * 2*np.sqrt(A_char/np.pi))
+        junction_dict["3D_U_char"] = U_char
+
+        inlet_Ps = []
+        inlet_flows = []
+
+        # Compose lists of flow and pressure data for each outlet
+        for flow_mag in flow_mag_list:
+
+                inlet_Ps.append(junction_dict[f"3D_junc_inlet_pressure_fm_{flow_mag}_ts_{time_step}"])
+                inlet_flows.append(junction_dict[f"3D_branch1_outlet_flow_fm_{flow_mag}_ts_{time_step}"])
+
+        Q_inlet = np.asarray(inlet_flows).reshape(-1,)
+        P_inlet = np.asarray(inlet_Ps).reshape(-1,)
+
+        num_flows = len(inlet_flows)
+        num_coefs = 1
+
+        A_mat = np.zeros((num_flows, num_coefs))
+
+        # Daughter 1 flows
+        A_mat[0:num_flows,0] = Q_inlet
+
+        # Solve
+        coefs, residuals, t, q = np.linalg.lstsq(A_mat, inlet_Ps, rcond=None)
+
+        R_lin        = coefs[0]
+        junction_dict["3D_R_lin_total"] = copy.copy(R_lin)
+
+    return
+
 def add_3D_outlet_resistance(junction_dict_master, tree_name, flow_mag_list, time_step):
 
     for junction_name, junction_dict in junction_dict_master.items():
@@ -469,6 +531,123 @@ def add_0D_resistance(junction_dict_master, tree_name):
         daughter2_R_lin_final = float((1.06 * jnp.square(U_char) * R_lin_star_pred2 /  (A_char * U_char)))+ res_add2; junction_dict["0D_daughter2_R_lin_final"] = copy.copy(daughter2_R_lin_final)
         daughter2_R_quad = float(1.06 * jnp.square(U_char) * R_quad_star_pred2 / jnp.square(A_char * U_char)); junction_dict["0D_daughter2_R_quad"] = copy.copy(daughter2_R_quad)
         #pdb.set_trace()
+    return
+
+def add_0D_RI_resistance(junction_dict_master, tree_name):
+    anatomy = "tree_20"; 
+    set_type = "random" 
+    scaling_dict = load_dict(f"data/scaling_dictionaries/{anatomy}_{set_type}_scaling_dict")
+    model_name = "ri_tree_20_ng_3360_nl_1_lw_7_ne_500_bs_100_dr_0.95_model"
+    nn_model = dill_load(f"results/models/{anatomy}/{model_name}")
+        
+    for junction_name, junction_dict in junction_dict_master.items():
+
+        A_char = junction_dict["0D_inlet_area"]; 
+        re_char = 4500
+        U_char = re_char * 0.04 / (1.06 * 2 *np.sqrt(A_char/np.pi))
+        L_char = np.sqrt(A_char/np.pi)
+
+        outlet1_area = junction_dict["0D_outlet1_area"]
+        outlet2_area = junction_dict["0D_outlet2_area"]
+        
+        daughter1_area_ratio = junction_dict["0D_outlet1_area"]/A_char; daughter1_area_ratio = check_out_of_dist(daughter1_area_ratio, "daughter1_area_ratio", scaling_dict)
+        daughter2_area_ratio = junction_dict["0D_outlet2_area"]/A_char; daughter2_area_ratio = check_out_of_dist(daughter2_area_ratio, "daughter2_area_ratio", scaling_dict)
+        total_daughter_area_ratio = daughter1_area_ratio + daughter2_area_ratio; total_daughter_area_ratio = check_out_of_dist(total_daughter_area_ratio, "total_daughter_area_ratio", scaling_dict)
+        daughter1_area_ratio_inv2 = (junction_dict["0D_outlet1_area"]/A_char)**-2;  daughter1_area_ratio_inv2 = check_out_of_dist(daughter1_area_ratio_inv2, "daughter1_area_ratio_inv2", scaling_dict)
+        daughter2_area_ratio_inv2 = (junction_dict["0D_outlet2_area"]/A_char)**-2;  daughter2_area_ratio_inv2 = check_out_of_dist(daughter2_area_ratio_inv2, "daughter2_area_ratio_inv2", scaling_dict)
+        total_area_ratio_inv2 = 1/(total_daughter_area_ratio**2); total_area_ratio_inv2 = check_out_of_dist(total_area_ratio_inv2, "total_area_ratio_inv2", scaling_dict)
+        daughter1_angle = get_angle_diff(np.asarray(junction_dict["0D_inlet_tangent"]), np.asarray(junction_dict["0D_daughter1_tangent"])); 
+        daughter1_angle = daughter1_angle
+        daughter1_angle = check_out_of_dist(daughter1_angle, "daughter1_angle", scaling_dict)
+        
+        daughter2_angle = get_angle_diff(np.asarray(junction_dict["0D_inlet_tangent"]), np.asarray(junction_dict["0D_daughter2_tangent"])); 
+        daughter2_angle = daughter2_angle
+        daughter2_angle = check_out_of_dist(daughter2_angle, "daughter2_angle", scaling_dict)
+        
+        
+        length1 = junction_dict["0D_length1"]
+        daughter1_length_star = length1/L_char; daughter1_length_star = check_out_of_dist(daughter1_length_star, "daughter1_length_star", scaling_dict)
+        daughter1_length_star_sq = jnp.square(daughter1_length_star); daughter1_length_star_sq = check_out_of_dist(daughter1_length_star_sq, "daughter1_length_star_sq", scaling_dict)
+        length_add1 = max([length1 - L_char * scaling_dict["daughter1_length_star"][3], 0])
+        length_sub1 = max([L_char * scaling_dict["daughter1_length_star"][2] - length1, 0])
+        res_add1 = length_add1 * 8 * np.pi * 0.04 / (outlet1_area**2)
+        ind_add1 = 1.06 * length_add1 / outlet1_area
+        res_sub1 = length_sub1 * 8 * np.pi * 0.04 / (outlet1_area**2)
+        ind_sub1 = 1.06 * length_sub1 / outlet1_area
+        
+        length2 = junction_dict["0D_length2"]
+        daughter2_length_star = length2/L_char; daughter2_length_star = check_out_of_dist(daughter2_length_star, "daughter2_length_star", scaling_dict)
+        daughter2_length_star_sq = jnp.square(daughter2_length_star); daughter2_length_star_sq = check_out_of_dist(daughter2_length_star_sq, "daughter2_length_star_sq", scaling_dict)
+        length_add2 = max([length2 - L_char * scaling_dict["daughter2_length_star"][3], 0])
+        length_sub2 = max([L_char * scaling_dict["daughter2_length_star"][2] - length2, 0])
+        
+        res_add2 = length_add2 * 8 * np.pi * 0.04 / (outlet2_area**2)
+        ind_add2 = 1.06 * length_add2 / outlet2_area
+        res_sub2 = length_sub2 * 8 * np.pi * 0.04 / (outlet2_area**2)
+        ind_sub2 = 1.06 * length_sub2 / outlet2_area
+    
+        daughter1_flow_split = junction_dict["0D_geo_flow_split"]/(1+ junction_dict["0D_geo_flow_split"])
+        daughter2_flow_split = 1 - daughter1_flow_split
+        
+        input_tens1 = jnp.asarray([scale_jax(scaling_dict, jnp.asarray(daughter1_area_ratio, dtype=jnp.float32), "daughter1_area_ratio"),
+                        scale_jax(scaling_dict, jnp.asarray(daughter2_area_ratio, dtype=jnp.float32), "daughter2_area_ratio"),
+                        #scale_jax(scaling_dict, jnp.asarray(total_daughter_area_ratio, dtype=jnp.float32), "total_daughter_area_ratio"),
+                        scale_jax(scaling_dict, jnp.asarray(daughter1_area_ratio_inv2, dtype=jnp.float32), "daughter1_area_ratio_inv2"),
+                        scale_jax(scaling_dict, jnp.asarray(daughter2_area_ratio_inv2, dtype=jnp.float32), "daughter2_area_ratio_inv2"),
+                        #scale_jax(scaling_dict, jnp.asarray(total_area_ratio_inv2, dtype=jnp.float32), "total_area_ratio_inv2"),
+                        scale_jax(scaling_dict, jnp.asarray(daughter1_angle, dtype=jnp.float32), "daughter1_angle"),
+                        scale_jax(scaling_dict, jnp.asarray(daughter2_angle, dtype=jnp.float32), "daughter2_angle"),
+                        scale_jax(scaling_dict, jnp.asarray(daughter1_length_star, dtype=jnp.float32), "daughter1_length_star"),
+                        scale_jax(scaling_dict, jnp.asarray(daughter1_length_star_sq, dtype=jnp.float32), "daughter1_length_star_sq"),
+                        scale_jax(scaling_dict, jnp.asarray(daughter1_flow_split, dtype=jnp.float32), "daughter1_flow_ratio"),
+                        scale_jax(scaling_dict, jnp.asarray(daughter1_flow_split**2, dtype=jnp.float32), "daughter1_flow_ratio_sq"),
+                            ]).reshape(1,-1)
+        input_tens2 = jnp.asarray([scale_jax(scaling_dict, jnp.asarray(daughter2_area_ratio, dtype=jnp.float32), "daughter1_area_ratio"),
+                        scale_jax(scaling_dict, jnp.asarray(daughter1_area_ratio, dtype=jnp.float32), "daughter2_area_ratio"),
+                        #scale_jax(scaling_dict, jnp.asarray(total_daughter_area_ratio, dtype=jnp.float32), "total_daughter_area_ratio"),
+                        scale_jax(scaling_dict, jnp.asarray(daughter2_area_ratio_inv2, dtype=jnp.float32), "daughter1_area_ratio_inv2"),
+                        scale_jax(scaling_dict, jnp.asarray(daughter1_area_ratio_inv2, dtype=jnp.float32), "daughter2_area_ratio_inv2"),
+                        #scale_jax(scaling_dict, jnp.asarray(total_area_ratio_inv2, dtype=jnp.float32), "total_area_ratio_inv2"),
+                        scale_jax(scaling_dict, jnp.asarray(daughter2_angle, dtype=jnp.float32), "daughter1_angle"),
+                        scale_jax(scaling_dict, jnp.asarray(daughter1_angle, dtype=jnp.float32), "daughter2_angle"),
+                        scale_jax(scaling_dict, jnp.asarray(daughter2_length_star, dtype=jnp.float32), "daughter2_length_star"),
+                        scale_jax(scaling_dict, jnp.asarray(daughter2_length_star_sq, dtype=jnp.float32), "daughter2_length_star_sq"),
+                        scale_jax(scaling_dict, jnp.asarray(daughter2_flow_split, dtype=jnp.float32), "daughter2_flow_ratio"),
+                        scale_jax(scaling_dict, jnp.asarray(daughter2_flow_split**2, dtype=jnp.float32), "daughter2_flow_ratio_sq"),
+                            ]).reshape(1,-1)
+
+        coefs_pred1 = predict(input_tens1, nn_model.weights)
+        coefs_pred2 = predict(input_tens2, nn_model.weights)
+
+
+        R_lin_star_pred1 = float(inv_scale_jax(scaling_dict, coefs_pred1[0][0], "daughter1_R_lin_star_m2")[0][0])
+        check_out_of_dist(R_lin_star_pred1, "daughter1_R_lin_star_m2", scaling_dict)
+
+
+        L_star_pred1 = float(inv_scale_jax(scaling_dict, coefs_pred1[0][1], "daughter1_L_star_m2")[0][0]); 
+        L_star_pred1 = check_out_of_dist(L_star_pred1, "daughter1_L_star_m2", scaling_dict)
+
+
+        R_lin_star_pred2 = float(inv_scale_jax(scaling_dict, coefs_pred2[0][0], "daughter2_R_lin_star_m2")[0][0])
+        check_out_of_dist(R_lin_star_pred2, "daughter2_R_lin_star_m2", scaling_dict)
+
+        L_star_pred2 = float(inv_scale_jax(scaling_dict, coefs_pred2[0][1], "daughter2_L_star_m2")[0][0]); 
+        L_star_pred2 = check_out_of_dist(L_star_pred2, "daughter2_L_star_m2", scaling_dict)
+
+
+        daughter1_R_lin = float((1.06 * jnp.square(U_char) * R_lin_star_pred1 /  (A_char * U_char)))
+        daughter1_R_lin_final = float((1.06 * jnp.square(U_char) * R_lin_star_pred1 /  (A_char * U_char))) + (res_add1 - res_sub1) #* daughter1_flow_split
+        daughter1_L = float(L_star_pred1) *1.06*L_char/A_char
+        daughter1_L_final = float(L_star_pred1) *1.06*L_char/A_char + (ind_add1 - ind_sub1) #* daughter1_flow_split
+
+        daughter2_R_lin = float((1.06 * jnp.square(U_char) * R_lin_star_pred2 /  (A_char * U_char)))
+        daughter2_R_lin_final = float((1.06 * jnp.square(U_char) * R_lin_star_pred2 /  (A_char * U_char))) + (res_add2 - res_sub2) #* daughter2_flow_split
+        daughter2_L = float(L_star_pred2) *1.06*L_char/A_char
+        daughter2_L_final = float(L_star_pred2) *1.06*L_char/A_char + (ind_add2 - ind_sub2) #* daughter2_flow_split
+        
+        junction_dict_master[junction_name]["0D_R_RI_outlet1"] = max(daughter1_R_lin_final, 0)
+        junction_dict_master[junction_name]["0D_R_RI_outlet2"] = max(daughter2_R_lin_final, 0)
+        
     return
 
 def add_3D_isol_values(junction_dict_master, tree_name, isol_set_name):

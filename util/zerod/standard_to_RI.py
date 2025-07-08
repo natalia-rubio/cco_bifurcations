@@ -44,7 +44,7 @@ def get_R_values_bif(inlet_area,
     set_type = "random"#
     #set_type = "combined" #"dict_res_fs_ext" 
     scaling_dict = load_dict(f"data/scaling_dictionaries/{anatomy}_{set_type}_scaling_dict")
-    model_name = "ri_tree_20_ng_2492_nl_2_lw_100_ne_500_bs_50_dr_0.95_model"
+    model_name = "ri_tree_20_ng_5334_nl_1_lw_200_ne_1000_bs_400_dr_0.9_model"
     #model_name = "tree_20_ng_950_nl_2_lw_200_ne_5000_bs_100_dr_0.95_model" #"tree_20_ng_400_nl_2_lw_100_ne_1000_bs_20_dr_0.95_model"
     #model_name = "tree_20_ng_280_nl_3_lw_500_ne_2500_bs_20_dr_0.95_model" # "tree_20_ng_400_nl_2_lw_100_ne_1000_bs_20_dr_0.95_model"
     nn_model = dill_load(f"results/models/{anatomy}/{model_name}")
@@ -69,14 +69,19 @@ def get_R_values_bif(inlet_area,
     length_add1 = max([length1 - L_char * scaling_dict["daughter1_length_star"][3], 0])
     length_sub1 = max([L_char * scaling_dict["daughter1_length_star"][2] - length1, 0])
     res_add1 = length_add1 * 8 * np.pi * 0.04 / (outlet1_area**2)
+    ind_add1 = 1.06 * length_add1 / outlet1_area
     res_sub1 = length_sub1 * 8 * np.pi * 0.04 / (outlet1_area**2)
+    ind_sub1 = 1.06 * length_sub1 / outlet1_area
 
     daughter2_length_star = length2/L_char; daughter2_length_star = check_out_of_dist(daughter2_length_star, "daughter2_length_star", scaling_dict)
     daughter2_length_star_sq = jnp.square(daughter2_length_star); daughter2_length_star_sq = check_out_of_dist(daughter2_length_star_sq, "daughter2_length_star_sq", scaling_dict)
     length_add2 = max([length2 - L_char * scaling_dict["daughter2_length_star"][3], 0])
     length_sub2 = max([L_char * scaling_dict["daughter2_length_star"][2] - length2, 0])
+    
     res_add2 = length_add2 * 8 * np.pi * 0.04 / (outlet2_area**2)
+    ind_add2 = 1.06 * length_add2 / outlet2_area
     res_sub2 = length_sub2 * 8 * np.pi * 0.04 / (outlet2_area**2)
+    ind_sub2 = 1.06 * length_sub2 / outlet2_area
 
 
     input_tens1 = jnp.asarray([scale_jax(scaling_dict, jnp.asarray(daughter1_area_ratio, dtype=jnp.float32), "daughter1_area_ratio"),
@@ -113,28 +118,27 @@ def get_R_values_bif(inlet_area,
     R_lin_star_pred1 = float(inv_scale_jax(scaling_dict, coefs_pred1[0][0], "daughter1_R_lin_star_m2")[0][0])
     check_out_of_dist(R_lin_star_pred1, "daughter1_R_lin_star_m2", scaling_dict)
 
-    if coefs_pred1.size > 2:
-        L_star_pred1 = float(inv_scale_jax(scaling_dict, coefs_pred1[0][1], "daughter1_L_star_m2")[0][0]); 
-        L_star_pred1 = check_out_of_dist(L_star_pred1, "daughter1_L_star_m2", scaling_dict)
-    else:
-        L_star_pred1 = 0.0
+
+    L_star_pred1 = float(inv_scale_jax(scaling_dict, coefs_pred1[0][1], "daughter1_L_star_m2")[0][0]); 
+    L_star_pred1 = check_out_of_dist(L_star_pred1, "daughter1_L_star_m2", scaling_dict)
+
 
     R_lin_star_pred2 = float(inv_scale_jax(scaling_dict, coefs_pred2[0][0], "daughter2_R_lin_star_m2")[0][0])
     check_out_of_dist(R_lin_star_pred2, "daughter2_R_lin_star_m2", scaling_dict)
 
-    if coefs_pred2.size > 2:
-        L_star_pred2 = float(inv_scale_jax(scaling_dict, coefs_pred2[0][1], "daughter2_L_star_m2")[0][0]); 
-        L_star_pred2 = check_out_of_dist(L_star_pred2, "daughter2_L_star_m2", scaling_dict)
-    else:   
-        L_star_pred2 = 0.0
+    L_star_pred2 = float(inv_scale_jax(scaling_dict, coefs_pred2[0][1], "daughter2_L_star_m2")[0][0]); 
+    L_star_pred2 = check_out_of_dist(L_star_pred2, "daughter2_L_star_m2", scaling_dict)
+
 
     daughter1_R_lin = float((1.06 * jnp.square(U_char) * R_lin_star_pred1 /  (A_char * U_char)))
     daughter1_R_lin_final = float((1.06 * jnp.square(U_char) * R_lin_star_pred1 /  (A_char * U_char))) + (res_add1 - res_sub1) #* daughter1_flow_split
     daughter1_L = float(L_star_pred1) *1.06*L_char/A_char
+    daughter1_L_final = float(L_star_pred1) *1.06*L_char/A_char + (ind_add1 - ind_sub1) #* daughter1_flow_split
 
     daughter2_R_lin = float((1.06 * jnp.square(U_char) * R_lin_star_pred2 /  (A_char * U_char)))
     daughter2_R_lin_final = float((1.06 * jnp.square(U_char) * R_lin_star_pred2 /  (A_char * U_char))) + (res_add2 - res_sub2) #* daughter2_flow_split
     daughter2_L = float(L_star_pred2) *1.06*L_char/A_char
+    daughter2_L_final = float(L_star_pred2) *1.06*L_char/A_char + (ind_add2 - ind_sub2) #* daughter2_flow_split
 
 
     R_dict = {"inlet_R_lin": 0,
@@ -143,8 +147,8 @@ def get_R_values_bif(inlet_area,
               "inlet_R_quad": 0,
               "daughter1_R_quad": 0,
               "daughter2_R_quad": 0,
-              "daughter1_L": daughter1_L,
-              "daughter2_L": daughter2_L,}
+              "daughter1_L": daughter1_L_final,
+              "daughter2_L": daughter2_L_final,}
     
     return R_dict
 
@@ -203,13 +207,13 @@ def transform_standard_to_RI(tree_name):
         else:
             continue
         
-    t = input_file["boundary_conditions"][0]["bc_values"]["t"] + [tt + input_file["boundary_conditions"][0]["bc_values"]["t"][-1] for tt in input_file["boundary_conditions"][0]["bc_values"]["t"]]
-    Q = 2*input_file["boundary_conditions"][0]["bc_values"]["Q"]
-    for i in range(int(len(Q)/2)):
-        Q[i] = Q[i] * i/int(len(Q)/2)
+    # t = input_file["boundary_conditions"][0]["bc_values"]["t"] + [tt + input_file["boundary_conditions"][0]["bc_values"]["t"][-1] for tt in input_file["boundary_conditions"][0]["bc_values"]["t"]]
+    # Q = 2*input_file["boundary_conditions"][0]["bc_values"]["Q"]
+    # for i in range(int(len(Q)/2)):
+    #     Q[i] = Q[i] * i/int(len(Q)/2)
         
-    input_file["boundary_conditions"][0]["bc_values"]["t"] = t
-    input_file["boundary_conditions"][0]["bc_values"]["Q"] = Q
+    # input_file["boundary_conditions"][0]["bc_values"]["t"] = t
+    # input_file["boundary_conditions"][0]["bc_values"]["Q"] = Q
 
     if not os.path.exists(f'trees/zerod_input/RI/{tree_name_base}/{tree_name}'):
         os.makedirs(f'trees/zerod_input/RI/{tree_name_base}/{tree_name}')

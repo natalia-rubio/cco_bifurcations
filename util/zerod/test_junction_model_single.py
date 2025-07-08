@@ -10,14 +10,17 @@ from util.zerod.standard_to_RI import transform_standard_to_RI
 #from util.zerod.svzerod_to_casadi_ws import solve_casadi_single
 from util.zerod.correct_BCs import correct_BCs
 
-inflow_dict = { "tree_3_flow_25": 16,#20,
+inflow_dict = {"tree_3_flow_12": 8, #12,
+               "tree_3_flow_25": 16,#20,
                 "tree_3_flow_50": 32,#40,
                 "tree_3_flow_100": 63, #80,
                 "tree_3_flow_150": 120,
+                "tree_5_flow_12": 11.25, #12*.5,
                 "tree_5_flow_25": 22.5,#45*.5,
                 "tree_5_flow_50": 45,#*.5,
                 "tree_5_flow_100": 90,#179*.5,
                 "tree_5_flow_150": 134, #270*.5,
+                "tree_10_flow_12": 7, #12*1.875,
                 "tree_10_flow_25": 14,
                 "tree_10_flow_50": 27,
                 "tree_10_flow_100": 54,
@@ -26,6 +29,7 @@ inflow_dict = { "tree_3_flow_25": 16,#20,
                 "tree_20_flow_50": 42,
                 "tree_20_flow_100": 84,
                 "tree_20_flow_150": 126,
+                "tree_40_flow_12": 10, #12*3.75,
                 "tree_40_flow_25": 20,
                 "tree_40_flow_50": 40,
                 "tree_40_flow_100": 80,
@@ -36,8 +40,8 @@ def test_junction_model_single(tree_name, junction_mode):
     """
     Test the junction model for a given tree and junction mode.
     """
-    if junction_mode not in ["standard", "RR", "RI"]:
-        raise ValueError("Invalid junction mode. Choose from 'standard', 'RR', or 'TP'.")
+    if junction_mode not in ["standard", "RRI", "RI"]:
+        raise ValueError("Invalid junction mode. Choose from 'standard', 'RRI', or 'RI'.")
     
     tree_name_split = tree_name.split("_")
     tree_name_base = "_".join(tree_name_split[0:2])
@@ -67,9 +71,9 @@ def test_junction_model_single(tree_name, junction_mode):
     if junction_mode == "RI":
         transform_standard_to_RI(tree_name)
         os.system(f"python3 util/zerod/svzerod_to_casadi_ws.py {tree_name} RI")
-    elif junction_mode == "RR":
+    elif junction_mode == "RRI":
         transform_standard_to_RR(tree_name)
-        os.system(f"python3 util/zerod/svzerod_to_casadi_ws.py {tree_name} RR")
+        os.system(f"python3 util/zerod/svzerod_to_casadi_ws.py {tree_name} RRI")
         #solve_casadi_single(tree_name, junction_mode)
         
 
