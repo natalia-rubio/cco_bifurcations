@@ -85,7 +85,7 @@ def get_scaling_dict(anatomy, set_type, doubled = True, unsteady = False):
     save_dict(data_list_dict, f"data/data_dicts/{anatomy}_{set_type}_synthetic_data_list_dict")
     to_normalize = list(data_list_dict.keys())
 
-    values_of_interest = ["daughter1_R_lin_star", "daughter2_R_lin_star", "daughter1_R_quad_star", "daughter2_R_quad_star"]
+    values_of_interest = ["daughter1_R_lin_star_m2", "daughter1_L_m2", "daughter1_R_lin_star", "daughter2_R_lin_star", "daughter1_R_quad_star", "daughter2_R_quad_star"]
     values_to_skip = ["daughter1_dP_star", "daughter2_dP_star",
                       "daughter1_dP_original", "daughter2_dP_original",
                       "daughter1_flow_star", "daughter2_flow_star", 

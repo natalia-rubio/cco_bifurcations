@@ -41,7 +41,7 @@ if __name__ == "__main__":
                 print(f"Skipping line with unexpected format: {line}")
     #inlet_area = input_file["junctions"][0]["areas"][0]
     inlet_area = np.sqrt(8*np.pi*0.04*input_file["vessels"][0]["vessel_length"]/input_file["vessels"][0]["zero_d_element_values"]["R_poiseuille"])
-    pdb.set_trace()
+    #pdb.set_trace()
     t = t[1:801]  # Remove the first time point
     Q = [q * inlet_area for q in Q[1:801]]  # Scale flow by inlet area
     Q = [q * 80/max(Q) for q in Q]  # Scale flow by 80/84 to match the steady state flow

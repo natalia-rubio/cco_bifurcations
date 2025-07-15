@@ -9,9 +9,9 @@ plt.rcParams['font.family'] = 'serif'
 plt.rcParams['font.size'] = 16
 
 anatomy = "tree_20"
-num_geos = 400
+num_geos = 100
 sampler = qmc.LatinHypercube(d=6,seed = 0)
-samples = sampler.random(n=num_geos*10)
+samples = sampler.random(n=num_geos*100)
 
 samples_uniform = uniform(loc=0, scale=1).ppf(samples)
 samples_normal = norm(loc=0, scale=1).ppf(samples)
@@ -37,7 +37,7 @@ while success_counter < num_geos:
         d1ar = CCO_sampled_params_dict["daughter1_area_ratio"][-1]
         d2ar = CCO_sampled_params_dict["daughter2_area_ratio"][-1]
         print(d1ar, d2ar)
-        if d1ar < 1 and d2ar < 1 and d2ar > 0.2:
+        if d1ar > 1 or d2ar < 0.2:
             area_consistency = True
         else:
             for param_ind, param in enumerate(CCO_sampled_params_dict.keys()):
@@ -48,7 +48,7 @@ while success_counter < num_geos:
         
 if not os.path.exists("data/sampled_params_dict"):
     os.mkdir("data/sampled_params_dict")
-save_dict(CCO_sampled_params_dict, f"data/sampled_params_dict/{anatomy}_sampled_params_dict")
+save_dict(CCO_sampled_params_dict, f"data/sampled_params_dict/{anatomy}_sampled_params_dict_edges")
 
 if not os.path.exists("results/sampled_geo"):
     os.mkdir("results/sampled_geo")

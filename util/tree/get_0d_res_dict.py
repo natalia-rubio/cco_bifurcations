@@ -157,6 +157,8 @@ def get_input_file_junction_dict_master(tree_name):
         aux_area = min(vessel_arr_dict["areas"][np.where(vessel_arr_dict["branch_ids"] == aux_outlet_branch)])
         aux_area_ratio = aux_area/A_char
         junction_dict[junction_name]["0D_inlet_area"] = A_char
+        L_char = np.sqrt(A_char/np.pi)
+        junction_dict[junction_name]["0D_L_char"] = L_char
         junction_dict[junction_name]["0D_outlet1_area"] = primary_area
         junction_dict[junction_name]["0D_outlet1_junction_area"] = junction["areas"][1]
         junction_dict[junction_name]["0D_outlet2_area"] = aux_area

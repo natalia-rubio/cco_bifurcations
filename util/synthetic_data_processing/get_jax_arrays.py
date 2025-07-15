@@ -18,7 +18,9 @@ def get_jax_arrays(anatomy, set_type, unsteady = True):
     scaling_dict = load_dict(f"data/scaling_dictionaries/{anatomy}_{set_type}_scaling_dict")
     num_geos = len(char_val_dict["A_char"])
 
-    input_tens = jnp.concatenate((scale_jax(scaling_dict, jnp.asarray(char_val_dict["daughter1_area_ratio"], dtype=jnp.float32), "daughter1_area_ratio"),
+    input_tens = jnp.concatenate((
+                            scale_jax(scaling_dict, jnp.asarray(char_val_dict["daughter1_area_ratio"], dtype=jnp.float32), "daughter1_area_ratio"),
+                            #scale_jax(scaling_dict, jnp.asarray(char_val_dict["daughter1_R_quad_star"], dtype=jnp.float32), "daughter1_R_quad_star"),
                             scale_jax(scaling_dict, jnp.asarray(char_val_dict["daughter2_area_ratio"], dtype=jnp.float32), "daughter2_area_ratio"),
                             scale_jax(scaling_dict, jnp.asarray(char_val_dict["daughter1_area_ratio_inv2"], dtype=jnp.float32), "daughter1_area_ratio_inv2"),
                             scale_jax(scaling_dict, jnp.asarray(char_val_dict["daughter2_area_ratio_inv2"], dtype=jnp.float32), "daughter2_area_ratio_inv2"),   
@@ -27,7 +29,7 @@ def get_jax_arrays(anatomy, set_type, unsteady = True):
                             scale_jax(scaling_dict, jnp.asarray(char_val_dict["daughter1_length_star"], dtype=jnp.float32), "daughter1_length_star"),
                             scale_jax(scaling_dict, jnp.asarray(char_val_dict["daughter1_length_star_sq"], dtype=jnp.float32), "daughter1_length_star_sq"),
                             scale_jax(scaling_dict, jnp.asarray(char_val_dict["daughter1_flow_ratio"], dtype=jnp.float32), "daughter1_flow_ratio"),
-                            scale_jax(scaling_dict, jnp.asarray(char_val_dict["daughter1_flow_ratio_sq"], dtype=jnp.float32), "daughter1_flow_ratio_sq"),
+                            scale_jax(scaling_dict, jnp.asarray(char_val_dict["daughter1_flow_ratio_inv"], dtype=jnp.float32), "daughter1_flow_ratio_inv"),
                                 ), axis = -1)
     if unsteady:
         output_tens_rri = jnp.concatenate((

@@ -9,10 +9,11 @@ class NeuralNet():
    
     def __init__(self, network_params, optimizer_params):
         self.anatomy        = network_params["anatomy"]; self.set_type = network_params["set_type"]
-        self.data_dict      = load_dict(f"data/jax_arrays/{self.anatomy}/{self.set_type}/jax_arrays_num_geos_{network_params["num_geos"]}") # Load all data
-        self.scaling_dict   = load_dict(f"data/scaling_dictionaries/{self.anatomy}_{self.set_type}_scaling_dict")
+        self.data_dict      = load_dict(f"/Users/natalia/Desktop/cco_bifurcations/data/jax_arrays/{self.anatomy}/{self.set_type}/jax_arrays_num_geos_{network_params["num_geos"]}") # Load all data
+        self.scaling_dict   = load_dict(f"/Users/natalia/Desktop/cco_bifurcations/data/scaling_dictionaries/{self.anatomy}_{self.set_type}_scaling_dict")
         
         self.output_type    = network_params["output_type"]
+        self.target_coef_ind = network_params["target_coef_ind"]
         #model_name = "tree_20_ng_1220_nl_1_lw_40_ne_5000_bs_50_dr_0.95_model"
         #nn_model = dill_load(f"results/models/{network_params["anatomy"]}/{model_name}")
         self.weights        =  init_weights(network_params) # 
@@ -21,14 +22,15 @@ class NeuralNet():
         self.num_layers     = network_params["num_layers"]
         self.layer_width    = network_params["layer_width"]
         if self.output_type == "rri":
-            self.num_output_features = 3
+            self.num_output_coefs = 3
             self.output = self.data_dict["output_rri"]
         elif self.output_type == "ri":
-            self.num_output_features = 2
+            self.num_output_coefs = 2
             self.output = self.data_dict["output_ri"]
         elif self.output_type == "rr":
-            self.num_output_features = 2
+            self.num_output_coefs = 2
             self.output = self.data_dict["output_rr"]
+        self.num_output_features = 1
         # self.num_output_features = 1
         # self.output = self.data_dict["output_rri"][:,2:3]
             
@@ -47,6 +49,7 @@ class NeuralNet():
             self.output[indices,:],
             self.data_dict["scaling_factors"][indices,:],
             self.scaling_dict,
+            self.target_coef_ind,
             self.weights,
             )
         updates, self.opt_state = self.optimizer.update(grads, self.opt_state)
@@ -60,8 +63,18 @@ def predict(input, weights):
     return output 
 
 @jit
-def loss(input, outputs, scaling_factors, scaling_dict, weights):
+def loss(input, outputs, scaling_factors, scaling_dict, target_coef_ind, weights):
     coefs_pred = predict(input, weights)
-    L2_penalty = get_L2(weights)
-    return jnp.sqrt(jnp.mean(jnp.square(coefs_pred - outputs))) + L2_penalty*0.00 # L2 regularization term
+    #pdb.set_trace()
+    L2_penalty = get_L2(weights)/(len(weights) * jnp.size(weights[0][0]))
+    return jnp.sqrt(jnp.mean(jnp.square(coefs_pred[:,target_coef_ind] - outputs[:,target_coef_ind]))) + L2_penalty*0 #*1#L2 regularization term
+
+@jit
+def loss_pure(input, outputs, scaling_factors, scaling_dict, target_coef_ind, weights):
+    coefs_pred = predict(input, weights)
+    #pdb.set_trace()
+    L2_penalty = get_L2(weights)/(len(weights) * jnp.size(weights[0][0]))
+    return jnp.sqrt(jnp.mean(jnp.square(coefs_pred[:,target_coef_ind] - outputs[:,target_coef_ind]))) #L2 regularization term
+
+
 

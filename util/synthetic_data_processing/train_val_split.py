@@ -11,7 +11,7 @@ def generate_train_val_indices(anatomy, set_type, unsteady = True, num_offsets =
     char_val_dict = load_dict(f"data/data_dicts/{anatomy}_{set_type}_synthetic_data_list_dict")
     num_geos = len(char_val_dict["A_char"])
     assert num_geos%num_offsets == 0, f"Number of geometries ({num_geos}) must be divisible by 5 for the random split."
-    train_ind, val_ind = get_random_ind(num_pts = int(num_geos/5), percent_train = 90, seed = seed)
+    train_ind, val_ind = get_random_ind(num_pts = int(num_geos/num_offsets), percent_train = 90, seed = seed)
 
     if not os.path.exists(f"data/split_indices"):
         os.mkdir(f"data/split_indices")

@@ -92,7 +92,7 @@ def compare_to_3d_inlet_unsteady(junction_mode = "standard",
     times_3d_lst_fine = np.linspace(times_3d_last[0], times_3d_last[-1], len(times_3d_last)*100)
     flows_3d_last_fine = interp1d(times_3d_last, flows_3d_last, kind='quadratic')(times_3d_lst_fine)
     pressures_3d_last_fine = interp1d(times_3d_last, pressures_3d_last, kind='quadratic')(times_3d_lst_fine)
-    n_reps = 4
+    n_reps = 2
     pressures_0d_last = pressures_0d[-len(pressures_0d)//n_reps:]
     flows_0d_last = flows_0d[-len(flows_0d)//n_reps:]
     pressures_rri_last = pressures_rri[-len(pressures_rri)//n_reps:]

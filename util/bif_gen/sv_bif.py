@@ -23,8 +23,8 @@ def save_dict(dict, filename_):
 
 
 tree_name = "tree_20"
-set_type = "random_jun18"
-sampled_params_dict = load_dict("data/sampled_params_dict/{tree_name}_sampled_params_dict".format(tree_name=tree_name))
+set_type = "random_wider"
+sampled_params_dict = load_dict("data/sampled_params_dict/{tree_name}_sampled_params_dict_wider".format(tree_name=tree_name))
 if not os.path.exists('/Users/natalia/Desktop/cco_bifurcations/data/synthetic_junctions'):
     os.mkdir('/Users/natalia/Desktop/cco_bifurcations/data/synthetic_junctions')
 if not os.path.exists('/Users/natalia/Desktop/cco_bifurcations/data/synthetic_junctions/{}'.format(tree_name)):
@@ -34,9 +34,9 @@ if not os.path.exists('/Users/natalia/Desktop/cco_bifurcations/data/synthetic_ju
 
 for geo_index in range(len(sampled_params_dict["daughter1_angle"])):
     
-    geo_dir = '/Users/natalia/Desktop/cco_bifurcations/data/synthetic_junctions/{}/{}/CCO_{:03d}'.format(tree_name, set_type, geo_index+50)
+    geo_dir = '/Users/natalia/Desktop/cco_bifurcations/data/synthetic_junctions/{}/{}/CCO_{:03d}'.format(tree_name, set_type, geo_index+700)
     if os.path.exists(geo_dir):
-        print("Geometry directory {:03d} already exists".format(geo_index+50))
+        print("Geometry directory {:03d} already exists".format(geo_index+700))
         continue
     else:
         os.mkdir(geo_dir)
@@ -74,7 +74,7 @@ for geo_index in range(len(sampled_params_dict["daughter1_angle"])):
     #     continue
 
 
-    print("Geometry {:02d} saved".format(geo_index+50))
+    print("Geometry {:02d} saved".format(geo_index+700))
     #pdb.set_trace()
 
 

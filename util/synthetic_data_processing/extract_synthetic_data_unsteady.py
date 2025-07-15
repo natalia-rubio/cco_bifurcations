@@ -270,8 +270,8 @@ def extract_flow_behavior_unsteady(geo_results_dir, offset):
 
     offset_dict["daughter1_flow_ratio"] = flow_ratio1
     offset_dict["daughter2_flow_ratio"] = flow_ratio2
-    offset_dict["daughter1_flow_ratio_sq"] = flow_ratio1**2
-    offset_dict["daughter2_flow_ratio_sq"] = flow_ratio2**2
+    offset_dict["daughter1_flow_ratio_inv"] = flow_ratio1**-1
+    offset_dict["daughter2_flow_ratio_inv"] = flow_ratio2**-1
 
     offset_dict["U_char"] = U_char
     offset_dict["A_char"] = A_char
@@ -311,7 +311,7 @@ def plot_geo(geo_dict, anatomy, set_type, geo):
 
     for offset_name, offset_dict in geo_dict.items():
         colors = ['b', 'g', 'y', 'r',"orange", "c", "m", "k"]
-        
+        ms = 20
         fig, axs = plt.subplots(2,2, width_ratios=[2, 1])
         fig.set_size_inches(7, 5)
         ax1 = axs[0,0]
@@ -343,9 +343,9 @@ def plot_geo(geo_dict, anatomy, set_type, geo):
         
         ax2 = ax1.twinx()
 
-        ax1.scatter(offset_dict["times"], offset_dict["dp1"]/1333, color = "orange", label = "Outlet 1 $\Delta P$ (Simulation)")
+        ax1.scatter(offset_dict["times"], offset_dict["dp1"]/1333, color = "orange", s = ms, label = "Outlet 1 $\Delta P$ (Simulation)")
         ax1.plot(times_arr_fine, dp1_arr_fine/1333, color = "orange", label = "Outlet 1 $\Delta P$ (RRI Fit)")
-        ax1.scatter(offset_dict["times"], offset_dict["dp2"]/1333, color = "mediumpurple",  label = "Outlet 2 $\Delta P$")
+        ax1.scatter(offset_dict["times"], offset_dict["dp2"]/1333, color = "mediumpurple", s = ms,  label = "Outlet 2 $\Delta P$")
         ax1.plot(times_arr_fine, dp2_arr_fine/1333, color = "mediumpurple", label = "Outlet 2 $\Delta P$ (RRI Fit)")
 
         ax1.set_xlabel("Time (s)")
@@ -368,9 +368,9 @@ def plot_geo(geo_dict, anatomy, set_type, geo):
                         offset_dict["daughter2_R_quad"] * np.square(flow_arr_fine2)
         ax3 = axs[0,1]
 
-        ax3.scatter(flow_arr, dp_steady1/1333, color = "orange", label = "Outlet 1 Steady $\Delta P$")
+        ax3.scatter(flow_arr, dp_steady1/1333, color = "orange", s = ms, label = "Outlet 1 Steady $\Delta P$")
         ax3.plot(flow_arr_fine, dp_steady_calc/1333, color = "orange")
-        ax3.scatter(flow_arr, dp_steady2/1333, color = "mediumpurple", label = "Outlet 2 Steady $\Delta P$")
+        ax3.scatter(flow_arr, dp_steady2/1333, color = "mediumpurple", s = ms, label = "Outlet 2 Steady $\Delta P$")
         ax3.plot(flow_arr_fine, dp_steady_calc2/1333, color = "mediumpurple")
         ax3.set_xlabel("Inlet Flow (cm$ ^3$/s)")
         ax3.set_ylabel("$\Delta P_{steady}$ (mmHg)")
@@ -381,9 +381,9 @@ def plot_geo(geo_dict, anatomy, set_type, geo):
         
         ax5 = ax4.twinx()
 
-        ax4.scatter(offset_dict["times"], offset_dict["dp1"]/1333, color = "orange", label = "Outlet 1 $\Delta P$ (Simulation)")
+        ax4.scatter(offset_dict["times"], offset_dict["dp1"]/1333, color = "orange", s = ms, label = "Outlet 1 $\Delta P$ (Simulation)")
         ax4.plot(times_arr_fine, dp1_arr_fine_m2/1333, color = "orange", label = "Outlet 1 $\Delta P$ (RRI Fit)")
-        ax4.scatter(offset_dict["times"], offset_dict["dp2"]/1333, color = "mediumpurple",  label = "Outlet 2 $\Delta P$")
+        ax4.scatter(offset_dict["times"], offset_dict["dp2"]/1333, color = "mediumpurple", s = ms,  label = "Outlet 2 $\Delta P$")
         ax4.plot(times_arr_fine, dp2_arr_fine_m2/1333, color = "mediumpurple", label = "Outlet 2 $\Delta P$ (RRI Fit)")
 
         ax4.set_xlabel("Time (s)")
@@ -400,9 +400,9 @@ def plot_geo(geo_dict, anatomy, set_type, geo):
         dp_steady_calc2_m2  = flow_arr_fine2 * offset_dict["daughter2_R_lin_m2"]
         ax6 = axs[1,1]
 
-        ax6.scatter(flow_arr, dp_steady1_m2/1333, color = "orange", label = "Outlet 1 Steady $\Delta P$")
+        ax6.scatter(flow_arr, dp_steady1_m2/1333, color = "orange", s = ms, label = "Outlet 1 Steady $\Delta P$")
         ax6.plot(flow_arr_fine, dp_steady_calc_m2/1333, color = "orange")
-        ax6.scatter(flow_arr, dp_steady2_m2/1333, color = "mediumpurple", label = "Outlet 2 Steady $\Delta P$")
+        ax6.scatter(flow_arr, dp_steady2_m2/1333, color = "mediumpurple", s = ms, label = "Outlet 2 Steady $\Delta P$")
         ax6.plot(flow_arr_fine, dp_steady_calc2_m2/1333, color = "mediumpurple")
         ax6.set_xlabel("Inlet Flow (cm$ ^3$/s)")
         ax6.set_ylabel("$\Delta P_{steady}$ (mmHg)")
@@ -455,7 +455,7 @@ def extract_unsteady_flow_data(anatomy, set_type, require4, num_offsets = 5):
                     
                     if offset == 7:
                         print(f"Plotting offset {offset} is the steady state for {geo}.")
-                        #plot_geo(geo_dict, anatomy, set_type, geo)
+                        plot_geo(geo_dict, anatomy, set_type, geo)
 
                 except Exception as error:
                     # handle the exception

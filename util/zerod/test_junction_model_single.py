@@ -7,6 +7,9 @@ from util.tree.centerline_proj import extract_results
 from util.fidelity_comparison.compare_to_3d_inlet import compare_to_3d_inlet
 from util.zerod.standard_to_RR import transform_standard_to_RR
 from util.zerod.standard_to_RI import transform_standard_to_RI
+from util.zerod.standard_to_RI_full_fit import transform_standard_to_RI_full_fit
+from util.zerod.standard_to_RI_junctions_fit import transform_standard_to_RI_junctions_fit
+from util.zerod.standard_to_RI_nn_branch_fit import transform_standard_to_RI_nn_branch_fit
 #from util.zerod.svzerod_to_casadi_ws import solve_casadi_single
 from util.zerod.correct_BCs import correct_BCs
 
@@ -40,7 +43,7 @@ def test_junction_model_single(tree_name, junction_mode):
     """
     Test the junction model for a given tree and junction mode.
     """
-    if junction_mode not in ["standard", "RRI", "RI"]:
+    if junction_mode not in ["standard", "RRI", "RI", "RI_full_fit", "RI_junctions_fit", "RI_nn_branch_fit"]:
         raise ValueError("Invalid junction mode. Choose from 'standard', 'RRI', or 'RI'.")
     
     tree_name_split = tree_name.split("_")
@@ -74,7 +77,15 @@ def test_junction_model_single(tree_name, junction_mode):
     elif junction_mode == "RRI":
         transform_standard_to_RR(tree_name)
         os.system(f"python3 util/zerod/svzerod_to_casadi_ws.py {tree_name} RRI")
-        #solve_casadi_single(tree_name, junction_mode)
+    elif junction_mode == "RI_full_fit":
+        transform_standard_to_RI_full_fit(tree_name)
+        os.system(f"python3 util/zerod/svzerod_to_casadi_ws.py {tree_name} RI_full_fit")
+    elif junction_mode == "RI_junctions_fit":
+        transform_standard_to_RI_junctions_fit(tree_name)
+        os.system(f"python3 util/zerod/svzerod_to_casadi_ws.py {tree_name} RI_junctions_fit")
+    elif junction_mode == "RI_nn_branch_fit":
+        transform_standard_to_RI_nn_branch_fit(tree_name)
+        os.system(f"python3 util/zerod/svzerod_to_casadi_ws.py {tree_name} RI_nn_branch_fit")
         
 
     # Project the 0D results to the 3D centerline

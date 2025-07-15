@@ -44,10 +44,12 @@ def get_R_values_bif(inlet_area,
     set_type = "random"#
     #set_type = "combined" #"dict_res_fs_ext" 
     scaling_dict = load_dict(f"data/scaling_dictionaries/{anatomy}_{set_type}_scaling_dict")
-    model_name = "ri_tree_20_ng_5334_nl_1_lw_200_ne_1000_bs_400_dr_0.9_model"
+    model_name0 = "ri_tree_20_ng_5614_nl_1_lw_100_ne_1000_bs_400_dr_0.9_random_pred_0_model"
+    model_name1 = "ri_tree_20_ng_5614_nl_1_lw_200_ne_1000_bs_400_dr_0.9_random_pred_1_model"
     #model_name = "tree_20_ng_950_nl_2_lw_200_ne_5000_bs_100_dr_0.95_model" #"tree_20_ng_400_nl_2_lw_100_ne_1000_bs_20_dr_0.95_model"
     #model_name = "tree_20_ng_280_nl_3_lw_500_ne_2500_bs_20_dr_0.95_model" # "tree_20_ng_400_nl_2_lw_100_ne_1000_bs_20_dr_0.95_model"
-    nn_model = dill_load(f"results/models/{anatomy}/{model_name}")
+    nn_model0 = dill_load(f"results/models/{anatomy}/{model_name0}")
+    nn_model1 = dill_load(f"results/models/{anatomy}/{model_name1}")
 
 
     re_char = 4500
@@ -95,7 +97,7 @@ def get_R_values_bif(inlet_area,
                     scale_jax(scaling_dict, jnp.asarray(daughter1_length_star, dtype=jnp.float32), "daughter1_length_star"),
                     scale_jax(scaling_dict, jnp.asarray(daughter1_length_star_sq, dtype=jnp.float32), "daughter1_length_star_sq"),
                     scale_jax(scaling_dict, jnp.asarray(daughter1_flow_split, dtype=jnp.float32), "daughter1_flow_ratio"),
-                    scale_jax(scaling_dict, jnp.asarray(daughter1_flow_split**2, dtype=jnp.float32), "daughter1_flow_ratio_sq"),
+                    scale_jax(scaling_dict, jnp.asarray(daughter1_flow_split**-1, dtype=jnp.float32), "daughter1_flow_ratio_inv"),
                         ]).reshape(1,-1)
     input_tens2 = jnp.asarray([scale_jax(scaling_dict, jnp.asarray(daughter2_area_ratio, dtype=jnp.float32), "daughter1_area_ratio"),
                     scale_jax(scaling_dict, jnp.asarray(daughter1_area_ratio, dtype=jnp.float32), "daughter2_area_ratio"),
@@ -108,23 +110,24 @@ def get_R_values_bif(inlet_area,
                     scale_jax(scaling_dict, jnp.asarray(daughter2_length_star, dtype=jnp.float32), "daughter2_length_star"),
                     scale_jax(scaling_dict, jnp.asarray(daughter2_length_star_sq, dtype=jnp.float32), "daughter2_length_star_sq"),
                     scale_jax(scaling_dict, jnp.asarray(daughter2_flow_split, dtype=jnp.float32), "daughter2_flow_ratio"),
-                    scale_jax(scaling_dict, jnp.asarray(daughter2_flow_split**2, dtype=jnp.float32), "daughter2_flow_ratio_sq"),
+                    scale_jax(scaling_dict, jnp.asarray(daughter2_flow_split**-1, dtype=jnp.float32), "daughter2_flow_ratio_inv"),
                         ]).reshape(1,-1)
 
-    coefs_pred1 = predict(input_tens1, nn_model.weights)
-    coefs_pred2 = predict(input_tens2, nn_model.weights)
-
+    coefs_pred1 = predict(input_tens1, nn_model0.weights)
+    coefs_pred2 = predict(input_tens2, nn_model0.weights)
 
     R_lin_star_pred1 = float(inv_scale_jax(scaling_dict, coefs_pred1[0][0], "daughter1_R_lin_star_m2")[0][0])
     check_out_of_dist(R_lin_star_pred1, "daughter1_R_lin_star_m2", scaling_dict)
 
-
+    R_lin_star_pred2 = float(inv_scale_jax(scaling_dict, coefs_pred2[0][0], "daughter2_R_lin_star_m2")[0][0])
+    check_out_of_dist(R_lin_star_pred2, "daughter2_R_lin_star_m2", scaling_dict)
+    
+    coefs_pred1 = predict(input_tens1, nn_model1.weights)
+    coefs_pred2 = predict(input_tens2, nn_model1.weights)
+    
     L_star_pred1 = float(inv_scale_jax(scaling_dict, coefs_pred1[0][1], "daughter1_L_star_m2")[0][0]); 
     L_star_pred1 = check_out_of_dist(L_star_pred1, "daughter1_L_star_m2", scaling_dict)
 
-
-    R_lin_star_pred2 = float(inv_scale_jax(scaling_dict, coefs_pred2[0][0], "daughter2_R_lin_star_m2")[0][0])
-    check_out_of_dist(R_lin_star_pred2, "daughter2_R_lin_star_m2", scaling_dict)
 
     L_star_pred2 = float(inv_scale_jax(scaling_dict, coefs_pred2[0][1], "daughter2_L_star_m2")[0][0]); 
     L_star_pred2 = check_out_of_dist(L_star_pred2, "daughter2_L_star_m2", scaling_dict)

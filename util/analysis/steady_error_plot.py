@@ -3,6 +3,7 @@ from math import e
 import os
 import pdb
 import sys
+from tkinter import Y
 import numpy as np
 
 import pandas as pd
@@ -26,7 +27,7 @@ color_list = ["orangered", "royalblue", "seagreen",]
 hatch_list = ["xxxx", "....", ""]
 color_list_light = ['mistyrose', "lightblue", "lightgreen"]
 
-redo = True
+redo = False
 if redo:
     error_dict = {}
     for tree_name in tree_list:
@@ -43,7 +44,7 @@ if redo:
     save_dict(error_dict, f"util/analysis/steady_error_dict.pkl")
 else:
     error_dict = load_dict(f"util/analysis/steady_error_dict.pkl")
-pdb.set_trace()
+
 # plt.clf()
 # for i, flow_mag in enumerate(flow_mag_list):
 #     RR_error = []; RI_error = []; standard_error = []; re_list = []; flow_list = []
@@ -143,7 +144,7 @@ sec.spines['bottom'].set_linewidth(0)
 ax.legend(loc='upper center', bbox_to_anchor=(0.5, 1.2), ncol =3 , frameon=False)
 
 # Labels and title
-ax.set_ylabel('Inlet Pressure (\%)')
+ax.set_ylabel('Inlet Pressure Error (\%)')
 
 # Show plot
 plt.tight_layout()
@@ -153,7 +154,7 @@ plt.savefig(f"results/steady_error_bars_re.pdf", bbox_inches='tight')
 
 plt.clf()
 fig, ax = plt.subplots()
-fig.set_size_inches(12, 4)
+fig.set_size_inches(8, 4)
 
 # Bar width and offsets
 bar_width = 0.20
@@ -170,7 +171,7 @@ for i, middle in enumerate(flow_mag_list):
 
     for j, inner in enumerate(junction_mode_list):
         offset = (i * (num_junction_modes+1) + j) * bar_width
-        heights = [np.abs(error_dict[outer][middle][inner]["pressure_error_0d_tot"][0])*100 for outer in tree_list]
+        heights = [np.abs(error_dict[outer][middle][inner]["pressure_error_0d_tot"][0]) for outer in tree_list]
         bar_positions = indices*(((num_junction_modes+1)*len(flow_mag_list)+2)*bar_width) + offset - (bar_width * num_junction_modes * len(flow_mag_list)+1) / 2
         if i == j == 0:
             start_pos = bar_positions[0]
@@ -179,15 +180,18 @@ for i, middle in enumerate(flow_mag_list):
 for t, tree_name in enumerate(tree_list):     
     for i, middle in enumerate(flow_mag_list):
         tick_list.append((i * (num_junction_modes+1)) * bar_width + (t * (num_flows * (num_junction_modes+1) + 2) * bar_width) + start_pos + bar_width)
-        re_list.append(f"Re={round(int(error_dict[tree_list[t]][middle]['RRI']['inlet_re'][0]), -2)}")
+        re_list.append(f"{round(int(error_dict[tree_list[t]][middle]['RRI']['inlet_re'][0]), -2)}")
 
 # Adjustments for readability
-ax.tick_params(axis='x', bottom=False, top=False, labelbottom=True)
+ax.tick_params(axis='x', labelsize=9, bottom=False, top=False, labelbottom=True)
+tick_list.insert(0, tick_list[0] - 4*bar_width)
+re_list.insert(0, "Inlet Re:")
 ax.set_xticks(tick_list)
 print(tick_list)
 ax.set_xticklabels(re_list)
+tick_list.pop(0)
 
-sec = ax.secondary_xaxis(location=-0.1)
+sec = ax.secondary_xaxis(location=-0.15)
 tl1 = tick_list[2::4]
 tl2 = tick_list[1::4]
 sec.set_xticks([(tl1[i] + tl2[i])/2 for i in range(len(tl1))])
@@ -196,10 +200,13 @@ for label in sec.get_xticklabels():
     label.set_fontstyle('italic')
 sec.tick_params('x', length=0)
 sec.spines['bottom'].set_linewidth(0)
-ax.legend(loc='upper left', frameon=False)
+ax.legend(loc='upper center', bbox_to_anchor=(0.5, 1.2), ncol =3 , frameon=False)
 
 # Labels and title
 ax.set_ylabel('Inlet Pressure Error (mmHg)')
-
 plt.tight_layout()
-plt.savefig(f"results/steady_error_total_bars_re.pdf", bbox_inches='tight')
+plt.savefig(f"results/steady_error_bars_re_tot.pdf", bbox_inches='tight')
+ax.set_yscale("log")
+# Show plot
+
+plt.savefig(f"results/steady_error_bars_re_tot_log.pdf", bbox_inches='tight')

@@ -90,7 +90,7 @@ def solve_casadi_unsteady(time_step = 0, sol_prev = None, input_file = None, res
         C = vessel["zero_d_element_values"]["C"]
         L = vessel["zero_d_element_values"]["L"]
 
-        if "branch0" in vessel["vessel_name"] or junction_mode == "standard":
+        if "branch0" in vessel["vessel_name"] or junction_mode == "standard" or junction_mode == "RI_junctions_fit":
             #print(f"Branch 0 vessel {vessel['vessel_name']} found, adding vessel equation to objective")
             
             objective += (
