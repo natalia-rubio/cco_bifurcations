@@ -28,30 +28,48 @@ if __name__ == "__main__":
     Q = []
 
     #with open("util/zerod/inflow_svFSI_flow_unsteady.flow", 'r') as file:
-    with open(f"trees/geo_files/{tree_name_base}/{tree_name_base}_flow_unsteady/inflow_svFSI_flow_unsteady.flow", 'r') as file:
-        for line in file:
-            # Split the line by whitespace
-            columns = line.split("    ")
+    try:    
+        with open(f"trees/geo_files/{tree_name_base}/{tree_name_base}_flow_unsteady/inflow_svFSI_flow_unsteady.flow", 'r') as file:
+            for line in file:
+                # Split the line by whitespace
+                columns = line.split("    ")
+                #pdb.set_trace()
+                if len(columns) == 2:
+                    # Append data from each column to the corresponding list
+                    t.append(float(columns[0]))
+                    Q.append(-1*float(columns[1][:-2]))
+                else:
+                    print(f"Skipping line with unexpected format: {line}")
+                    
+            inlet_area = np.sqrt(8*np.pi*0.04*input_file["vessels"][0]["vessel_length"]/input_file["vessels"][0]["zero_d_element_values"]["R_poiseuille"])
             #pdb.set_trace()
-            if len(columns) == 2:
-                # Append data from each column to the corresponding list
-                t.append(float(columns[0]))
-                Q.append(-1*float(columns[1][:-2]))
-            else:
-                print(f"Skipping line with unexpected format: {line}")
-    #inlet_area = input_file["junctions"][0]["areas"][0]
-    inlet_area = np.sqrt(8*np.pi*0.04*input_file["vessels"][0]["vessel_length"]/input_file["vessels"][0]["zero_d_element_values"]["R_poiseuille"])
-    #pdb.set_trace()
-    t = t[1:801]  # Remove the first time point
-    Q = [q * inlet_area for q in Q[1:801]]  # Scale flow by inlet area
-    Q = [q * 80/max(Q) for q in Q]  # Scale flow by 80/84 to match the steady state flow
+            t = t[1:801]  # Remove the first time point
+            Q = [q * inlet_area for q in Q[1:801]]  # Scale flow by inlet area
+        #inlet_area = input_file["junctions"][0]["areas"][0]
+    except:
+        pdb.set_trace()
+        with open(f"trees/geo_files/{tree_name_base}/{tree_name_base}_original/inflow.flow", 'r') as file:
+            for line in file:
+                # Split the line by whitespace
+                columns = line.split(" ")
+                #pdb.set_trace()
+                if len(columns) == 2:
+                    # Append data from each column to the corresponding list
+                    t.append(float(columns[0]))
+                    Q.append(-1*float(columns[1][:-2]))
+                else:
+                    print(f"Skipping line with unexpected format: {line}")
+        #inlet_area = input_file["junctions"][0]["areas"][0]
+        
+
+    #Q = [q * 80/max(Q) for q in Q]  # Scale flow by 80/84 to match the steady state flow
     
     t_fine = jnp.linspace(t[0], t[-1], 400)
     Q_fine = interp1d(t, Q, kind='linear', fill_value="extrapolate")(t_fine)
     t_fine = t_fine.tolist()
     Q_fine = Q_fine.tolist()
 
-    num_repeats = 2
+    num_repeats =  2
     input_file["boundary_conditions"][0]["bc_values"]["Q"]= num_repeats * Q_fine
     input_file["boundary_conditions"][0]["bc_values"]["t"]= np.linspace(0, num_repeats * (t_fine[-1] - t_fine[0]), num_repeats * len(t_fine)).tolist()
     

@@ -7,13 +7,17 @@ from util.tree.centerline_proj import extract_results
 from util.fidelity_comparison.compare_to_3d_inlet import compare_to_3d_inlet
 from util.zerod.standard_to_RR import transform_standard_to_RR
 from util.zerod.standard_to_RI import transform_standard_to_RI
+from util.zerod.standard_to_RRI_full_fit import transform_standard_to_RRI_full_fit
+from util.zerod.standard_to_RRI_junctions_fit import transform_standard_to_RRI_junctions_fit
+from util.zerod.standard_to_RRI_nn_branch_fit import transform_standard_to_RRI_nn_branch_fit
 from util.zerod.standard_to_RI_full_fit import transform_standard_to_RI_full_fit
-from util.zerod.standard_to_RI_junctions_fit import transform_standard_to_RI_junctions_fit
 from util.zerod.standard_to_RI_nn_branch_fit import transform_standard_to_RI_nn_branch_fit
+from util.zerod.standard_to_RI_junctions_fit import transform_standard_to_RI_junctions_fit
+#from util.zerod.svzerod_to_casadi_ws import solve_casadi_single
 #from util.zerod.svzerod_to_casadi_ws import solve_casadi_single
 from util.zerod.correct_BCs import correct_BCs
 
-inflow_dict = {"tree_3_flow_12": 8, #12,
+inflow_dict = {"tree_3_flow_12": 7.56, #12,
                "tree_3_flow_25": 16,#20,
                 "tree_3_flow_50": 32,#40,
                 "tree_3_flow_100": 63, #80,
@@ -23,16 +27,16 @@ inflow_dict = {"tree_3_flow_12": 8, #12,
                 "tree_5_flow_50": 45,#*.5,
                 "tree_5_flow_100": 90,#179*.5,
                 "tree_5_flow_150": 134, #270*.5,
-                "tree_10_flow_12": 7, #12*1.875,
-                "tree_10_flow_25": 14,
-                "tree_10_flow_50": 27,
-                "tree_10_flow_100": 54,
+                "tree_10_flow_12": 7.65, #12*1.875,
+                "tree_10_flow_25": 16,
+                "tree_10_flow_50": 32,
+                "tree_10_flow_100": 64,
                 "tree_10_flow_150": 108,
                 "tree_20_flow_25": 21,
                 "tree_20_flow_50": 42,
                 "tree_20_flow_100": 84,
                 "tree_20_flow_150": 126,
-                "tree_40_flow_12": 10, #12*3.75,
+                "tree_40_flow_12": 9.57, #12*3.75,
                 "tree_40_flow_25": 20,
                 "tree_40_flow_50": 40,
                 "tree_40_flow_100": 80,
@@ -43,8 +47,8 @@ def test_junction_model_single(tree_name, junction_mode):
     """
     Test the junction model for a given tree and junction mode.
     """
-    if junction_mode not in ["standard", "RRI", "RI", "RI_full_fit", "RI_junctions_fit", "RI_nn_branch_fit"]:
-        raise ValueError("Invalid junction mode. Choose from 'standard', 'RRI', or 'RI'.")
+    # if junction_mode not in ["standard", "RRI", "RI", "RI_full_fit", "RI_junctions_fit", "RI_nn_branch_fit"]:
+    #     raise ValueError("Invalid junction mode. Choose from 'standard', 'RRI', or 'RI'.")
     
     tree_name_split = tree_name.split("_")
     tree_name_base = "_".join(tree_name_split[0:2])
@@ -86,6 +90,15 @@ def test_junction_model_single(tree_name, junction_mode):
     elif junction_mode == "RI_nn_branch_fit":
         transform_standard_to_RI_nn_branch_fit(tree_name)
         os.system(f"python3 util/zerod/svzerod_to_casadi_ws.py {tree_name} RI_nn_branch_fit")
+    elif junction_mode == "RRI_full_fit":
+        transform_standard_to_RRI_full_fit(tree_name)
+        os.system(f"python3 util/zerod/svzerod_to_casadi_ws.py {tree_name} RRI_full_fit")
+    elif junction_mode == "RRI_junctions_fit":
+        transform_standard_to_RRI_junctions_fit(tree_name)
+        os.system(f"python3 util/zerod/svzerod_to_casadi_ws.py {tree_name} RRI_junctions_fit")
+    elif junction_mode == "RRI_nn_branch_fit":
+        transform_standard_to_RRI_nn_branch_fit(tree_name)
+        os.system(f"python3 util/zerod/svzerod_to_casadi_ws.py {tree_name} RRI_nn_branch_fit")
         
 
     # Project the 0D results to the 3D centerline

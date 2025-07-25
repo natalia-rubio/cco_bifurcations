@@ -46,6 +46,8 @@ def get_input_file_junction_dict_master(tree_name):
     lengths = []; areas = []; vessel_ids = []; branch_ids = []; R_poiseuille = []
     vessel_dict = {}
     for vessel in input_file["vessels"]:
+        if "connector" in vessel["vessel_name"]:
+            continue
         branch_id = int(vessel["vessel_name"].split("_")[0][6:])
         branch_ids.append(branch_id)
         seg_id = int(vessel["vessel_name"].split("_")[1][3:])

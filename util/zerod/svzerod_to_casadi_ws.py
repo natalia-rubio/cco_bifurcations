@@ -82,7 +82,7 @@ def solve_casadi_unsteady(time_step = 0, sol_prev = None, input_file = None, res
         vessel_dict[vessel["vessel_id"]]["v_name"] = vessel["vessel_name"]
 
         R_lin = vessel["zero_d_element_values"]["R_poiseuille"]
-        R_sten = vessel["zero_d_element_values"]["stenosis_coefficient"]
+        R_sten = 0#vessel["zero_d_element_values"]["stenosis_coefficient"]
         if "pressure_recovery_coefficient" in vessel["zero_d_element_values"].keys():
             R_quad = vessel["zero_d_element_values"]["pressure_recovery_coefficient"]
         else:
@@ -90,7 +90,7 @@ def solve_casadi_unsteady(time_step = 0, sol_prev = None, input_file = None, res
         C = vessel["zero_d_element_values"]["C"]
         L = vessel["zero_d_element_values"]["L"]
 
-        if "branch0" in vessel["vessel_name"] or junction_mode == "standard" or junction_mode == "RI_junctions_fit":
+        if "branch0" in vessel["vessel_name"] or junction_mode == "standard" or junction_mode == "RI_junctions_fit" or junction_mode == "RRI_junctions_fit":
             #print(f"Branch 0 vessel {vessel['vessel_name']} found, adding vessel equation to objective")
             
             objective += (
@@ -153,7 +153,7 @@ def solve_casadi_unsteady(time_step = 0, sol_prev = None, input_file = None, res
             if junction["junction_type"] == "BloodVesselJunction":
 
                 R_lin = junction["junction_values"]["R_poiseuille"][j] * coef_factor
-                R_sten = junction["junction_values"]["stenosis_coefficient"][j] * coef_factor
+                R_sten = junction["junction_values"]["stenosis_coefficient"][j] * coef_factor*0
                 if "pressure_recovery_coefficient" in junction["junction_values"].keys():
                     R_quad = junction["junction_values"]["pressure_recovery_coefficient"][j] * coef_factor
                 else:
@@ -170,11 +170,11 @@ def solve_casadi_unsteady(time_step = 0, sol_prev = None, input_file = None, res
                     P_out[inlet_vessel_ind] + # THIS IS THE INLET PRESSURE
                     - P_in[outlet_vessel_ind] +
                     - (R_lin + R_sten * (10**-2 + Q_in[outlet_vessel_ind]**2)**0.5 + R_quad * Q_in[outlet_vessel_ind]) * Q_in[outlet_vessel_ind] + # abs removed
-                    - L * Q_in_dt[outlet_vessel_ind])/(1333 * 20)
+                    - L * Q_in_dt[outlet_vessel_ind])/(1333 * 200)
                 )**2
                 junction_constraint_counter += 1
                 
-                enforce_pressure_loss = True
+                enforce_pressure_loss = False
                 if enforce_pressure_loss:
                     opti.subject_to(
                         P_out[inlet_vessel_ind] - P_in[outlet_vessel_ind] >= 0
@@ -182,12 +182,12 @@ def solve_casadi_unsteady(time_step = 0, sol_prev = None, input_file = None, res
 
                 enforce_flow_splits = True
                 if enforce_flow_splits:
-                    # objective += (
-                    #     100 * (Q_in[outlet_vessel_ind] - junction["junction_values"]["flow_split"][j] *  Q_out[inlet_vessel_ind])
-                    # )
-                    opti.subject_to(
-                        Q_in[outlet_vessel_ind] - junction["junction_values"]["flow_split"][j] *  Q_out[inlet_vessel_ind] == 0
+                    objective += (
+                        (Q_in[outlet_vessel_ind] - junction["junction_values"]["flow_split"][j] *  Q_out[inlet_vessel_ind])**2
                     )
+                    # opti.subject_to(
+                    #     Q_in[outlet_vessel_ind] - junction["junction_values"]["flow_split"][j] *  Q_out[inlet_vessel_ind] == 0
+                    # )
 
             elif junction["junction_type"] == "NORMAL_JUNCTION":
                 # Continuity of pressure (to satisfy exactly)
@@ -196,8 +196,6 @@ def solve_casadi_unsteady(time_step = 0, sol_prev = None, input_file = None, res
 
             
             opti.set_value(outflow_extractors[outlet_vessel_ind, i], -1)
-
-            enforce_flow_splits = True
 
         # Conservation of mass
         opti.set_value(inflow_extractors[inlet_vessel_ind, i], 1)
@@ -221,7 +219,7 @@ def solve_casadi_unsteady(time_step = 0, sol_prev = None, input_file = None, res
         SS_constraint_counter += 4 * num_vessels
 
     # Enforce positive flows
-    positive_flows = False
+    positive_flows = True
     if positive_flows:
         opti.subject_to(casadi.vec(Q_in)  >= 0)
         opti.subject_to(casadi.vec(Q_out) >= 0)
@@ -246,6 +244,7 @@ def solve_casadi_unsteady(time_step = 0, sol_prev = None, input_file = None, res
         #print("Objective value: ", opti.debug.value(objective))
         opti.debug.value(Q_in)
         sol = opti.debug
+        print("Solver failed to converge!")
 
 
     # Casadi solution to Pandas df

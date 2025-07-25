@@ -21,8 +21,8 @@ from fpdf import FPDF
 import matplotlib.pyplot as plt
 import io
 plt.rcParams["font.family"] = "Times New Roman"
-plt.rcParams['font.size'] = 10
-plt.rcParams['text.usetex']=True
+plt.rcParams['font.size']   = 10
+plt.rcParams['text.usetex'] = True
 colors = ["royalblue", "orangered", "seagreen", "peru", "blueviolet"]
 
 def check_out_of_dist(param, param_name, scaling_dict):
@@ -56,7 +56,7 @@ def get_recursive_resistance_0D(junction_dict_master, junction_name):
     junction_resistance = (junction_dict_master[junction_name]["0D_geo_resistance"]**-1 + junction_dict_master[junction_name]["0D_aux_geo_resistance"]**-1)**-1
     return junction_resistance #, downstream_aux_resistance
 
-def get_recursive_resistance_0D_RI(junction_dict_master, junction_name):
+def get_recursive_resistance_0D_RI(junction_dict_master, junction_name, depth2 = 0):
     
     # Base Case
     if junction_dict_master[junction_name]["0D_termination_RI"] == "resistance":
@@ -64,7 +64,7 @@ def get_recursive_resistance_0D_RI(junction_dict_master, junction_name):
         depth = 0
     elif junction_dict_master[junction_name]["0D_termination_RI"] == "junction":
         downstream_junction_name = junction_dict_master[junction_name]["0D_terminal_junction_name"]
-        junction_dict_master[junction_name]["0D_bc_geo_resistance_RI"], depth = get_recursive_resistance_0D_RI(junction_dict_master, downstream_junction_name)
+        junction_dict_master[junction_name]["0D_bc_geo_resistance_RI"], depth = get_recursive_resistance_0D_RI(junction_dict_master, downstream_junction_name, depth2 + 1)
         junction_dict_master[junction_name]["0D_geo_resistance_RI"] = junction_dict_master[junction_name]["0D_bc_geo_resistance_RI"] + junction_dict_master[junction_name]["0D_R_RI_outlet1"]
         junction_dict_master[junction_name]["0D_termination_RI"] = "resistance"
         
@@ -74,12 +74,40 @@ def get_recursive_resistance_0D_RI(junction_dict_master, junction_name):
         depth_aux = 0
     elif junction_dict_master[junction_name]["0D_aux_termination_RI"] == "junction":
         downstream_aux_junction_name = junction_dict_master[junction_name]["0D_aux_terminal_junction_name"]
-        junction_dict_master[junction_name]["0D_aux_bc_geo_resistance_RI"], depth_aux = get_recursive_resistance_0D_RI(junction_dict_master, downstream_aux_junction_name)
+        junction_dict_master[junction_name]["0D_aux_bc_geo_resistance_RI"], depth_aux = get_recursive_resistance_0D_RI(junction_dict_master, downstream_aux_junction_name, depth2 + 1)
         junction_dict_master[junction_name]["0D_aux_geo_resistance_RI"] = junction_dict_master[junction_name]["0D_aux_bc_geo_resistance_RI"] + junction_dict_master[junction_name]["0D_R_RI_outlet2"]
         junction_dict_master[junction_name]["0D_aux_termination_RI"] = "resistance"
+    
+    # if junction_dict_master[junction_name]["0D_aux_geo_resistance_RI"] < 0.001 or junction_dict_master[junction_name]["0D_geo_resistance_RI"] < 0.001:
+    #     pdb.set_trace()
+    # junction_resistance = (junction_dict_master[junction_name]["0D_geo_resistance_RI"]**-1 + \
+    #     junction_dict_master[junction_name]["0D_aux_geo_resistance_RI"]**-1)**-1
         
-    junction_resistance = (junction_dict_master[junction_name]["0D_geo_resistance_RI"]**-1 + junction_dict_master[junction_name]["0D_aux_geo_resistance_RI"]**-1)**-1
+    # if junction_dict_master[junction_name]["0D_geo_resistance_RI"] < 0.001:
+    #     junction_resistance = junction_dict_master[junction_name]["0D_aux_geo_resistance_RI"]
+        
+    # if junction_dict_master[junction_name]["0D_aux_geo_resistance_RI"] < 0.001:
+    #     junction_resistance = junction_dict_master[junction_name]["0D_geo_resistance_RI"]
+        
+    # if junction_dict_master[junction_name]["0D_geo_resistance_RI"] < 0.001 and junction_dict_master[junction_name]["0D_aux_geo_resistance_RI"] < 0.001:
+    #     junction_resistance = 0
+    
+    assert junction_dict_master[junction_name]["0D_flow_ratio"] < 1.0, "Flow ratio should be less than 1.0"
+    junction_resistance = min((0,
+                               junction_dict_master[junction_name]["0D_geo_resistance_RI"] * junction_dict_master[junction_name]["0D_flow_ratio"],
+                              junction_dict_master[junction_name]["0D_aux_geo_resistance_RI"] * (1-junction_dict_master[junction_name]["0D_flow_ratio"])))
+    
+    # junction_resistance = np.mean(np.asarray(
+    #                         junction_dict_master[junction_name]["0D_geo_resistance_RI"] * junction_dict_master[junction_name]["0D_flow_ratio"],
+    #                         junction_dict_master[junction_name]["0D_aux_geo_resistance_RI"] * (1-junction_dict_master[junction_name]["0D_flow_ratio"])))
+    
+    # junction_resistance = np.sum(np.asarray(
+    #                     junction_dict_master[junction_name]["0D_geo_resistance_RI"] * junction_dict_master[junction_name]["0D_flow_ratio"]**2,
+    #                     junction_dict_master[junction_name]["0D_aux_geo_resistance_RI"] * (1-junction_dict_master[junction_name]["0D_flow_ratio"]**2)))
+
     junction_dict_master[junction_name]["depth"] = depth + depth_aux
+    junction_dict_master[junction_name]["depth2"] = depth2 + 1
+    
     return junction_resistance,  depth + depth_aux + 1 #, downstream_aux_resistance
 
 def add_solution_values(junction_dict_master, tree_name, flow_mag, time_step):
@@ -227,6 +255,7 @@ def add_0D_solution_values(junction_dict_master, tree_name, flow_mag, time_step,
         assert (np.linalg.norm(points[branch2_inlet_ind,:] - points[junc_outlet_inds[1],:]) < 1e-2), "Inlet point of branch 1 is not the same as outlet point of junction."
         
         # Extract the relevant pressure values
+        junction_dict[f"0D_{junction_mode}_junc_inlet_flow_fm_{flow_mag}_ts_{time_step}"]          = flow_in_time_aug[0, junc_inlet_ind]
         junction_dict[f"0D_{junction_mode}_junc_inlet_pressure_fm_{flow_mag}_ts_{time_step}"]      = pressure_in_time_aug[0, junc_inlet_ind]
 
     return
@@ -236,11 +265,13 @@ def add_downstream_resistance_values(junction_dict_master):
     junction_resistance = get_recursive_resistance_0D(junction_dict_master, junction_name)
     for junction_name, junction_dict in junction_dict_master.items():
         junction_dict["0D_geo_flow_split"] = junction_dict["0D_aux_geo_resistance"] / junction_dict["0D_geo_resistance"]
+        junction_dict["0D_flow_ratio"] = junction_dict["0D_aux_geo_resistance"] / (junction_dict["0D_geo_resistance"] + junction_dict["0D_aux_geo_resistance"])
     return
 
 def add_downstream_resistance_values_RI(junction_dict_master):
     junction_name = "J0"
-    junction_resistance, depth = get_recursive_resistance_0D_RI(junction_dict_master, junction_name)
+    junction_dict_master[junction_name]["depth2"] = 0
+    junction_resistance, depth = get_recursive_resistance_0D_RI(junction_dict_master, junction_name, junction_dict_master[junction_name]["depth2"])
     junction_dict_master[junction_name]["depth"] = depth
 
     return
@@ -441,6 +472,43 @@ def add_3D_resistance(junction_dict_master, tree_name, flow_mag_list, time_step)
         assert abs(junction_dict["3D_daughter2_R_lin"] -  junction_dict["3D_daughter2_R_lin_star"]*1.06*U_char/A_char) < 0.1; "Daughter 2 linear resistances do not match."
         assert abs(junction_dict["3D_daughter1_R_quad"] - junction_dict["3D_daughter1_R_quad_star"]*1.06/A_char**2) < 0.1; "Daughter 1 quadratic resistances do not match."
         assert abs(junction_dict["3D_daughter2_R_quad"] - junction_dict["3D_daughter2_R_quad_star"]*1.06/A_char**2) < 0.1; "Daughter 2 quadratic resistances do not match."
+        
+        
+        # LINEAR ONLY
+        num_coefs = 2
+        A_mat = np.zeros((2*num_flows, num_coefs))
+        A_mat_star = np.zeros((2*num_flows, num_coefs))
+
+        # Daughter 1 flows
+        A_mat[0:num_flows,0] = Q1
+        A_mat[num_flows:2*num_flows,1] = Q2
+        A_mat_star[0:num_flows,0] = Q_star1
+        A_mat_star[num_flows:2*num_flows,1] = Q_star2
+
+        # Solve
+        coefs_star, residuals, t, q = np.linalg.lstsq(A_mat_star, dP_vec_star, rcond=None)
+        R_lin_star1         = coefs_star[0]
+        R_lin_star2         = coefs_star[1]
+
+        junction_dict["3D_daughter1_R_lin_RI_star"] = copy.copy(R_lin_star1)
+        junction_dict["3D_daughter2_R_lin_RI_star"] = copy.copy(R_lin_star2)
+
+        # Solve
+        coefs, residuals, t, q = np.linalg.lstsq(A_mat, dP_vec, rcond=None)
+        #pdb.set_trace()
+        residuals = dP_vec - A_mat @ coefs
+        # print(f"Residuals: {np.linalg.norm(residuals/dP_vec)}")
+
+        R_lin1         = coefs[0]
+        R_lin2         = coefs[1]
+
+        junction_dict["3D_daughter1_R_lin_RI"] = copy.copy(R_lin1)
+        junction_dict["3D_daughter2_R_lin_RI"] = copy.copy(R_lin2)
+
+        # Check consistency of non-dimensionalization
+        
+        assert abs(junction_dict["3D_daughter1_R_lin_RI"] -  junction_dict["3D_daughter1_R_lin_RI_star"]*1.06*U_char/A_char) < 0.1; "Daughter 1 linear resistances do not match."
+        assert abs(junction_dict["3D_daughter2_R_lin_RI"] -  junction_dict["3D_daughter2_R_lin_RI_star"]*1.06*U_char/A_char) < 0.1; "Daughter 2 linear resistances do not match."
 
     return
 
@@ -559,6 +627,42 @@ def add_3D_resistance_junction_only(junction_dict_master, tree_name, flow_mag_li
         assert abs(junction_dict["3D_daughter1_R_quad_junction_only"] - junction_dict["3D_daughter1_R_quad_star_junction_only"]*1.06/A_char**2)     < 0.1; "Daughter 1 quadratic resistances do not match."
         assert abs(junction_dict["3D_daughter2_R_quad_junction_only"] - junction_dict["3D_daughter2_R_quad_star_junction_only"]*1.06/A_char**2)     < 0.1; "Daughter 2 quadratic resistances do not match."
 
+        # LINEAR ONLY
+        num_coefs = 2
+        A_mat = np.zeros((2*num_flows, num_coefs))
+        A_mat_star = np.zeros((2*num_flows, num_coefs))
+
+        # Daughter 1 flows
+        A_mat[0:num_flows,0] = Q1
+        A_mat[num_flows:2*num_flows,1] = Q2
+        A_mat_star[0:num_flows,0] = Q_star1
+        A_mat_star[num_flows:2*num_flows,1] = Q_star2
+
+        # Solve
+        coefs_star, residuals, t, q = np.linalg.lstsq(A_mat_star, dP_vec_star, rcond=None)
+        R_lin_star1         = coefs_star[0]
+        R_lin_star2         = coefs_star[1]
+
+        junction_dict["3D_daughter1_R_lin_RI_star_junction_only"] = copy.copy(R_lin_star1)
+        junction_dict["3D_daughter2_R_lin_RI_star_junction_only"] = copy.copy(R_lin_star2)
+
+        # Solve
+        coefs, residuals, t, q = np.linalg.lstsq(A_mat, dP_vec, rcond=None)
+        #pdb.set_trace()
+        residuals = dP_vec - A_mat @ coefs
+        # print(f"Residuals: {np.linalg.norm(residuals/dP_vec)}")
+
+        R_lin1         = coefs[0]
+        R_lin2         = coefs[1]
+
+        junction_dict["3D_daughter1_R_lin_RI_junction_only"] = copy.copy(R_lin1)
+        junction_dict["3D_daughter2_R_lin_RI_junction_only"] = copy.copy(R_lin2)
+
+        # Check consistency of non-dimensionalization
+        #pdb.set_trace()
+        assert abs(junction_dict["3D_daughter1_R_lin_RI_junction_only"] -  junction_dict["3D_daughter1_R_lin_RI_star_junction_only"]*1.06*U_char/A_char) < 0.1; "Daughter 1 linear resistances do not match."
+        assert abs(junction_dict["3D_daughter2_R_lin_RI_junction_only"] -  junction_dict["3D_daughter2_R_lin_RI_star_junction_only"]*1.06*U_char/A_char) < 0.1; "Daughter 2 linear resistances do not match."
+    
     return
 
 def add_3D_resistance_nn_branch(junction_dict_master, tree_name, flow_mag_list, time_step):
@@ -676,6 +780,42 @@ def add_3D_resistance_nn_branch(junction_dict_master, tree_name, flow_mag_list, 
         assert abs(junction_dict["3D_daughter1_R_quad_nn_branch"] - junction_dict["3D_daughter1_R_quad_star_nn_branch"]*1.06/A_char**2)     < 0.1; "Daughter 1 quadratic resistances do not match."
         assert abs(junction_dict["3D_daughter2_R_quad_nn_branch"] - junction_dict["3D_daughter2_R_quad_star_nn_branch"]*1.06/A_char**2)     < 0.1; "Daughter 2 quadratic resistances do not match."
 
+        # LINEAR ONLY
+        num_coefs = 2
+        A_mat = np.zeros((2*num_flows, num_coefs))
+        A_mat_star = np.zeros((2*num_flows, num_coefs))
+
+        # Daughter 1 flows
+        A_mat[0:num_flows,0] = Q1
+        A_mat[num_flows:2*num_flows,1] = Q2
+        A_mat_star[0:num_flows,0] = Q_star1
+        A_mat_star[num_flows:2*num_flows,1] = Q_star2
+
+        # Solve
+        coefs_star, residuals, t, q = np.linalg.lstsq(A_mat_star, dP_vec_star, rcond=None)
+        R_lin_star1         = coefs_star[0]
+        R_lin_star2         = coefs_star[1]
+
+        junction_dict["3D_daughter1_R_lin_RI_star_nn_branch"] = copy.copy(R_lin_star1)
+        junction_dict["3D_daughter2_R_lin_RI_star_nn_branch"] = copy.copy(R_lin_star2)
+
+        # Solve
+        coefs, residuals, t, q = np.linalg.lstsq(A_mat, dP_vec, rcond=None)
+        #pdb.set_trace()
+        residuals = dP_vec - A_mat @ coefs
+        # print(f"Residuals: {np.linalg.norm(residuals/dP_vec)}")
+
+        R_lin1         = coefs[0]
+        R_lin2         = coefs[1]
+
+        junction_dict["3D_daughter1_R_lin_RI_nn_branch"] = copy.copy(R_lin1)
+        junction_dict["3D_daughter2_R_lin_RI_nn_branch"] = copy.copy(R_lin2)
+
+        # Check consistency of non-dimensionalization
+        
+        assert abs(junction_dict["3D_daughter1_R_lin_RI_nn_branch"] -  junction_dict["3D_daughter1_R_lin_RI_star_nn_branch"]*1.06*U_char/A_char) < 0.1; "Daughter 1 linear resistances do not match."
+        assert abs(junction_dict["3D_daughter2_R_lin_RI_nn_branch"] -  junction_dict["3D_daughter2_R_lin_RI_star_nn_branch"]*1.06*U_char/A_char) < 0.1; "Daughter 2 linear resistances do not match."
+
     return
 
 def add_3D_resistance_total(junction_dict_master, tree_name, flow_mag_list, time_step):
@@ -713,6 +853,45 @@ def add_3D_resistance_total(junction_dict_master, tree_name, flow_mag_list, time
         R_lin        = coefs[0]
         
         junction_dict["3D_R_lin_total"] = copy.copy(R_lin)
+        #pdb.set_trace()
+
+    return
+
+def add_0D_RI_resistance_total(junction_dict_master, tree_name, flow_mag_list, time_step):
+    for junction_name, junction_dict in junction_dict_master.items():
+
+        re_char = 4500
+        A_char = junction_dict["3D_junc_inlet_area"]
+        L_char = np.sqrt(A_char/np.pi)
+        U_char = re_char * 0.04/(1.06 * 2*np.sqrt(A_char/np.pi))
+        junction_dict["3D_U_char"] = U_char
+
+        inlet_Ps = []
+        inlet_flows = []
+
+        # Compose lists of flow and pressure data for each outlet
+        for flow_mag in flow_mag_list:
+
+                inlet_Ps.append(    junction_dict[f"3D_junc_inlet_pressure_fm_{flow_mag}_ts_{time_step}"])
+                inlet_flows.append( junction_dict[f"3D_junc_inlet_flow_fm_{flow_mag}_ts_{time_step}"])
+
+        Q_inlet = np.asarray(inlet_flows).reshape(-1,)
+        P_inlet = np.asarray(inlet_Ps).reshape(-1,)
+
+        num_flows = len(inlet_flows)
+        num_coefs = 1
+
+        A_mat = np.zeros((num_flows, num_coefs))
+
+        # Daughter 1 flows
+        A_mat[0:num_flows,0] = Q_inlet
+
+        # Solve
+        coefs, residuals, t, q = np.linalg.lstsq(A_mat, inlet_Ps, rcond=None)
+        R_lin        = coefs[0]
+        
+        junction_dict["0D_RI_R_lin_total"] = copy.copy(R_lin)
+        #pdb.set_trace()
 
     return
 
@@ -850,8 +1029,8 @@ def add_0D_RI_resistance(junction_dict_master, tree_name):
     anatomy = "tree_20"; 
     set_type = "random" 
     scaling_dict = load_dict(f"data/scaling_dictionaries/{anatomy}_{set_type}_scaling_dict")
-    model_name0 = "ri_tree_20_ng_5614_nl_1_lw_100_ne_1000_bs_400_dr_0.9_random_pred_0_model"
-    model_name1 = "ri_tree_20_ng_5614_nl_1_lw_200_ne_1000_bs_400_dr_0.9_random_pred_1_model"
+    model_name0 = "ri_tree_20_pred_0_model"
+    model_name1 = "ri_tree_20_pred_1_model"
     #model_name = "tree_20_ng_950_nl_2_lw_200_ne_5000_bs_100_dr_0.95_model" #"tree_20_ng_400_nl_2_lw_100_ne_1000_bs_20_dr_0.95_model"
     #model_name = "tree_20_ng_280_nl_3_lw_500_ne_2500_bs_20_dr_0.95_model" # "tree_20_ng_400_nl_2_lw_100_ne_1000_bs_20_dr_0.95_model"
     nn_model0 = dill_load(f"results/models/{anatomy}/{model_name0}")
@@ -905,6 +1084,7 @@ def add_0D_RI_resistance(junction_dict_master, tree_name):
     
         daughter1_flow_split = junction_dict["0D_geo_flow_split"]/(1+ junction_dict["0D_geo_flow_split"])
         daughter2_flow_split = 1 - daughter1_flow_split
+        daughter1_flow_split = check_out_of_dist(daughter1_flow_split, "daughter1_flow_ratio", scaling_dict)
         
         input_tens1 = jnp.asarray([scale_jax(scaling_dict, jnp.asarray(daughter1_area_ratio, dtype=jnp.float32), "daughter1_area_ratio"),
                         scale_jax(scaling_dict, jnp.asarray(daughter2_area_ratio, dtype=jnp.float32), "daughter2_area_ratio"),

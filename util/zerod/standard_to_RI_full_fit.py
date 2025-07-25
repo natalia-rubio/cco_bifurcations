@@ -51,10 +51,9 @@ def transform_standard_to_RI_full_fit(tree_name):
 
 
         input_file["junctions"][i]["junction_type"] = "BloodVesselJunction"
-        input_file["junctions"][i]["junction_values"] = {"R_poiseuille": [junction_dict["3D_daughter1_R_lin"],
-                                                                          junction_dict["3D_daughter2_R_lin"]],
-                                                         "pressure_recovery_coefficient": [junction_dict["3D_daughter1_R_quad"],
-                                                                          junction_dict["3D_daughter2_R_quad"]],
+        input_file["junctions"][i]["junction_values"] = {"R_poiseuille": [junction_dict["3D_daughter1_R_lin_RI"],
+                                                                          junction_dict["3D_daughter2_R_lin_RI"]],
+                                                         "pressure_recovery_coefficient": [0,0],
                                                          "stenosis_coefficient": [0,0],
                                                          "L": [0,0],
                                                          "flow_split": [daughter1_flow_ratio,daughter2_flow_ratio],
@@ -67,6 +66,22 @@ def transform_standard_to_RI_full_fit(tree_name):
             vessel["zero_d_element_values"]["L"] = 0
         else:
             continue
+    
+    if flow_mag == "12":
+        num_pts = 5
+    elif flow_mag == "25":
+        num_pts = 10
+    elif flow_mag == "50":
+        num_pts = 20
+    elif flow_mag == "100":
+        num_pts = 40
+    t = input_file["boundary_conditions"][0]["bc_values"]["t"] 
+    t = np.linspace(t[0], t[-1], num_pts).tolist()  # Create a fine time vector
+    Q = input_file["boundary_conditions"][0]["bc_values"]["Q"]
+    Q = np.linspace(0, Q[-1], num_pts).tolist()  # Create a fine flow vector
+        
+    input_file["boundary_conditions"][0]["bc_values"]["t"] = t
+    input_file["boundary_conditions"][0]["bc_values"]["Q"] = Q
         
     if not os.path.exists(f'trees/zerod_input/RI_full_fit/{tree_name_base}/{tree_name}'):
         os.makedirs(f'trees/zerod_input/RI_full_fit/{tree_name_base}/{tree_name}')

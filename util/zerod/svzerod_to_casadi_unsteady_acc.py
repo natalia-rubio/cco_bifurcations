@@ -62,7 +62,7 @@ def solve_casadi_unsteady(input_file = None, result_df = None):
         vessel_dict[vessel["vessel_id"]]["v_name"] = vessel["vessel_name"]
 
         R_lin = vessel["zero_d_element_values"]["R_poiseuille"]
-        R_sten = vessel["zero_d_element_values"]["stenosis_coefficient"]*0
+        R_sten = vessel["zero_d_element_values"]["stenosis_coefficient"]#*0
         if "pressure_recovery_coefficient" in vessel["zero_d_element_values"].keys():
             R_quad = vessel["zero_d_element_values"]["pressure_recovery_coefficient"]
             print(f"R_quad: {R_quad} for vessel {vessel['vessel_name']}")
@@ -133,9 +133,11 @@ def solve_casadi_unsteady(input_file = None, result_df = None):
                 R_lin = junction["junction_values"]["R_poiseuille"][j] * coef_factor
                 R_sten = junction["junction_values"]["stenosis_coefficient"][j] * coef_factor
                 if "pressure_recovery_coefficient" in junction["junction_values"].keys():
-                    R_quad = junction["junction_values"]["pressure_recovery_coefficient"][j] * coef_factor
+                    R_quad = junction["junction_values"]["pressure_recovery_coefficient"][j]
                 else:
                     R_quad = 0
+                    pdb.set_trace()
+                print(f"R_quad: {R_quad} for junction {j_name} and outlet vessel {junction['outlet_vessels'][j]}")
 
                 L = junction["junction_values"]["L"][j]
                 C = 0

@@ -70,8 +70,8 @@ def transform_standard_to_RI_nn_branch_fit(tree_name):
 
 
         input_file["junctions"][i]["junction_type"] = "BloodVesselJunction"
-        input_file["junctions"][i]["junction_values"] = {"R_poiseuille": [junction_dict["3D_daughter1_R_lin_nn_branch"] + res_add1,
-                                                                          junction_dict["3D_daughter2_R_lin_nn_branch"] + res_add2],
+        input_file["junctions"][i]["junction_values"] = {"R_poiseuille": [junction_dict["3D_daughter1_R_lin_RI_nn_branch"] + res_add1,
+                                                                          junction_dict["3D_daughter2_R_lin_RI_nn_branch"] + res_add2],
                                                          "pressure_recovery_coefficient": [junction_dict["3D_daughter1_R_quad_nn_branch"],
                                                                           junction_dict["3D_daughter2_R_quad_nn_branch"]],
                                                          "stenosis_coefficient": [0,0],
@@ -87,7 +87,22 @@ def transform_standard_to_RI_nn_branch_fit(tree_name):
             vessel["zero_d_element_values"]["L"] = 0
         else:
             continue
-
+    
+    if flow_mag == "12":
+        num_pts = 5
+    elif flow_mag == "25":
+        num_pts = 10
+    elif flow_mag == "50":
+        num_pts = 20
+    elif flow_mag == "100":
+        num_pts = 40
+    t = input_file["boundary_conditions"][0]["bc_values"]["t"] 
+    t = np.linspace(t[0], t[-1], num_pts).tolist()  # Create a fine time vector
+    Q = input_file["boundary_conditions"][0]["bc_values"]["Q"]
+    Q = np.linspace(0, Q[-1], num_pts).tolist()  # Create a fine flow vector
+        
+    input_file["boundary_conditions"][0]["bc_values"]["t"] = t
+    input_file["boundary_conditions"][0]["bc_values"]["Q"] = Q
     
     if not os.path.exists(f'trees/zerod_input/RI_nn_branch_fit/{tree_name_base}/{tree_name}'):
         os.makedirs(f'trees/zerod_input/RI_nn_branch_fit/{tree_name_base}/{tree_name}')

@@ -45,9 +45,9 @@ def get_R_values_bif(inlet_area,
     set_type = "random"#
     #set_type = "combined" #"dict_res_fs_ext" 
     scaling_dict = load_dict(f"data/scaling_dictionaries/{anatomy}_{set_type}_scaling_dict")
-    model_name0 = "rri_tree_20_ng_4710_nl_3_lw_202_ne_1000_bs_400_dr_0.9_random_pred_0_model" #"rri_tree_20_ng_1310_nl_1_lw_120_ne_5000_bs_50_dr_0.95_model"
-    model_name1 = "rri_tree_20_ng_4710_nl_2_lw_50_ne_1000_bs_400_dr_0.9_random_pred_1_model"
-    model_name2 = "rri_tree_20_ng_4710_nl_3_lw_200_ne_1000_bs_400_dr_0.9_random_pred_2_model"
+    model_name0 = "rri_tree_20_pred_0_model" #"rri_tree_20_ng_1310_nl_1_lw_120_ne_5000_bs_50_dr_0.95_model"
+    model_name1 = "rri_tree_20_pred_1_model"
+    model_name2 = "rri_tree_20_pred_2_model"
     #model_name = "tree_20_ng_950_nl_2_lw_200_ne_5000_bs_100_dr_0.95_model" #"tree_20_ng_400_nl_2_lw_100_ne_1000_bs_20_dr_0.95_model"
     #model_name = "tree_20_ng_280_nl_3_lw_500_ne_2500_bs_20_dr_0.95_model" # "tree_20_ng_400_nl_2_lw_100_ne_1000_bs_20_dr_0.95_model"
     nn_model0 = dill_load(f"results/models/{anatomy}/{model_name0}")
@@ -60,6 +60,8 @@ def get_R_values_bif(inlet_area,
     U_char = re_char * 0.04 / (1.06 * 2 *np.sqrt(A_char/np.pi))
     L_char = np.sqrt(A_char/np.pi)
 
+    total_daughter_area_ratio = (outlet1_area + outlet2_area)/A_char
+    check_out_of_dist(total_daughter_area_ratio, "total_daughter_area_ratio", scaling_dict)
     daughter1_area_ratio = outlet1_area/A_char; daughter1_area_ratio = check_out_of_dist(daughter1_area_ratio, "daughter1_area_ratio", scaling_dict)
     daughter2_area_ratio = outlet2_area/A_char; daughter2_area_ratio = check_out_of_dist(daughter2_area_ratio, "daughter2_area_ratio", scaling_dict)
     total_daughter_area_ratio = (outlet1_area + outlet2_area)/A_char; total_daughter_area_ratio = check_out_of_dist(total_daughter_area_ratio, "total_daughter_area_ratio", scaling_dict)
@@ -86,6 +88,8 @@ def get_R_values_bif(inlet_area,
     res_sub2 = length_sub2 * 8 * np.pi * 0.04 / (outlet2_area**2)
     ind_add2 = 1.06 * length_add2 / outlet2_area
     ind_sub2 = 1.06 * length_sub2 / outlet2_area
+    
+    daughter1_flow_split = check_out_of_dist(daughter1_flow_split, "daughter1_flow_ratio", scaling_dict)
 
 
     input_tens1 = jnp.asarray([scale_jax(scaling_dict, jnp.asarray(daughter1_area_ratio, dtype=jnp.float32), "daughter1_area_ratio"),
@@ -123,8 +127,10 @@ def get_R_values_bif(inlet_area,
     #R_lin_star_pred1 = np.exp(R_lin_star_pred1_log )
     R_lin_star_pred1 = float(inv_scale_jax(scaling_dict, coefs_pred1[0][0], "daughter1_R_lin_star")[0][0])
     R_lin_star_pred1 = check_out_of_dist(R_lin_star_pred1, "daughter1_R_lin_star", scaling_dict)
+    assert R_lin_star_pred1 > 0, f"R_lin_star_pred1 is negative: {R_lin_star_pred1}"
     R_lin_star_pred2 = float(inv_scale_jax(scaling_dict, coefs_pred2[0][0], "daughter2_R_lin_star")[0][0])
     R_lin_star_pred2 = check_out_of_dist(R_lin_star_pred2, "daughter2_R_lin_star", scaling_dict)
+    assert R_lin_star_pred2 > 0, f"R_lin_star_pred2 is negative: {R_lin_star_pred2}"
 
     # R_quad_star_pred1_log = float(inv_scale_jax(scaling_dict, coefs_pred1[0][1], "daughter1_R_quad_star_log")[0][0]); 
     # R_quad_star_pred1_log = check_out_of_dist(R_quad_star_pred1_log, "daughter1_R_quad_star_log", scaling_dict)
@@ -243,7 +249,30 @@ def transform_standard_to_RR(tree_name):
                                                                           R_dict["daughter2_L"]],
                                                                     "flow_split": [daughter1_flow_ratio, daughter2_flow_ratio],}
 
-
+    for vessel in input_file["vessels"]:
+        if "branch0" not in vessel["vessel_name"]:
+            vessel["zero_d_element_values"]["R_poiseuille"] = 0
+            vessel["zero_d_element_values"]["stenosis_coefficient"] = 0
+            vessel["zero_d_element_values"]["L"] = 0
+        else:
+            continue
+    
+    if flow_mag == "12":
+        num_pts = 5
+    elif flow_mag == "25":
+        num_pts = 10
+    elif flow_mag == "50":
+        num_pts = 20
+    elif flow_mag == "100":
+        num_pts = 40
+    t = input_file["boundary_conditions"][0]["bc_values"]["t"] 
+    t = np.linspace(t[0], t[-1], num_pts).tolist()  # Create a fine time vector
+    Q = input_file["boundary_conditions"][0]["bc_values"]["Q"]
+    Q = np.linspace(0, Q[-1], num_pts).tolist()  # Create a fine flow vector
+        
+    input_file["boundary_conditions"][0]["bc_values"]["t"] = t
+    input_file["boundary_conditions"][0]["bc_values"]["Q"] = Q
+    
     if not os.path.exists(f'trees/zerod_input/RRI/{tree_name_base}/{tree_name}'):
         os.makedirs(f'trees/zerod_input/RRI/{tree_name_base}/{tree_name}')
     if not os.path.exists(f'trees/zerod_output/RRI/{tree_name_base}/{tree_name}'):

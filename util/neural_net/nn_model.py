@@ -41,6 +41,7 @@ class NeuralNet():
                                                  transition_steps = optimizer_params["transition_steps"], 
                                                  decay_rate = optimizer_params["decay_rate"])
         self.optimizer = optax.adam(learning_rate = self.scheduler)
+        #self.optimizer = optax.sgd(learning_rate = self.scheduler)
         self.opt_state = self.optimizer.init(self.weights)
         return
     
@@ -67,7 +68,8 @@ def loss(input, outputs, scaling_factors, scaling_dict, target_coef_ind, weights
     coefs_pred = predict(input, weights)
     #pdb.set_trace()
     L2_penalty = get_L2(weights)/(len(weights) * jnp.size(weights[0][0]))
-    return jnp.sqrt(jnp.mean(jnp.square(coefs_pred[:,target_coef_ind] - outputs[:,target_coef_ind]))) + L2_penalty*0 #*1#L2 regularization term
+    return jnp.mean(jnp.square(coefs_pred[:,target_coef_ind] - outputs[:,target_coef_ind])) + L2_penalty*0 #*1#L2 regularization term
+    #return jnp.mean(jnp.square(coefs_pred[:,0] - outputs[:,target_coef_ind])) + L2_penalty*0 #*1#L2 regularization term
 
 @jit
 def loss_pure(input, outputs, scaling_factors, scaling_dict, target_coef_ind, weights):
@@ -75,6 +77,7 @@ def loss_pure(input, outputs, scaling_factors, scaling_dict, target_coef_ind, we
     #pdb.set_trace()
     L2_penalty = get_L2(weights)/(len(weights) * jnp.size(weights[0][0]))
     return jnp.sqrt(jnp.mean(jnp.square(coefs_pred[:,target_coef_ind] - outputs[:,target_coef_ind]))) #L2 regularization term
+    #return jnp.sqrt(jnp.mean(jnp.square(coefs_pred[:,0] - outputs[:,target_coef_ind]))) #L2 regularization term
 
 
 

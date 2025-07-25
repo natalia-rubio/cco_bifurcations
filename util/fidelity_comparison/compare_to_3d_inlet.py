@@ -32,9 +32,11 @@ def compare_to_3d_inlet(junction_mode = "standard",
     branch0_locs = np.where(arrays_3d["BranchId"] == 0)
     #pdb.set_trace()
     # inlet_gid = np.max(arrays_3d["GlobalNodeId"][branch0_locs]) - 10
-    inlet_gid = arrays_3d["GlobalNodeId"][branch0_locs] [np.argmin(arrays_3d["Pressure"][branch0_locs])]
+    inlet_gid = arrays_3d["GlobalNodeId"][branch0_locs][np.argmin(arrays_3d["Pressure"][branch0_locs])]
+    inlet_gid_0d = arrays_3d["GlobalNodeId"][branch0_locs][np.argmin(arrays_0d["pressure"][branch0_locs])]
+    #inlet_gid = 
     #pdb.set_trace()
-    flow_0d = arrays_0d["flow"][arrays_3d["GlobalNodeId"] == inlet_gid]
+    flow_0d = arrays_0d["flow"][arrays_3d["GlobalNodeId"] == inlet_gid_0d]
     flow_3d = arrays_3d["Velocity"][arrays_3d["GlobalNodeId"] == inlet_gid]
     inlet_area = arrays_0d["CenterlineSectionArea"][arrays_3d["GlobalNodeId"] == inlet_gid]
     inlet_u = flow_3d / inlet_area
@@ -43,7 +45,7 @@ def compare_to_3d_inlet(junction_mode = "standard",
 
     area = arrays_3d["CenterlineSectionArea"]
 
-    pressure_0d = arrays_0d["pressure"][arrays_3d["GlobalNodeId"] == inlet_gid]
+    pressure_0d = arrays_0d["pressure"][arrays_3d["GlobalNodeId"] == inlet_gid_0d]
     pressure_3d = arrays_3d["Pressure"][arrays_3d["GlobalNodeId"] == inlet_gid]
 
     flow_error_0d_rel = (flow_0d-flow_3d)/flow_3d

@@ -106,22 +106,23 @@ def get_scaling_dict(anatomy, set_type, doubled = True, unsteady = False):
         print(f"Normalizing {value}")
         scaling_dict.update({value: [np.mean(data_list_dict[value]), np.std(data_list_dict[value]), np.min(data_list_dict[value]), np.max(data_list_dict[value])]})
 
-        plt.clf()
-        plt.hist(data_list_dict[value], bins = 30, alpha = 0.5,)
-        plt.xlabel(value); plt.ylabel("frequency"); plt.title(f"Synthetic {value} distribution")
-
-        plt.savefig(f"results/synthetic_data_trends/geo_dist/{anatomy}_{set_type}_{value}.png", bbox_inches='tight', transparent=False, format = "png")
-
-        for value_of_interest in values_of_interest:
-
-            if not os.path.exists(f"results/synthetic_data_trends/{anatomy}_{set_type}_{value_of_interest}_trends"):
-                os.mkdir(f"results/synthetic_data_trends/{anatomy}_{set_type}_{value_of_interest}_trends")
+        if True:
             plt.clf()
-            plt.scatter(data_list_dict[value], data_list_dict[value_of_interest])
-            plt.xlabel(value); plt.ylabel(value_of_interest); plt.title(f"{value} vs {value_of_interest}")
-            plt.savefig(f"results/synthetic_data_trends/{anatomy}_{set_type}_{value_of_interest}_trends/{value}_{value_of_interest}.png", bbox_inches='tight', transparent=False, format = "png")
-        
+            plt.hist(data_list_dict[value], bins = 30, alpha = 0.5,)
+            plt.xlabel(value); plt.ylabel("frequency"); plt.title(f"Synthetic {value} distribution")
+
+            plt.savefig(f"results/synthetic_data_trends/geo_dist/{anatomy}_{set_type}_{value}.png", bbox_inches='tight', transparent=False, format = "png")
+
+            for value_of_interest in values_of_interest:
+
+                if not os.path.exists(f"results/synthetic_data_trends/{anatomy}_{set_type}_{value_of_interest}_trends"):
+                    os.mkdir(f"results/synthetic_data_trends/{anatomy}_{set_type}_{value_of_interest}_trends")
+                plt.clf()
+                plt.scatter(data_list_dict[value], data_list_dict[value_of_interest])
+                plt.xlabel(value); plt.ylabel(value_of_interest); plt.title(f"{value} vs {value_of_interest}")
+                plt.savefig(f"results/synthetic_data_trends/{anatomy}_{set_type}_{value_of_interest}_trends/{value}_{value_of_interest}.png", bbox_inches='tight', transparent=False, format = "png")
             
+                
 
     if not os.path.exists(f"data/scaling_dictionaries"):
         os.mkdir(f"data/scaling_dictionaries")

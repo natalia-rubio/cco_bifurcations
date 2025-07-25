@@ -17,13 +17,14 @@ import dill
 
 
 def train_nn(model, training_params):
-    
+    model_name2 = f"{model.output_type}_{model.anatomy}_pred_{model.target_coef_ind}"
     model_name = f"{model.output_type}_{model.anatomy}_ng_{model.num_geos}_nl_{model.num_layers}_lw_{model.layer_width}_ne_{training_params['num_epochs']}_bs_{training_params['batch_size']}_dr_{model.decay_rate}_{model.set_type}_pred_{model.target_coef_ind}"
     plotting = True
     train_hist = []
     val_hist = []
     
     num_offsets = training_params["num_offsets"]
+    print("Number of offsets: ", num_offsets)
     train_inds = np.concatenate([training_params["train_inds"] * num_offsets  + i for i in range(num_offsets)])
     val_inds =  np.concatenate([training_params["val_inds"] * num_offsets + i for i in range(num_offsets)])
 
@@ -72,5 +73,5 @@ def train_nn(model, training_params):
         #     plt.savefig(f"/Users/natalia/Desktop/cco_bifurcations/results/models/{model.anatomy}/{model_name}_training_plot.png", bbox_inches='tight')
 
     dill_save(model, f"/Users/natalia/Desktop/cco_bifurcations/results/models/{model.anatomy}/{model_name}_model")
-    
+    dill_save(model, f"/Users/natalia/Desktop/cco_bifurcations/results/models/{model.anatomy}/{model_name2}_model")
     return val_loss.item()

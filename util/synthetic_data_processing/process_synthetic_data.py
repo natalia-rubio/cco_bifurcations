@@ -12,7 +12,7 @@ from util.synthetic_data_processing.get_scaling_dict import *
 anatomy = sys.argv[1]
 set_type= sys.argv[2]
 unsteady_text = sys.argv[3] #false
-num_offsets = 5
+num_offsets =8
 unsteady = False
 if unsteady_text == "unsteady":
     unsteady = True

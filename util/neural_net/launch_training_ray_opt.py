@@ -12,7 +12,7 @@ from ray.tune.search.hyperopt import HyperOptSearch
 from ray.train import ScalingConfig
 scaling_config = ScalingConfig(
     # Number of distributed workers.
-    num_workers=1,
+    num_workers=4,
     # Turn on/off GPU.
     use_gpu=False,
 )
@@ -26,7 +26,7 @@ global coef_ind
 search_space = { 
     "num_layers": tune.uniform(0, 4),
     "layer_width": tune.lograndint(1, 300),
-    "learning_rate": tune.loguniform(1e-5, 1e-2),
+    "learning_rate": tune.loguniform(1e-6, 1e-2),
     #"batch_size": tune.choice([20, 50, 100,]),
 }
 hyperopt_search = HyperOptSearch(search_space, metric="val_loss", mode="min")
@@ -66,29 +66,30 @@ def obj(config):
     return {"val_loss": val_loss}
 
 
-# print("Hyperparameter optimization RRI Resistance")
+print("Hyperparameter optimization RRI Resistance")
+output_type = "rri"
+coef_ind = 0
+tuner = tune.Tuner(obj, tune_config=tune.TuneConfig(
+        num_samples=50,
+        search_alg=hyperopt_search,
+        max_concurrent_trials=4)
+    )
+results = tuner.fit()
+print(results.get_best_result(metric="val_loss", mode="min").config)
+if not os.path.exists(f"/Users/natalia/Desktop/cco_bifurcations/results/ray_tune"):
+    os.makedirs(f"/Users/natalia/Desktop/cco_bifurcations/results/ray_tune")
+save_dict(results.get_best_result(metric="val_loss", mode="min").config, f"/Users/natalia/Desktop/cco_bifurcations/results/ray_tune/{output_type}_{coef_ind}_best_config_{anatomy}_{num_geos}.json")
+
+# print("Hyperparameter optimization RRI Quadratic Resistance")
 # output_type = "rri"
-# coef_ind = 0
+# coef_ind = 1
 # tuner = tune.Tuner(obj, tune_config=tune.TuneConfig(
 #         num_samples=50,
 #         search_alg=hyperopt_search,
 #     )) 
 # results = tuner.fit()
 # print(results.get_best_result(metric="val_loss", mode="min").config)
-# if not os.path.exists(f"/Users/natalia/Desktop/cco_bifurcations/results/ray_tune"):
-#     os.makedirs(f"/Users/natalia/Desktop/cco_bifurcations/results/ray_tune")
-# save_dict(results.get_best_result(metric="val_loss", mode="min").config, f"/Users/natalia/Desktop/cco_bifurcations/results/ray_tune/{output_type}_{coef_ind}_best_config_{anatomy}_{num_geos}.json")
-
-print("Hyperparameter optimization RRI Quadratic Resistance")
-output_type = "rri"
-coef_ind = 1
-tuner = tune.Tuner(obj, tune_config=tune.TuneConfig(
-        num_samples=50,
-        search_alg=hyperopt_search,
-    )) 
-results = tuner.fit()
-print(results.get_best_result(metric="val_loss", mode="min").config)
-save_dict(results.get_best_result(metric="val_loss", mode="min").config, f"results/ray_tune/{output_type}_{coef_ind}_best_config_{anatomy}_{num_geos}.json")
+# save_dict(results.get_best_result(metric="val_loss", mode="min").config, f"results/ray_tune/{output_type}_{coef_ind}_best_config_{anatomy}_{num_geos}.json")
 
 # print("Hyperparameter optimization RRI Inductor")
 # output_type = "rri"
