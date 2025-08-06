@@ -63,7 +63,10 @@ if __name__ == "__main__":
         
 
     #Q = [q * 80/max(Q) for q in Q]  # Scale flow by 80/84 to match the steady state flow
-    
+    if "tree_40" in tree_name:
+        Q = [q * 80/max(Q) for q in Q] 
+    if "tree_3" in tree_name:
+        Q = [q * 63/max(Q) for q in Q] 
     t_fine = jnp.linspace(t[0], t[-1], 400)
     Q_fine = interp1d(t, Q, kind='linear', fill_value="extrapolate")(t_fine)
     t_fine = t_fine.tolist()

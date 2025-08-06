@@ -92,13 +92,10 @@ def compare_to_3d_inlet_unsteady(junction_mode = "standard",
     times_3d_lst_fine = np.linspace(times_3d_last[0], times_3d_last[-1], len(times_3d_last)*100)
     flows_3d_last_fine = interp1d(times_3d_last, flows_3d_last, kind='quadratic')(times_3d_lst_fine)
     pressures_3d_last_fine = interp1d(times_3d_last, pressures_3d_last, kind='quadratic')(times_3d_lst_fine)
-    n_reps = 2
-    pressures_0d_last = pressures_0d[-len(pressures_0d)//n_reps:]
-    flows_0d_last = flows_0d[-len(flows_0d)//n_reps:]
-    pressures_rri_last = pressures_rri[-len(pressures_rri)//n_reps:]
-    flows_rri_last = flows_rri[-len(flows_rri)//n_reps:]
-    pressures_ri_last = pressures_ri[-len(pressures_ri)//n_reps:]
-    flows_ri_last = flows_ri[-len(flows_ri)//n_reps:]
+    n_reps = 4
+    pressures_0d_last = pressures_0d[-len(pressures_0d)//n_reps:];flows_0d_last = flows_0d[-len(flows_0d)//n_reps:]; times_0d_last = times_0d[-len(times_0d)//n_reps:]
+    pressures_rri_last = pressures_rri[-len(pressures_rri)//n_reps:];flows_rri_last = flows_rri[-len(flows_rri)//n_reps:]; times_rri_last = times_rri[-len(times_rri)//n_reps:]
+    pressures_ri_last = pressures_ri[-len(pressures_ri)//n_reps:];flows_ri_last = flows_ri[-len(flows_ri)//n_reps:]; times_ri_last = times_rri[-len(times_rri)//n_reps:]
     
     
 
@@ -110,22 +107,22 @@ def compare_to_3d_inlet_unsteady(junction_mode = "standard",
     
     # --------------------- FLOW PLOT ---------------------
     plt.clf()
-    plt.plot(times_0d, pressures_0d, label="0D standard", color="tomato")
-    plt.plot(times_rri, pressures_rri, label="0D RRI", color="seagreen")
-    plt.plot(times_ri, pressures_ri, label="0D RI", color="royalblue")
-    plt.plot(times_3d, pressures_3d, color="slategrey", label="3D")
-    plt.xlabel("Flow (cm$^3$/s)")
+    plt.plot(times_0d_last, pressures_0d_last, label="0D standard", color="tomato")
+    plt.plot(times_rri_last, pressures_rri_last, label="0D RRI", color="seagreen")
+    plt.plot(times_ri_last, pressures_ri_last, label="0D RI", color="royalblue")
+    plt.plot(times_3d_last, pressures_3d_last, color="slategrey", label="3D")
+    plt.xlabel("Time (cm$^3$/s)")
     plt.ylabel("Pressure (mmHg)")
     plt.legend()
     os.makedirs(f"results/unsteady/{tree_name}", exist_ok=True)
-    plt.savefig(f"results/unsteady/{tree_name}/0d_standard_pf.png")
+    plt.savefig(f"results/unsteady/{tree_name}/0d_standard_pt.png")
 
     # --------------------- PRESSURE PLOT ---------------------
     plt.clf()
-    plt.plot(times_0d, flows_0d, color="tomato", linewidth=4)
-    plt.plot(times_rri, flows_rri, color="seagreen")
-    plt.plot(times_ri, flows_ri, color="royalblue")
-    plt.plot(times_3d, flows_3d, color="slategrey")
+    plt.plot(times_0d_last, flows_0d_last, color="tomato", linewidth=4)
+    plt.plot(times_rri_last, flows_rri_last, color="seagreen")
+    plt.plot(times_ri_last, flows_ri_last, color="royalblue")
+    plt.plot(times_3d_last, flows_3d_last, color="slategrey")
     plt.xlabel("Time (s)")
     plt.ylabel("Flow (cm$^3$/s)")
     plt.savefig(f"results/unsteady/{tree_name}/0d_ft.png")

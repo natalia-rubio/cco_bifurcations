@@ -257,6 +257,16 @@ def add_0D_solution_values(junction_dict_master, tree_name, flow_mag, time_step,
         # Extract the relevant pressure values
         junction_dict[f"0D_{junction_mode}_junc_inlet_flow_fm_{flow_mag}_ts_{time_step}"]          = flow_in_time_aug[0, junc_inlet_ind]
         junction_dict[f"0D_{junction_mode}_junc_inlet_pressure_fm_{flow_mag}_ts_{time_step}"]      = pressure_in_time_aug[0, junc_inlet_ind]
+        
+        junction_dict[f"0D_{junction_mode}_branch1_inlet_flow_fm_{flow_mag}_ts_{time_step}"]   = flow_in_time_aug[0, branch1_inlet_ind]
+        junction_dict[f"0D_{junction_mode}_branch1_outlet_flow_fm_{flow_mag}_ts_{time_step}"]  = flow_in_time_aug[0, branch1_outlet_ind]
+        junction_dict[f"0D_{junction_mode}_branch2_inlet_flow_fm_{flow_mag}_ts_{time_step}"]   = flow_in_time_aug[0, branch2_inlet_ind]
+        junction_dict[f"0D_{junction_mode}_branch2_outlet_flow_fm_{flow_mag}_ts_{time_step}"]  = flow_in_time_aug[0, branch2_outlet_ind]
+        
+        junction_dict[f"0D_{junction_mode}_branch1_inlet_pressure_fm_{flow_mag}_ts_{time_step}"]   = pressure_in_time_aug[0, branch1_inlet_ind]
+        junction_dict[f"0D_{junction_mode}_branch1_outlet_pressure_fm_{flow_mag}_ts_{time_step}"]  = pressure_in_time_aug[0, branch1_outlet_ind]
+        junction_dict[f"0D_{junction_mode}_branch2_inlet_pressure_fm_{flow_mag}_ts_{time_step}"]   = pressure_in_time_aug[0, branch2_inlet_ind]
+        junction_dict[f"0D_{junction_mode}_branch2_outlet_pressure_fm_{flow_mag}_ts_{time_step}"]  = pressure_in_time_aug[0, branch2_outlet_ind]
 
     return
 
@@ -281,6 +291,7 @@ def add_geometry_values(junction_dict_master, tree_name, flow_mag, time_step):
     tree_name_split = tree_name.split("_")
     tree_name_base = "_".join(tree_name_split[0:2])
     flow_mag = tree_name_split[-1]
+    #pdb.set_trace()
 
     # Project the 3D solution onto the centerline if not already done
     fpath_out = f"trees/threed_output_cent/{tree_name_base}/{tree_name}/centerline_sol_{time_step}.vtp"
@@ -313,27 +324,39 @@ def add_geometry_values(junction_dict_master, tree_name, flow_mag, time_step):
         junc_inlet_ind =    get_inds(arr = pt_id, vals = junc_inlet_pt)[0]
         junc_outlet_inds =  get_inds(arr = pt_id, vals = junc_outlet_pts)
         
+        num_inlet_pts = np.sum(branch_id == branch_id[junc_inlet_ind])
+        junc_inlet_100_ind =    get_inds(arr = pt_id, vals = [junc_inlet_pt[0]-int(num_inlet_pts/2)])[0]
+        #pdb.set_trace()
+        
+        junction_dict["3D_junc_inlet_length"] = np.linalg.norm(points[junc_inlet_100_ind, :] - points[junc_inlet_ind, :])
         junction_dict["3D_junc_inlet_area"] = area[junc_inlet_ind]
+        junction_dict["3D_junc_inlet_area_corr"] = area[junc_inlet_100_ind]
         junction_dict["3D_junc_inlet_diameter"] = 2*(junction_dict["3D_junc_inlet_area"] / np.pi)**0.5
         junction_dict["3D_L_char"] = (junction_dict["3D_junc_inlet_area"] / np.pi)**0.5
         junction_dict["3D_junc_outlet1_area"] = area[junc_outlet_inds[0]]
         junction_dict["3D_junc_outlet2_area"] = area[junc_outlet_inds[1]]
         junction_dict["3D_junc_inlet_tangent"] = direction[junc_inlet_ind,:]
+        junction_dict["3D_junc_inlet_tangent_corr"] = direction[junc_inlet_100_ind,:]
         junction_dict["3D_junc_outlet1_tangent"] = direction[junc_outlet_inds[0],:]
         junction_dict["3D_junc_outlet2_tangent"] = direction[junc_outlet_inds[1],:]
         junction_dict["3D_junc_outlet1_angle"] = get_angle_diff(np.asarray(junction_dict["3D_junc_inlet_tangent"]), np.asarray(junction_dict["3D_junc_outlet1_tangent"]))[0]
         junction_dict["3D_junc_outlet2_angle"] = get_angle_diff(np.asarray(junction_dict["3D_junc_inlet_tangent"]), np.asarray(junction_dict["3D_junc_outlet2_tangent"]))[0]
-
+        junction_dict["3D_junc_outlet1_angle_corr"] = get_angle_diff(np.asarray(junction_dict["3D_junc_inlet_tangent_corr"]), np.asarray(junction_dict["3D_junc_outlet1_tangent"]))[0]
+        junction_dict["3D_junc_outlet2_angle_corr"] = get_angle_diff(np.asarray(junction_dict["3D_junc_inlet_tangent_corr"]), np.asarray(junction_dict["3D_junc_outlet2_tangent"]))[0]
         # Identify the first branch coming out of the junction
         branch1_id = junction_dict["0D_outlet1_branch_id"]
         # Get the indices of the inlet and outlet points of the first branch
         branch1_inlet_ind =     get_inds(arr = pt_id, vals = [branch_dict_3D[branch1_id]["min_pt"],])[0]
         branch1_outlet_ind =    get_inds(arr = pt_id, vals = [branch_dict_3D[branch1_id]["max_pt"],])[0]
+        branch1_outlet_100_ind =    get_inds(arr = pt_id, vals = [branch_dict_3D[branch1_id]["max_pt"]-100,])[0]
 
         assert (np.linalg.norm(points[branch1_inlet_ind,:] - points[junc_outlet_inds[0],:]) < 1e-2), "Inlet point of branch 1 is not the same as outlet point of junction."
         junction_dict["3D_branch1_id"] = branch1_id
         junction_dict["3D_branch1_length"] = np.linalg.norm(points[branch1_outlet_ind, :] - points[branch1_inlet_ind, :])
+        junction_dict["3D_branch1_length_corr"] = np.linalg.norm(points[branch1_outlet_ind, :] - points[branch1_outlet_100_ind, :])
+        #pdb.set_trace()
         junction_dict["3D_branch1_length_star"] = junction_dict["3D_branch1_length"] / junction_dict["3D_L_char"]
+        junction_dict["3D_branch1_length_corr_star"] = junction_dict["3D_branch1_length_corr"] / junction_dict["3D_L_char"]
         junction_dict["3D_branch1_inlet_area"] = area[branch1_inlet_ind]
         junction_dict["3D_branch1_outlet_area"] = area[branch1_outlet_ind]
         junction_dict["3D_branch1_inlet_tangent"] = direction[branch1_inlet_ind,:]
@@ -345,10 +368,13 @@ def add_geometry_values(junction_dict_master, tree_name, flow_mag, time_step):
         # Get the indices of the inlet and outlet points of the first branch
         branch2_inlet_ind =     get_inds(arr = pt_id, vals = [branch_dict_3D[branch2_id]["min_pt"],])[0]
         branch2_outlet_ind =    get_inds(arr = pt_id, vals = [branch_dict_3D[branch2_id]["max_pt"],])[0]
+        branch2_outlet_100_ind =    get_inds(arr = pt_id, vals = [branch_dict_3D[branch2_id]["max_pt"]-100,])[0]
         assert (np.linalg.norm(points[branch2_inlet_ind, :] - points[junc_outlet_inds[1], :]) < 1e-2), "Inlet point of branch 1 is not the same as outlet point of junction."
         junction_dict["3D_branch2_id"] = branch2_id
         junction_dict["3D_branch2_length"] = np.linalg.norm(points[branch2_outlet_ind, :] - points[branch2_inlet_ind, :])
+        junction_dict["3D_branch2_length_corr"] = np.linalg.norm(points[branch2_outlet_ind, :] - points[branch2_outlet_100_ind, :])
         junction_dict["3D_branch2_length_star"] = junction_dict["3D_branch2_length"] / junction_dict["3D_L_char"]
+        junction_dict["3D_branch2_length_corr_star"] = junction_dict["3D_branch2_length_corr"] / junction_dict["3D_L_char"]
         junction_dict["3D_branch2_inlet_area"] = area[branch2_inlet_ind]
         junction_dict["3D_branch2_outlet_area"] = area[branch2_outlet_ind]
         junction_dict["3D_branch2_inlet_tangent"] = direction[branch2_inlet_ind,:]
@@ -356,6 +382,208 @@ def add_geometry_values(junction_dict_master, tree_name, flow_mag, time_step):
         
         
     
+    return
+
+
+def add_3D_resistance_comp(junction_dict_master, tree_name, flow_mag_list, time_step):
+    for junction_name, junction_dict in junction_dict_master.items():
+
+        re_char = 4500
+        A_char = junction_dict["3D_junc_inlet_area"]
+        L_char = np.sqrt(A_char/np.pi)
+        U_char = re_char * 0.04/(1.06 * 2*np.sqrt(A_char/np.pi))
+        junction_dict["3D_U_char"] = U_char
+
+        daughter1_dPs = []
+        daughter2_dPs = []
+        daughter1_flows = []
+        daughter2_flows = []
+
+        # Compose lists of flow and pressure data for each outlet
+        for flow_mag in flow_mag_list[-1:]:
+
+                daughter1_dPs.append(
+                    junction_dict[f"3D_junc_inlet_pressure_fm_{flow_mag}_ts_{time_step}"] - 
+                    junction_dict[f"3D_branch1_outlet_pressure_fm_{flow_mag}_ts_{time_step}"])
+                daughter2_dPs.append(
+                    junction_dict[f"3D_junc_inlet_pressure_fm_{flow_mag}_ts_{time_step}"] - 
+                    junction_dict[f"3D_branch2_outlet_pressure_fm_{flow_mag}_ts_{time_step}"])
+                
+                daughter1_flows.append(
+                    junction_dict[f"3D_branch1_outlet_flow_fm_{flow_mag}_ts_{time_step}"])
+                daughter2_flows.append(
+                    junction_dict[f"3D_branch2_outlet_flow_fm_{flow_mag}_ts_{time_step}"])
+        
+                assert len(daughter1_dPs) == len(daughter1_flows); "Lengths of daughter1_dPs and daughter1_flows do not match."
+                assert len(daughter2_dPs) == len(daughter2_flows); "Lengths of daughter2_dPs and daughter2_flows do not match."
+        
+        junction_dict["3D_daughter1_flows"] = copy.copy(daughter1_flows)
+        junction_dict["3D_daughter2_flows"] = copy.copy(daughter2_flows)
+        junction_dict["3D_inlet_flows"] = [daughter1_flow + daughter2_flow for daughter1_flow, daughter2_flow in zip(daughter1_flows, daughter2_flows)]
+
+        junction_dict["3D_daughter1_dPs"] = copy.copy(daughter1_dPs)
+        junction_dict["3D_daughter2_dPs"] = copy.copy(daughter2_dPs)
+
+        daughter1_flow_stars = [daughter1_flow/(U_char * A_char) for daughter1_flow in daughter1_flows]
+        daughter2_flow_stars = [daughter2_flow/(U_char * A_char) for daughter2_flow in daughter2_flows]
+        
+        Q_star1 = np.asarray(daughter1_flow_stars).reshape(-1,)
+        Q_star2 = np.asarray(daughter2_flow_stars).reshape(-1,)
+        Q_star_inlet = Q_star1 + Q_star2
+
+        daughter1_dP_stars = [daughter1_dP/(1.06 * U_char**2) for daughter1_dP in daughter1_dPs]
+        daughter2_dP_stars = [daughter2_dP/(1.06 * U_char**2) for daughter2_dP in daughter2_dPs]
+
+        dP_star1 = np.asarray(daughter1_dP_stars).reshape(-1,)
+        dP_star2 = np.asarray(daughter2_dP_stars).reshape(-1,)
+        dP_vec_star = np.hstack([dP_star1, dP_star2])
+
+        Q1 = np.asarray(daughter1_flows).reshape(-1,)
+        Q2 = np.asarray(daughter2_flows).reshape(-1,)
+        Q_inlet = Q1 + Q2
+
+        dP1 = np.asarray(daughter1_dPs).reshape(-1,)
+        dP2 = np.asarray(daughter2_dPs).reshape(-1,)
+        dP_vec = np.hstack([dP1, dP2])
+
+        num_flows = len(daughter1_flows)
+
+        # LINEAR ONLY
+        num_coefs = 2
+        A_mat = np.zeros((2*num_flows, num_coefs))
+        A_mat_star = np.zeros((2*num_flows, num_coefs))
+
+        # Daughter 1 flows
+        A_mat[0:num_flows,0] = Q1
+        A_mat[num_flows:2*num_flows,1] = Q2
+        A_mat_star[0:num_flows,0] = Q_star1
+        A_mat_star[num_flows:2*num_flows,1] = Q_star2
+
+        # Solve
+        coefs_star, residuals, t, q = np.linalg.lstsq(A_mat_star, dP_vec_star, rcond=None)
+        R_lin_star1         = coefs_star[0]
+        R_lin_star2         = coefs_star[1]
+
+        junction_dict["3D_daughter1_R_lin_comp_star"] = copy.copy(R_lin_star1)
+        junction_dict["3D_daughter2_R_lin_comp_star"] = copy.copy(R_lin_star2)
+
+        # Solve
+        coefs, residuals, t, q = np.linalg.lstsq(A_mat, dP_vec, rcond=None)
+        #pdb.set_trace()
+        residuals = dP_vec - A_mat @ coefs
+        # print(f"Residuals: {np.linalg.norm(residuals/dP_vec)}")
+
+        R_lin1         = coefs[0]
+        R_lin2         = coefs[1]
+
+        junction_dict["3D_daughter1_R_lin_comp"] = copy.copy(R_lin1)
+        junction_dict["3D_daughter2_R_lin_comp"] = copy.copy(R_lin2)
+        # Check consistency of non-dimensionalization
+        
+        assert abs(junction_dict["3D_daughter1_R_lin_comp"] -  junction_dict["3D_daughter1_R_lin_comp_star"]*1.06*U_char/A_char) < 0.1; "Daughter 1 linear resistances do not match."
+        assert abs(junction_dict["3D_daughter2_R_lin_comp"] -  junction_dict["3D_daughter2_R_lin_comp_star"]*1.06*U_char/A_char) < 0.1; "Daughter 2 linear resistances do not match."
+
+    return
+
+
+def add_0D_RI_resistance_comp(junction_dict_master, tree_name, flow_mag_list, time_step, junction_mode):
+    for junction_name, junction_dict in junction_dict_master.items():
+
+        re_char = 4500
+        A_char = junction_dict["3D_junc_inlet_area"]
+        L_char = np.sqrt(A_char/np.pi)
+        U_char = re_char * 0.04/(1.06 * 2*np.sqrt(A_char/np.pi))
+        junction_dict["3D_U_char"] = U_char
+
+        daughter1_dPs = []
+        daughter2_dPs = []
+        daughter1_flows = []
+        daughter2_flows = []
+
+        # Compose lists of flow and pressure data for each outlet
+        for flow_mag in flow_mag_list[-1:]:
+
+                daughter1_dPs.append(
+                    junction_dict[f"0D_{junction_mode}_junc_inlet_pressure_fm_{flow_mag}_ts_{time_step}"] - 
+                    junction_dict[f"0D_{junction_mode}_branch1_outlet_pressure_fm_{flow_mag}_ts_{time_step}"])
+                daughter2_dPs.append(
+                    junction_dict[f"0D_{junction_mode}_junc_inlet_pressure_fm_{flow_mag}_ts_{time_step}"] - 
+                    junction_dict[f"0D_{junction_mode}_branch2_outlet_pressure_fm_{flow_mag}_ts_{time_step}"])
+                
+                daughter1_flows.append(
+                    junction_dict[f"0D_{junction_mode}_branch1_outlet_flow_fm_{flow_mag}_ts_{time_step}"])
+                daughter2_flows.append(
+                    junction_dict[f"0D_{junction_mode}_branch2_outlet_flow_fm_{flow_mag}_ts_{time_step}"])
+        
+                assert len(daughter1_dPs) == len(daughter1_flows); "Lengths of daughter1_dPs and daughter1_flows do not match."
+                assert len(daughter2_dPs) == len(daughter2_flows); "Lengths of daughter2_dPs and daughter2_flows do not match."
+        
+        junction_dict[f"0D_{junction_mode}_daughter1_flows"] = copy.copy(daughter1_flows)
+        junction_dict[f"0D_{junction_mode}_daughter2_flows"] = copy.copy(daughter2_flows)
+        junction_dict[f"0D_{junction_mode}_inlet_flows"] = [daughter1_flow + daughter2_flow for daughter1_flow, daughter2_flow in zip(daughter1_flows, daughter2_flows)]
+
+        junction_dict[f"0D_{junction_mode}_daughter1_dPs"] = copy.copy(daughter1_dPs)
+        junction_dict[f"0D_{junction_mode}_daughter2_dPs"] = copy.copy(daughter2_dPs)
+
+        daughter1_flow_stars = [daughter1_flow/(U_char * A_char) for daughter1_flow in daughter1_flows]
+        daughter2_flow_stars = [daughter2_flow/(U_char * A_char) for daughter2_flow in daughter2_flows]
+        
+        Q_star1 = np.asarray(daughter1_flow_stars).reshape(-1,)
+        Q_star2 = np.asarray(daughter2_flow_stars).reshape(-1,)
+        Q_star_inlet = Q_star1 + Q_star2
+
+        daughter1_dP_stars = [daughter1_dP/(1.06 * U_char**2) for daughter1_dP in daughter1_dPs]
+        daughter2_dP_stars = [daughter2_dP/(1.06 * U_char**2) for daughter2_dP in daughter2_dPs]
+
+        dP_star1 = np.asarray(daughter1_dP_stars).reshape(-1,)
+        dP_star2 = np.asarray(daughter2_dP_stars).reshape(-1,)
+        dP_vec_star = np.hstack([dP_star1, dP_star2])
+
+        Q1 = np.asarray(daughter1_flows).reshape(-1,)
+        Q2 = np.asarray(daughter2_flows).reshape(-1,)
+        Q_inlet = Q1 + Q2
+
+        dP1 = np.asarray(daughter1_dPs).reshape(-1,)
+        dP2 = np.asarray(daughter2_dPs).reshape(-1,)
+        dP_vec = np.hstack([dP1, dP2])
+
+        num_flows = len(daughter1_flows)
+
+        # LINEAR ONLY
+        num_coefs = 2
+        A_mat = np.zeros((2*num_flows, num_coefs))
+        A_mat_star = np.zeros((2*num_flows, num_coefs))
+
+        # Daughter 1 flows
+        A_mat[0:num_flows,0] = Q1
+        A_mat[num_flows:2*num_flows,1] = Q2
+        A_mat_star[0:num_flows,0] = Q_star1
+        A_mat_star[num_flows:2*num_flows,1] = Q_star2
+
+        # Solve
+        coefs_star, residuals, t, q = np.linalg.lstsq(A_mat_star, dP_vec_star, rcond=None)
+        R_lin_star1         = coefs_star[0]
+        R_lin_star2         = coefs_star[1]
+
+        junction_dict[f"0D_{junction_mode}_daughter1_R_lin_comp_star"] = copy.copy(R_lin_star1)
+        junction_dict[f"0D_{junction_mode}_daughter2_R_lin_comp_star"] = copy.copy(R_lin_star2)
+
+        # Solve
+        coefs, residuals, t, q = np.linalg.lstsq(A_mat, dP_vec, rcond=None)
+        #pdb.set_trace()
+        residuals = dP_vec - A_mat @ coefs
+        # print(f"Residuals: {np.linalg.norm(residuals/dP_vec)}")
+
+        R_lin1         = coefs[0]
+        R_lin2         = coefs[1]
+
+        junction_dict[f"0D_{junction_mode}_daughter1_R_lin_comp"] = copy.copy(R_lin1)
+        junction_dict[f"0D_{junction_mode}_daughter2_R_lin_comp"] = copy.copy(R_lin2)
+        # Check consistency of non-dimensionalization
+        
+        assert abs(junction_dict[f"0D_{junction_mode}_daughter1_R_lin_comp"] -  junction_dict[f"0D_{junction_mode}_daughter1_R_lin_comp_star"]*1.06*U_char/A_char) < 0.1; "Daughter 1 linear resistances do not match."
+        assert abs(junction_dict[f"0D_{junction_mode}_daughter2_R_lin_comp"] -  junction_dict[f"0D_{junction_mode}_daughter2_R_lin_comp_star"]*1.06*U_char/A_char) < 0.1; "Daughter 2 linear resistances do not match."
+
     return
 
 def add_3D_resistance(junction_dict_master, tree_name, flow_mag_list, time_step):
@@ -504,7 +732,6 @@ def add_3D_resistance(junction_dict_master, tree_name, flow_mag_list, time_step)
 
         junction_dict["3D_daughter1_R_lin_RI"] = copy.copy(R_lin1)
         junction_dict["3D_daughter2_R_lin_RI"] = copy.copy(R_lin2)
-
         # Check consistency of non-dimensionalization
         
         assert abs(junction_dict["3D_daughter1_R_lin_RI"] -  junction_dict["3D_daughter1_R_lin_RI_star"]*1.06*U_char/A_char) < 0.1; "Daughter 1 linear resistances do not match."
@@ -872,8 +1099,8 @@ def add_0D_RI_resistance_total(junction_dict_master, tree_name, flow_mag_list, t
         # Compose lists of flow and pressure data for each outlet
         for flow_mag in flow_mag_list:
 
-                inlet_Ps.append(    junction_dict[f"3D_junc_inlet_pressure_fm_{flow_mag}_ts_{time_step}"])
-                inlet_flows.append( junction_dict[f"3D_junc_inlet_flow_fm_{flow_mag}_ts_{time_step}"])
+                inlet_Ps.append(    junction_dict[f"0D_RI_junc_inlet_pressure_fm_{flow_mag}_ts_{time_step}"])
+                inlet_flows.append( junction_dict[f"0D_RI_junc_inlet_flow_fm_{flow_mag}_ts_{time_step}"])
 
         Q_inlet = np.asarray(inlet_flows).reshape(-1,)
         P_inlet = np.asarray(inlet_Ps).reshape(-1,)
@@ -892,6 +1119,43 @@ def add_0D_RI_resistance_total(junction_dict_master, tree_name, flow_mag_list, t
         
         junction_dict["0D_RI_R_lin_total"] = copy.copy(R_lin)
         #pdb.set_trace()
+
+    return
+
+def add_0D_RRI_resistance_total(junction_dict_master, tree_name, flow_mag_list, time_step):
+    for junction_name, junction_dict in junction_dict_master.items():
+
+        re_char = 4500
+        A_char = junction_dict["3D_junc_inlet_area"]
+        L_char = np.sqrt(A_char/np.pi)
+        U_char = re_char * 0.04/(1.06 * 2*np.sqrt(A_char/np.pi))
+        junction_dict["3D_U_char"] = U_char
+
+        inlet_Ps = []
+        inlet_flows = []
+
+        # Compose lists of flow and pressure data for each outlet
+        for flow_mag in flow_mag_list:
+
+                inlet_Ps.append(    junction_dict[f"0D_RRI_junc_inlet_pressure_fm_{flow_mag}_ts_{time_step}"])
+                inlet_flows.append( junction_dict[f"0D_RRI_junc_inlet_flow_fm_{flow_mag}_ts_{time_step}"])
+
+        Q_inlet = np.asarray(inlet_flows).reshape(-1,)
+        P_inlet = np.asarray(inlet_Ps).reshape(-1,)
+
+        num_flows = len(inlet_flows)
+        num_coefs = 1
+
+        A_mat = np.zeros((num_flows, num_coefs))
+
+        # Daughter 1 flows
+        A_mat[0:num_flows,0] = Q_inlet
+
+        # Solve
+        coefs, residuals, t, q = np.linalg.lstsq(A_mat, inlet_Ps, rcond=None)
+        R_lin        = coefs[0]
+        
+        junction_dict["0D_RRI_R_lin_total"] = copy.copy(R_lin)
 
     return
 

@@ -19,6 +19,7 @@ plt.rcParams['text.usetex']=True
 
 #tree_list = ["tree_3", "tree_5", "tree_10", "tree_20", "tree_40"]
 tree_list = ["tree_3",  "tree_10", "tree_40"]
+#tree_list = ["tree_40"]
 num_outlets_list = [3, 10, 40]
 flow_mag_list = ["12", "25", "50", "100"]
 junction_mode_list = ["standard", "RI", "RRI"]
@@ -164,7 +165,7 @@ ax2.set_ylim(0, 240)
 plt.tight_layout()
 plt.savefig(f"results/steady_error_bars_re.pdf", bbox_inches='tight')
 
-# # ------------------- Total Error Plot -------------------
+# ------------------- Total Error Plot -------------------
 
 # plt.clf()
 # fig, ax = plt.subplots()

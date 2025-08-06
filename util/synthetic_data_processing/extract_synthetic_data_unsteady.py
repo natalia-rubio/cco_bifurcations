@@ -80,6 +80,7 @@ def extract_flow_behavior_unsteady(geo_results_dir, offset):
         tangents = np.asarray(soln_dict["tangents"])
         lengths = np.asarray(soln_dict["lengths"]).reshape((-1, 2))
         
+        
         if verbose:
             print(f"Extracted flow data from {flow_result_dir}.")
 
@@ -142,12 +143,14 @@ def extract_flow_behavior_unsteady(geo_results_dir, offset):
 
     if R_lin_star1 < 0:
             # Linear resistors
+       # raise ValueError(f"Linear resistance for daughter 1 is negative: {R_lin_star1}.")
         A_mat[0:num_flows,0] = flow[:,1]*0
         A_mat_star[0:num_flows,0] = flow_star[:,1]*0
         R_lin_star1 = 0
         
     if R_lin_star2 < 0:
             # Linear resistors
+        #raise ValueError(f"Linear resistance for daughter 2 is negative: {R_lin_star2}.")
         A_mat[num_flows:2*num_flows,3] = flow[:,2]*0
         A_mat_star[num_flows:2*num_flows,3] = flow_star[:,2]*0
         R_lin_star2 = 0
@@ -330,8 +333,8 @@ def extract_flow_behavior_unsteady(geo_results_dir, offset):
         raise ValueError(f"Daughter angles are too high: {offset_dict['daughter1_angle']}, {offset_dict['daughter2_angle']}.")
     if offset_dict["daughter1_flow_ratio"] > 0.95 or offset_dict["daughter2_flow_ratio"] > 0.95:
         raise ValueError(f"Daughter flow ratios are too high: {offset_dict['daughter1_flow_ratio']}, {offset_dict['daughter2_flow_ratio']}.")
-    if offset_dict["daughter1_length_star"] > 35 or offset_dict["daughter2_length_star"] > 35:
-        raise ValueError(f"Daughter length stars are too low: {offset_dict['daughter1_length_star']}, {offset_dict['daughter2_length_star']}.")
+    # if offset_dict["daughter1_length_star"] > 35 or offset_dict["daughter2_length_star"] > 35:
+    #     raise ValueError(f"Daughter length stars are too low: {offset_dict['daughter1_length_star']}, {offset_dict['daughter2_length_star']}.")
     if offset_dict["daughter1_R_quad_star"] < -10 or offset_dict["daughter2_R_quad_star"] < -10:
         raise ValueError(f"Quadratic resistance is too low: {offset_dict['daughter1_R_quad_star']}.")
     if offset_dict["daughter2_R_quad_star"] > 10 and offset_dict["daughter2_area_ratio"] > 0.4:
@@ -350,7 +353,7 @@ def extract_flow_behavior_unsteady(geo_results_dir, offset):
     offset_dict["daughter2_area_ratio_inv2"] = (A_char/areas[0,2])**2
     offset_dict["total_area_ratio_inv2"] = (A_char/(areas[0,1] + areas[0,2]))**2
     print(f"Extracted flow behavior for offset {offset} in geometry {geo_results_dir}.")
-    pdb.set_trace()
+    #pdb.set_trace()
     return offset_dict, (r2_rri, r2_ri)
 
 def plot_geo(geo_dict, anatomy, set_type, geo):

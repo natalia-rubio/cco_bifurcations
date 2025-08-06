@@ -7,13 +7,14 @@ import optax
 
 class NeuralNet():
    
-    def __init__(self, network_params, optimizer_params):
+    def __init__(self, network_params, optimizer_params,):
         self.anatomy        = network_params["anatomy"]; self.set_type = network_params["set_type"]
         self.data_dict      = load_dict(f"/Users/natalia/Desktop/cco_bifurcations/data/jax_arrays/{self.anatomy}/{self.set_type}/jax_arrays_num_geos_{network_params["num_geos"]}") # Load all data
         self.scaling_dict   = load_dict(f"/Users/natalia/Desktop/cco_bifurcations/data/scaling_dictionaries/{self.anatomy}_{self.set_type}_scaling_dict")
-        
+        #pdb.set_trace()
         self.output_type    = network_params["output_type"]
         self.target_coef_ind = network_params["target_coef_ind"]
+        self.outlet_number = network_params["outlet_number"]
         #model_name = "tree_20_ng_1220_nl_1_lw_40_ne_5000_bs_50_dr_0.95_model"
         #nn_model = dill_load(f"results/models/{network_params["anatomy"]}/{model_name}")
         self.weights        =  init_weights(network_params) # 
@@ -21,15 +22,16 @@ class NeuralNet():
         self.num_input_features = network_params["num_input_features"]
         self.num_layers     = network_params["num_layers"]
         self.layer_width    = network_params["layer_width"]
+        
+        self.input = self.data_dict[f"input_{self.outlet_number}"]
+        self.output = self.data_dict[f"output_{self.outlet_number}_{self.output_type}"]
+        
         if self.output_type == "rri":
             self.num_output_coefs = 3
-            self.output = self.data_dict["output_rri"]
         elif self.output_type == "ri":
             self.num_output_coefs = 2
-            self.output = self.data_dict["output_ri"]
         elif self.output_type == "rr":
             self.num_output_coefs = 2
-            self.output = self.data_dict["output_rr"]
         self.num_output_features = 1
         # self.num_output_features = 1
         # self.output = self.data_dict["output_rri"][:,2:3]
@@ -46,7 +48,7 @@ class NeuralNet():
         return
     
     def update(self, indices):
-        grads = grad(loss, argnums = -1)(self.data_dict["input"][indices,:],
+        grads = grad(loss, argnums = -1)(self.input[indices,:],
             self.output[indices,:],
             self.data_dict["scaling_factors"][indices,:],
             self.scaling_dict,

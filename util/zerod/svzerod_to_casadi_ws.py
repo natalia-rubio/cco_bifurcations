@@ -100,10 +100,14 @@ def solve_casadi_unsteady(time_step = 0, sol_prev = None, input_file = None, res
                 - L * Q_out_dt[i]  
                 )**2
         else:
-            objective += (
-                P_out[i] +
-                - P_in[i] 
-            )**2
+            # objective += (
+            #     P_out[i] +
+            #     - P_in[i] 
+            # )**2
+            opti.subject_to(
+                P_out[i] + 
+                - P_in[i] == 0
+            )
 
         # objective += (
         #     P_in[i] +
@@ -153,6 +157,7 @@ def solve_casadi_unsteady(time_step = 0, sol_prev = None, input_file = None, res
             if junction["junction_type"] == "BloodVesselJunction":
 
                 R_lin = junction["junction_values"]["R_poiseuille"][j] * coef_factor
+                R_lin_inlet = junction["junction_values"]["inlet_R_lin"][0] * coef_factor
                 R_sten = junction["junction_values"]["stenosis_coefficient"][j] * coef_factor*0
                 if "pressure_recovery_coefficient" in junction["junction_values"].keys():
                     R_quad = junction["junction_values"]["pressure_recovery_coefficient"][j] * coef_factor
@@ -166,12 +171,13 @@ def solve_casadi_unsteady(time_step = 0, sol_prev = None, input_file = None, res
                 #print("Inductance: ", L)
 
                 # Junction pressure equation residual (to minimize)
-                objective += ((
+                objective += (0*10**-13/inlet_Q**2+((
                     P_out[inlet_vessel_ind] + # THIS IS THE INLET PRESSURE
                     - P_in[outlet_vessel_ind] +
                     - (R_lin + R_sten * (10**-2 + Q_in[outlet_vessel_ind]**2)**0.5 + R_quad * Q_in[outlet_vessel_ind]) * Q_in[outlet_vessel_ind] + # abs removed
-                    - L * Q_in_dt[outlet_vessel_ind])/(1333 * 200)
-                )**2
+                    - L * Q_in_dt[outlet_vessel_ind] +
+                    - R_lin_inlet * Q_out[inlet_vessel_ind])/(1333*inlet_Q**2)#(1333*20) #(1333 * 200)
+                )**2)
                 junction_constraint_counter += 1
                 
                 enforce_pressure_loss = False
@@ -182,11 +188,12 @@ def solve_casadi_unsteady(time_step = 0, sol_prev = None, input_file = None, res
 
                 enforce_flow_splits = True
                 if enforce_flow_splits:
-                    objective += (
-                        (Q_in[outlet_vessel_ind] - junction["junction_values"]["flow_split"][j] *  Q_out[inlet_vessel_ind])**2
+                    objective += (0*10**-13/inlet_Q**2 + 
+                        ((Q_in[outlet_vessel_ind] - junction["junction_values"]["flow_split"][j] *  Q_out[inlet_vessel_ind]))**2
                     )
-                    # opti.subject_to(
-                    #     Q_in[outlet_vessel_ind] - junction["junction_values"]["flow_split"][j] *  Q_out[inlet_vessel_ind] == 0
+                    # objective += (
+                    #     ((Q_in[outlet_vessel_ind] - junction["junction_values"]["flow_split"][j] *  Q_out[inlet_vessel_ind]) )
+                    #     **2
                     # )
 
             elif junction["junction_type"] == "NORMAL_JUNCTION":
@@ -204,7 +211,7 @@ def solve_casadi_unsteady(time_step = 0, sol_prev = None, input_file = None, res
 
     # Enforce steady state
     steady = True
-    if time_step == 0 or steady:
+    if time_step == 1 or steady:
         opti.subject_to(casadi.vec(Q_in_dt)     == 0)
         opti.subject_to(casadi.vec(Q_out_dt)    == 0)
         opti.subject_to(casadi.vec(P_in_dt)     == 0)
@@ -283,12 +290,13 @@ if __name__ == "__main__":
     
     df = pd.DataFrame(columns=['name', 'time','flow_in', 'flow_out', 'pressure_in', 'pressure_out'])
     num_time_steps = len(input_file["boundary_conditions"][0]["bc_values"]["t"])
-    for time_step in range(num_time_steps):
+    for time_step in range(1, num_time_steps):
         #print(f"Solving time step {time_step + 1} of {num_time_steps}.")
-        if time_step == 0:
+        if time_step == 1:
             sol_prev = None
         
         sol_prev = solve_casadi_unsteady(time_step = time_step, sol_prev = sol_prev, input_file= input_file, result_df = df)
+        #print(f"Flow: {sol_prev['Q_in'][0]}, Pressure: {sol_prev['P_in'][0]}, Time step: {time_step + 1} of {num_time_steps}")
     
     df.sort_values(by=['name', 'time'], inplace=True)
     tree_name_split = tree_name.split("_")

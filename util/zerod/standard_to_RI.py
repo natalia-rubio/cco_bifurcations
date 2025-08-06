@@ -19,15 +19,17 @@ import jax.numpy as jnp
 from util.neural_net.nn_model import NeuralNet, predict
 from util.tree.extract_true_junctions_helpers import get_input_file_junction_dict_master, add_geometry_values, add_downstream_resistance_values, add_solution_values, add_3D_resistance
 
-def check_out_of_dist(param, param_name, scaling_dict, verbose = True):
-    if param < scaling_dict[param_name][2]:
-        if verbose and param_name != "daughter1_length_star" and param_name != "daughter2_length_star" and param *0.9 < scaling_dict[param_name][2]:
+def check_out_of_dist(param, param_name, scaling_dict, verbose = False, tol = 0):
+    if param < scaling_dict[param_name][2]*(1-tol):
+        #if verbose and param_name != "daughter1_length_star" and param_name != "daughter2_length_star" and param *0.9 < scaling_dict[param_name][2]:
+        if verbose:
             print(f"{param_name} smaller than training set minimum: {param}, {scaling_dict[param_name][2]}")
-        param = scaling_dict[param_name][2]
-    if param > scaling_dict[param_name][3]:
-        if verbose and param_name != "daughter1_length_star" and param_name != "daughter2_length_star" and param *1.1 > scaling_dict[param_name][3]:
+        param = scaling_dict[param_name][2]*(1-tol)
+    if param > scaling_dict[param_name][3]*(1+tol):
+        #if verbose and param_name != "daughter1_length_star" and param_name != "daughter2_length_star" and param *1.1 > scaling_dict[param_name][3]:
+        if verbose:
             print(f"{param_name} larger than training set maximum: {param}, {scaling_dict[param_name][3]}")
-        param = scaling_dict[param_name][3]
+        param = scaling_dict[param_name][3]*(1+tol)
     return param
 
 def get_R_values_bif(inlet_area,
@@ -41,15 +43,19 @@ def get_R_values_bif(inlet_area,
                      daughter2_flow_split):
     verbose = False
     anatomy = "tree_20"
-    set_type = "random"#
+    set_type = "random_pared"#
     #set_type = "combined" #"dict_res_fs_ext" 
     scaling_dict = load_dict(f"data/scaling_dictionaries/{anatomy}_{set_type}_scaling_dict")
-    model_name0 = "ri_tree_20_pred_0_model"
-    model_name1 = "ri_tree_20_pred_1_model"
+    model_name0_o1 = "ri_tree_20_pred_0_outlet_o1_model"
+    model_name0_o2 = "ri_tree_20_pred_0_outlet_o2_model"
+    model_name1_o1 = "ri_tree_20_pred_1_outlet_o1_model"
+    model_name1_o2 = "ri_tree_20_pred_1_outlet_o2_model"
     #model_name = "tree_20_ng_950_nl_2_lw_200_ne_5000_bs_100_dr_0.95_model" #"tree_20_ng_400_nl_2_lw_100_ne_1000_bs_20_dr_0.95_model"
     #model_name = "tree_20_ng_280_nl_3_lw_500_ne_2500_bs_20_dr_0.95_model" # "tree_20_ng_400_nl_2_lw_100_ne_1000_bs_20_dr_0.95_model"
-    nn_model0 = dill_load(f"results/models/{anatomy}/{model_name0}")
-    nn_model1 = dill_load(f"results/models/{anatomy}/{model_name1}")
+    nn_model0_o1 = dill_load(f"results/models/tree_20/{model_name0_o1}")
+    nn_model0_o2 = dill_load(f"results/models/tree_20/{model_name0_o2}")
+    nn_model1_o1 = dill_load(f"results/models/tree_20/{model_name1_o1}")
+    nn_model1_o2 = dill_load(f"results/models/tree_20/{model_name1_o2}")
 
 
     re_char = 4500
@@ -84,7 +90,10 @@ def get_R_values_bif(inlet_area,
     ind_add2 = 1.06 * length_add2 / outlet2_area
     res_sub2 = length_sub2 * 8 * np.pi * 0.04 / (outlet2_area**2)
     ind_sub2 = 1.06 * length_sub2 / outlet2_area
-
+    
+    daughter1_flow_split = check_out_of_dist(daughter1_flow_split, "daughter1_flow_ratio", scaling_dict)
+    daughter2_flow_split = check_out_of_dist(daughter2_flow_split, "daughter2_flow_ratio", scaling_dict)
+    
     input_tens1 = jnp.asarray([scale_jax(scaling_dict, jnp.asarray(daughter1_area_ratio, dtype=jnp.float32), "daughter1_area_ratio"),
                     scale_jax(scaling_dict, jnp.asarray(daughter2_area_ratio, dtype=jnp.float32), "daughter2_area_ratio"),
                     #scale_jax(scaling_dict, jnp.asarray(total_daughter_area_ratio, dtype=jnp.float32), "total_daughter_area_ratio"),
@@ -98,14 +107,14 @@ def get_R_values_bif(inlet_area,
                     scale_jax(scaling_dict, jnp.asarray(daughter1_flow_split, dtype=jnp.float32), "daughter1_flow_ratio"),
                     scale_jax(scaling_dict, jnp.asarray(daughter1_flow_split**-1, dtype=jnp.float32), "daughter1_flow_ratio_inv"),
                         ]).reshape(1,-1)
-    input_tens2 = jnp.asarray([scale_jax(scaling_dict, jnp.asarray(daughter2_area_ratio, dtype=jnp.float32), "daughter1_area_ratio"),
-                    scale_jax(scaling_dict, jnp.asarray(daughter1_area_ratio, dtype=jnp.float32), "daughter2_area_ratio"),
+    input_tens2 = jnp.asarray([scale_jax(scaling_dict, jnp.asarray(daughter2_area_ratio, dtype=jnp.float32), "daughter2_area_ratio"),
+                    scale_jax(scaling_dict, jnp.asarray(daughter1_area_ratio, dtype=jnp.float32), "daughter1_area_ratio"),
                     #scale_jax(scaling_dict, jnp.asarray(total_daughter_area_ratio, dtype=jnp.float32), "total_daughter_area_ratio"),
-                    scale_jax(scaling_dict, jnp.asarray(daughter2_area_ratio_inv2, dtype=jnp.float32), "daughter1_area_ratio_inv2"),
-                    scale_jax(scaling_dict, jnp.asarray(daughter1_area_ratio_inv2, dtype=jnp.float32), "daughter2_area_ratio_inv2"),
+                    scale_jax(scaling_dict, jnp.asarray(daughter2_area_ratio_inv2, dtype=jnp.float32), "daughter2_area_ratio_inv2"),
+                    scale_jax(scaling_dict, jnp.asarray(daughter1_area_ratio_inv2, dtype=jnp.float32), "daughter1_area_ratio_inv2"),
                     #scale_jax(scaling_dict, jnp.asarray(total_area_ratio_inv2, dtype=jnp.float32), "total_area_ratio_inv2"),
-                    scale_jax(scaling_dict, jnp.asarray(daughter2_angle, dtype=jnp.float32), "daughter1_angle"),
-                    scale_jax(scaling_dict, jnp.asarray(daughter1_angle, dtype=jnp.float32), "daughter2_angle"),
+                    scale_jax(scaling_dict, jnp.asarray(daughter2_angle, dtype=jnp.float32), "daughter2_angle"),
+                    scale_jax(scaling_dict, jnp.asarray(daughter1_angle, dtype=jnp.float32), "daughter1_angle"),
                     scale_jax(scaling_dict, jnp.asarray(daughter2_length_star, dtype=jnp.float32), "daughter2_length_star"),
                     scale_jax(scaling_dict, jnp.asarray(daughter2_length_star_sq, dtype=jnp.float32), "daughter2_length_star_sq"),
                     scale_jax(scaling_dict, jnp.asarray(daughter2_flow_split, dtype=jnp.float32), "daughter2_flow_ratio"),
@@ -137,25 +146,22 @@ def get_R_values_bif(inlet_area,
     #                 scale_jax(scaling_dict, jnp.asarray(daughter2_flow_split, dtype=jnp.float32), "daughter2_flow_ratio"),
     #                 scale_jax(scaling_dict, jnp.asarray(daughter2_flow_split**-1, dtype=jnp.float32), "daughter2_flow_ratio_inv"),
     #                     ]).reshape(1,-1)
-
-    coefs_pred1 = predict(input_tens1, nn_model0.weights)
-    coefs_pred2 = predict(input_tens2, nn_model0.weights)
-
+    coef_tol = 0
+    coefs_pred1 = predict(input_tens1, nn_model0_o1.weights)
+    coefs_pred2 = predict(input_tens2, nn_model0_o2.weights)
     R_lin_star_pred1 = float(inv_scale_jax(scaling_dict, coefs_pred1[0][0], "daughter1_R_lin_star_m2")[0][0])
-    check_out_of_dist(R_lin_star_pred1, "daughter1_R_lin_star_m2", scaling_dict)
-
+    check_out_of_dist(R_lin_star_pred1, "daughter1_R_lin_star_m2", scaling_dict, tol = coef_tol)
     R_lin_star_pred2 = float(inv_scale_jax(scaling_dict, coefs_pred2[0][0], "daughter2_R_lin_star_m2")[0][0])
-    check_out_of_dist(R_lin_star_pred2, "daughter2_R_lin_star_m2", scaling_dict)
+    check_out_of_dist(R_lin_star_pred2, "daughter2_R_lin_star_m2", scaling_dict, tol = coef_tol)
     
-    coefs_pred1 = predict(input_tens1, nn_model1.weights)
-    coefs_pred2 = predict(input_tens2, nn_model1.weights)
-    
+    coefs_pred1 = predict(input_tens1, nn_model1_o1.weights)
+    coefs_pred2 = predict(input_tens2, nn_model1_o2.weights)
     L_star_pred1 = float(inv_scale_jax(scaling_dict, coefs_pred1[0][1], "daughter1_L_star_m2")[0][0]); 
-    L_star_pred1 = check_out_of_dist(L_star_pred1, "daughter1_L_star_m2", scaling_dict)
-
-
+    L_star_pred1 = check_out_of_dist(L_star_pred1, "daughter1_L_star_m2", scaling_dict, tol = coef_tol)
     L_star_pred2 = float(inv_scale_jax(scaling_dict, coefs_pred2[0][1], "daughter2_L_star_m2")[0][0]); 
-    L_star_pred2 = check_out_of_dist(L_star_pred2, "daughter2_L_star_m2", scaling_dict)
+    L_star_pred2 = check_out_of_dist(L_star_pred2, "daughter2_L_star_m2", scaling_dict, tol = coef_tol)
+    if L_star_pred2 < 0:
+        pdb.set_trace()
 
 
     daughter1_R_lin = float((1.06 * jnp.square(U_char) * R_lin_star_pred1 /  (A_char * U_char)))
@@ -168,7 +174,8 @@ def get_R_values_bif(inlet_area,
     daughter2_L = float(L_star_pred2) *1.06*L_char/A_char
     daughter2_L_final = float(L_star_pred2) *1.06*L_char/A_char + (ind_add2 - ind_sub2) #* daughter2_flow_split
 
-
+    if daughter2_L_final < 0:
+        pdb.set_trace()
     R_dict = {"inlet_R_lin": 0,
               "daughter1_R_lin": daughter1_R_lin_final,
               "daughter2_R_lin": daughter2_R_lin_final,
@@ -204,30 +211,60 @@ def transform_standard_to_RI(tree_name):
         if junction_name not in junction_dict_master:
             #print(f"Junction {junction_name} not found in junction dictionary master")
             continue
+
         junction_dict = junction_dict_master[junction_name]
         daughter1_flow_ratio = junction_dict["0D_geo_flow_split"]/(1 + junction_dict["0D_geo_flow_split"])
         daughter2_flow_ratio = 1/(1 + junction_dict["0D_geo_flow_split"])
-        #pdb.set_trace()
-        R_dict = get_R_values_bif(junction_dict["0D_inlet_area"],
-                                    junction_dict["0D_outlet1_area"],#junction_dict["0D_outlet1_area"],
-                                    junction_dict["0D_outlet2_area"],#junction_dict["0D_outlet2_area"],
-                                    get_angle_diff(np.asarray(junction_dict["0D_inlet_tangent"]), np.asarray(junction_dict["0D_daughter1_tangent"])),
-                                    get_angle_diff(np.asarray(junction_dict["0D_inlet_tangent"]), np.asarray(junction_dict["0D_daughter2_tangent"])),
-                                    junction_dict["0D_length1"],
-                                    junction_dict["0D_length2"],
+        inlet_resistance = 0*8*0.04*np.pi*4*np.sqrt(junction_dict["0D_inlet_area"]/np.pi)/(junction_dict["0D_inlet_area"]**2)
+        #print(junction_name)
+        if junction_name == "J0":
+            inlet_resistance = 0.0
+            #print("JO inlet resistance set to 0")
+            #pdb.set_trace()
+        # R_dict = get_R_values_bif(junction_dict["0D_inlet_area"],
+        #                             junction_dict["0D_outlet1_area"],
+        #                             junction_dict["0D_outlet2_area"],
+        #                             #get_angle_diff(np.asarray(junction_dict["3D_junc_inlet_tangent_corr"]), np.asarray(junction_dict["0D_daughter1_tangent"])),
+        #                             #get_angle_diff(np.asarray(junction_dict["3D_junc_inlet_tangent_corr"]), np.asarray(junction_dict["0D_daughter2_tangent"])),
+        #                             get_angle_diff(np.asarray(junction_dict["0D_inlet_tangent"]), np.asarray(junction_dict["0D_daughter1_tangent"])),
+        #                             get_angle_diff(np.asarray(junction_dict["0D_inlet_tangent"]), np.asarray(junction_dict["0D_daughter2_tangent"])),
+        #                             junction_dict["0D_length1"]-0*np.sqrt(junction_dict["0D_outlet1_area"]/np.pi),#junction_dict["3D_branch1_length_corr"],
+        #                             junction_dict["0D_length2"]-0*np.sqrt(junction_dict["0D_outlet2_area"]/np.pi),#junction_dict["3D_branch2_length_corr"],
+        #                             daughter1_flow_ratio,
+        #                             daughter2_flow_ratio)
+        length1 = junction_dict["0D_length1"] 
+        if  '0D_bc_resistance_name' not in junction_dict.keys():
+            length1 = length1 - 0*4*np.sqrt(junction_dict["0D_outlet1_area"]/np.pi)
+            
+        length2 = junction_dict["0D_length2"]
+        if '0D_aux_bc_resistance_name' not in junction_dict.keys():
+            length2 = length2 - 0*4*np.sqrt(junction_dict["0D_outlet2_area"]/np.pi)
+            
+        R_dict = get_R_values_bif(junction_dict["3D_junc_inlet_area_corr"], #junction_dict["0D_inlet_area"],
+                                    junction_dict["0D_outlet1_area"],
+                                    junction_dict["0D_outlet2_area"],
+                                    get_angle_diff(np.asarray(junction_dict["3D_junc_inlet_tangent_corr"]), np.asarray(junction_dict["0D_daughter1_tangent"])),
+                                    get_angle_diff(np.asarray(junction_dict["3D_junc_inlet_tangent_corr"]), np.asarray(junction_dict["0D_daughter2_tangent"])),
+                                    # get_angle_diff(np.asarray(junction_dict["0D_inlet_tangent"]), np.asarray(junction_dict["0D_daughter1_tangent"])),
+                                    # get_angle_diff(np.asarray(junction_dict["0D_inlet_tangent"]), np.asarray(junction_dict["0D_daughter2_tangent"])),
+                                    # junction_dict["0D_length1"]-3*np.sqrt(junction_dict["0D_outlet1_area"]/np.pi),#junction_dict["3D_branch1_length_corr"],
+                                    # junction_dict["0D_length2"]-3*np.sqrt(junction_dict["0D_outlet2_area"]/np.pi),#junction_dict["3D_branch2_length_corr"],
+                                    length1,
+                                    length2,
                                     daughter1_flow_ratio,
                                     daughter2_flow_ratio)
 
         input_file["junctions"][i]["junction_type"] = "BloodVesselJunction"
         input_file["junctions"][i]["junction_values"] = {"R_poiseuille": [R_dict["daughter1_R_lin"],#/daughter1_flow_ratio, 
-                                                                          R_dict["daughter2_R_lin"]],#/daughter2_flow_ratio],
-                                                         "stenosis_coefficient": [0, 0],
-                                                         "L": [R_dict["daughter1_L"],#/daughter1_flow_ratio, 
-                                                                R_dict["daughter2_L"]],
-                                                         "flow_split": [daughter1_flow_ratio,daughter2_flow_ratio],
-                                                         "pressure_recovery_coefficient": [0, 0],
-                                                         }#/daughter2_flow_ratio],}
-        
+                                                                          R_dict["daughter2_R_lin"]],#/daughter2_flow_ratio], 
+                                                                    "stenosis_coefficient": [0, 0],
+                                                                    "pressure_recovery_coefficient": [R_dict["daughter1_R_quad"],#/(daughter1_flow_ratio**2), 
+                                                                                                      R_dict["daughter2_R_quad"]],#/(daughter2_flow_ratio**2)],
+                                                                    "L": [R_dict["daughter1_L"], 
+                                                                          R_dict["daughter2_L"]],
+                                                                    "flow_split": [daughter1_flow_ratio, daughter2_flow_ratio],
+                                                                    "inlet_R_lin": [inlet_resistance,]}
+
     for vessel in input_file["vessels"]:
         if "branch0" not in vessel["vessel_name"]:
             vessel["zero_d_element_values"]["R_poiseuille"] = 0
@@ -236,21 +273,24 @@ def transform_standard_to_RI(tree_name):
         else:
             continue
     
+    
     if flow_mag == "12":
-        num_pts = 5
+        num_pts = 2
     elif flow_mag == "25":
-        num_pts = 10
+        num_pts = 2
     elif flow_mag == "50":
-        num_pts = 20
+        num_pts = 2
     elif flow_mag == "100":
-        num_pts = 40
-    t = input_file["boundary_conditions"][0]["bc_values"]["t"] 
-    t = np.linspace(t[0], t[-1], num_pts).tolist()  # Create a fine time vector
-    Q = input_file["boundary_conditions"][0]["bc_values"]["Q"]
-    Q = np.linspace(0, Q[-1], num_pts).tolist()  # Create a fine flow vector
+        num_pts = 2
+    #pdb.set_trace()
+    if not (flow_mag == "unsteady" or flow_mag == "real"):
+        t = input_file["boundary_conditions"][0]["bc_values"]["t"] 
+        t = np.linspace(t[0], t[-1], num_pts).tolist()  # Create a fine time vector
+        Q = input_file["boundary_conditions"][0]["bc_values"]["Q"]
+        Q = np.linspace(0, Q[-1], num_pts).tolist()  # Create a fine flow vector
         
-    input_file["boundary_conditions"][0]["bc_values"]["t"] = t
-    input_file["boundary_conditions"][0]["bc_values"]["Q"] = Q
+        input_file["boundary_conditions"][0]["bc_values"]["t"] = t
+        input_file["boundary_conditions"][0]["bc_values"]["Q"] = Q
 
     if not os.path.exists(f'trees/zerod_input/RI/{tree_name_base}/{tree_name}'):
         os.makedirs(f'trees/zerod_input/RI/{tree_name_base}/{tree_name}')

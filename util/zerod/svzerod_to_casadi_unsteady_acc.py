@@ -81,10 +81,14 @@ def solve_casadi_unsteady(input_file = None, result_df = None):
                 - L * Q_out_dt[i]  
                 )**2
         else:
-            objective += (
-                P_out[i] +
-                - P_in[i] 
-            )**2
+            # objective += (
+            #     P_out[i] +
+            #     - P_in[i] 
+            # )**2
+            opti.subject_to(
+                P_out[i] + 
+                - P_in[i] == 0
+            )
 
         # objective += (
         #     P_in[i] +
@@ -131,23 +135,24 @@ def solve_casadi_unsteady(input_file = None, result_df = None):
             if junction["junction_type"] == "BloodVesselJunction":
 
                 R_lin = junction["junction_values"]["R_poiseuille"][j] * coef_factor
+                R_lin_inlet = junction["junction_values"]["inlet_R_lin"][0] * coef_factor
                 R_sten = junction["junction_values"]["stenosis_coefficient"][j] * coef_factor
                 if "pressure_recovery_coefficient" in junction["junction_values"].keys():
                     R_quad = junction["junction_values"]["pressure_recovery_coefficient"][j]
                 else:
                     R_quad = 0
-                    pdb.set_trace()
                 print(f"R_quad: {R_quad} for junction {j_name} and outlet vessel {junction['outlet_vessels'][j]}")
 
                 L = junction["junction_values"]["L"][j]
-                C = 0
+                C = 10^-8
 
                 #Junction pressure equation residual (to minimize)
                 objective += ((
                     P_out[inlet_vessel_ind] + # THIS IS THE INLET PRESSURE
                     - P_in[outlet_vessel_ind] +
                     - (R_lin + R_sten * (10**-2 + Q_in[outlet_vessel_ind]**2)**0.5 + R_quad * Q_in[outlet_vessel_ind]) * Q_in[outlet_vessel_ind] + # abs removed
-                    - L * Q_in_dt[outlet_vessel_ind])/(1333 * 20)
+                    - L * Q_in_dt[outlet_vessel_ind] +
+                    - R_lin_inlet * Q_out_dt[inlet_vessel_ind])/(1333*inlet_Q**2)#(1333 *20)
                 )**2
                 junction_constraint_counter += 1
                 
@@ -160,7 +165,7 @@ def solve_casadi_unsteady(input_file = None, result_df = None):
                 enforce_flow_splits = True
                 if enforce_flow_splits:
                     objective += (
-                        ((Q_in[outlet_vessel_ind] - junction["junction_values"]["flow_split"][j] *  Q_out[inlet_vessel_ind])*100)**2
+                        ((Q_in[outlet_vessel_ind] - junction["junction_values"]["flow_split"][j] *  Q_out[inlet_vessel_ind]))**2
                     )
                     # opti.subject_to(
                     #     Q_in[outlet_vessel_ind] - junction["junction_values"]["flow_split"][j] *  Q_out[inlet_vessel_ind] == 0

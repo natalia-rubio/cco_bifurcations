@@ -42,28 +42,28 @@ def get_data_lists(anatomy, set_type, unsteady = False):
                 except:
                     pdb.set_trace()
 
-    values = list(data_list_dict.keys())
-    #pdb.set_trace()
-    daughter1_values = [value for value in values if "daughter1" in value]
-    daughter2_values = [value for value in values if "daughter2" in value]
-    for value in daughter1_values:
-        print(f"Swapping {value}")
-        value_name = value[10:]
-        daughter1_list = copy.deepcopy(data_list_dict["daughter1_" + value_name])
-        daughter2_list = copy.deepcopy(data_list_dict["daughter2_" + value_name])
-        data_list_dict["daughter1_" + value_name] += daughter2_list
-        data_list_dict["daughter2_" + value_name] += daughter1_list
+    # values = list(data_list_dict.keys())
+    # #pdb.set_trace()
+    # daughter1_values = [value for value in values if "daughter1" in value]
+    # daughter2_values = [value for value in values if "daughter2" in value]
+    # for value in daughter1_values:
+    #     print(f"Swapping {value}")
+    #     value_name = value[10:]
+    #     daughter1_list = copy.deepcopy(data_list_dict["daughter1_" + value_name])
+    #     daughter2_list = copy.deepcopy(data_list_dict["daughter2_" + value_name])
+    #     data_list_dict["daughter1_" + value_name] += daughter2_list
+    #     data_list_dict["daughter2_" + value_name] += daughter1_list
 
-    for value in values:
-        if not value in daughter1_values and not value in daughter2_values:
-            print(f"Doubling {value}")
-            data_list_dict[value] += data_list_dict[value]
-        print(value)
-        try:
-            data_list_dict[value] = np.asarray(data_list_dict[value])
-        except:
-            print(f"Could not convert {value} to numpy array, skipping")
-            continue
+    # for value in values:
+    #     if not value in daughter1_values and not value in daughter2_values:
+    #         print(f"Doubling {value}")
+    #         data_list_dict[value] += data_list_dict[value]
+    #     print(value)
+    #     try:
+    #         data_list_dict[value] = np.asarray(data_list_dict[value])
+    #     except:
+    #         print(f"Could not convert {value} to numpy array, skipping")
+    #         continue
     save_dict(data_list_dict, f"data/data_dicts/{anatomy}_{set_type}_synthetic_data_list_dict")
     return
 
@@ -85,7 +85,7 @@ def get_scaling_dict(anatomy, set_type, doubled = True, unsteady = False):
     save_dict(data_list_dict, f"data/data_dicts/{anatomy}_{set_type}_synthetic_data_list_dict")
     to_normalize = list(data_list_dict.keys())
 
-    values_of_interest = ["daughter1_R_lin_star_m2", "daughter1_L_m2", "daughter1_R_lin_star", "daughter2_R_lin_star", "daughter1_R_quad_star", "daughter2_R_quad_star"]
+    values_of_interest = ["daughter1_R_lin_star_m2", "daughter1_L_m2", "daughter1_R_lin_star", "daughter2_R_lin_star", "daughter1_R_quad_star", "daughter2_R_quad_star", "A_char"]
     values_to_skip = ["daughter1_dP_star", "daughter2_dP_star",
                       "daughter1_dP_original", "daughter2_dP_original",
                       "daughter1_flow_star", "daughter2_flow_star", 

@@ -45,7 +45,7 @@ def compare_to_3d_inlet(junction_mode = "standard",
 
     area = arrays_3d["CenterlineSectionArea"]
 
-    pressure_0d = arrays_0d["pressure"][arrays_3d["GlobalNodeId"] == inlet_gid_0d]
+    pressure_0d = arrays_0d["pressure"][arrays_3d["GlobalNodeId"] == inlet_gid]
     pressure_3d = arrays_3d["Pressure"][arrays_3d["GlobalNodeId"] == inlet_gid]
 
     flow_error_0d_rel = (flow_0d-flow_3d)/flow_3d

@@ -29,7 +29,8 @@ def remove_C(tree_name, junction_mode):
         input_file = json.load(json_file)
 
     for i in range(len(input_file["vessels"])):
-        input_file["vessels"][i]["zero_d_element_values"]["C"] = 10**(-10)
+        input_file["vessels"][i]["zero_d_element_values"]["C"] = 10**-10
+        #input_file["vessels"][i]["zero_d_element_values"]["L"] = 0
 
 
     if not os.path.exists(f'trees/zerod_input/{junction_mode}/{tree_name_base}/{tree_name}'):
