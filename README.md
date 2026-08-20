@@ -1,5 +1,7 @@
 # Bifurcation Handling for Reduced-Order Modeling of CCO Vascular Trees
 
+Developed by Natalia Rubio as part of Ph.D. at Stanford University.  Subject to Stanford IP policy.  Please do not delete or move this repository without notifying me (Natalia).
+
 Workflow for using the [RRI junction handling method](https://www.sciencedirect.com/science/article/abs/pii/S0010482524015051) on [CCO-style trees](https://www.science.org/doi/10.1126/science.adj6152), as described in the paper, [Data-driven bifurcation handling in physics-based reduced-order vascular hemodynamic models](https://www.sciencedirect.com/science/article/abs/pii/S0169260725006455).  
 
 
